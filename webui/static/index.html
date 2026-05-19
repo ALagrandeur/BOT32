@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BOT32</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>BOT32 <span class="muted small">in-vehicle</span></h1>
+  <div id="conn-pill" class="pill pill-unknown">disconnected</div>
+</header>
+
+<main>
+
+  <!-- ============================================================
+       Connection card
+       ============================================================ -->
+  <section class="card">
+    <h2>🔌 Serial connection</h2>
+    <div class="row">
+      <label>Port
+        <select id="sel-port"></select>
+      </label>
+      <button id="btn-refresh-ports" class="secondary">↻ Refresh</button>
+      <button id="btn-connect">Connect</button>
+      <button id="btn-disconnect" class="secondary">Disconnect</button>
+    </div>
+    <p class="muted small" id="boot-info">—</p>
+  </section>
+
+  <!-- ============================================================
+       Status (live)
+       ============================================================ -->
+  <section class="card card-status">
+    <h2>📊 Live status</h2>
+    <div class="grid">
+      <div>
+        <span class="lbl">Mode</span>
+        <span id="live-mode" class="value-big">—</span>
+      </div>
+      <div>
+        <span class="lbl">Lever</span>
+        <span id="live-lever" class="value-big">—</span>
+      </div>
+      <div>
+        <span class="lbl">MAP (mbar)</span>
+        <span id="live-map" class="value-big">—</span>
+        <span id="live-map-age" class="lbl">—</span>
+      </div>
+      <div>
+        <span class="lbl">Coolant byte</span>
+        <span id="live-coolant" class="value-big">—</span>
+      </div>
+    </div>
+
+    <h3 class="subtitle">Bus stats</h3>
+    <div class="grid-2">
+      <div class="bus-block">
+        <h4>🚌 CAN cluster (TWAI)</h4>
+        <div class="bus-row"><span>TX ok</span> <span id="cl-tx-ok">—</span></div>
+        <div class="bus-row"><span>TX fail</span> <span id="cl-tx-fail">—</span></div>
+        <div class="bus-row"><span>RX</span> <span id="cl-rx">—</span></div>
+        <div class="bus-row"><span>Bus errors</span> <span id="cl-err">—</span></div>
+      </div>
+      <div class="bus-block">
+        <h4>🚌 CAN OBD2 (MCP2515)</h4>
+        <div class="bus-row"><span>TX ok</span> <span id="ob-tx-ok">—</span></div>
+        <div class="bus-row"><span>TX fail</span> <span id="ob-tx-fail">—</span></div>
+        <div class="bus-row"><span>RX</span> <span id="ob-rx">—</span></div>
+        <div class="bus-row"><span>Bus errors</span> <span id="ob-err">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Settings (sliders & inputs)
+       ============================================================ -->
+  <section class="card card-settings">
+    <h2>⚙️ Settings (persisted to NVS)</h2>
+
+    <div class="row">
+      <label>MAP min (mbar)<br>
+        <input type="number" id="set-map_min_mbar" min="0" max="4000" step="10">
+      </label>
+      <label>MAP max (mbar)<br>
+        <input type="number" id="set-map_max_mbar" min="0" max="4000" step="10">
+      </label>
+    </div>
+    <div class="row">
+      <label>Scale<br>
+        <input type="number" id="set-scale" min="0.1" max="3.0" step="0.05">
+      </label>
+      <label>Offset (°C)<br>
+        <input type="number" id="set-offset_c" min="-50" max="50" step="1">
+      </label>
+    </div>
+    <div class="row">
+      <label>OBD2 poll rate (Hz)<br>
+        <input type="number" id="set-obd2_poll_hz" min="1" max="20" step="1">
+      </label>
+      <label>Motor_09 TX rate (Hz)<br>
+        <input type="number" id="set-tx_rate_hz" min="5" max="50" step="1">
+      </label>
+    </div>
+    <div class="row">
+      <label class="checkbox">
+        <input type="checkbox" id="set-tx_enabled">
+        <span>TX enabled (master switch — uncheck for safety)</span>
+      </label>
+    </div>
+
+    <p class="muted small">Changes are auto-saved to ESP32 NVS on focus loss.</p>
+
+    <div class="actions">
+      <button id="btn-factory-reset" class="danger">↺ Factory reset</button>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Frame monitor
+       ============================================================ -->
+  <section class="card">
+    <h2>📡 CAN frame monitor</h2>
+    <div class="row">
+      <label class="checkbox">
+        <input type="checkbox" id="frames-enabled">
+        <span>Subscribe to live frames</span>
+      </label>
+      <button id="btn-clear-frames" class="secondary">Clear</button>
+      <label>Filter bus
+        <select id="frames-filter-bus">
+          <option value="">all</option>
+          <option value="cluster">cluster</option>
+          <option value="obd2">obd2</option>
+        </select>
+      </label>
+    </div>
+    <table class="frames-table">
+      <thead>
+        <tr><th>ts</th><th>bus</th><th>dir</th><th>id</th><th>len</th><th>data</th></tr>
+      </thead>
+      <tbody id="frames-tbody"></tbody>
+    </table>
+  </section>
+
+  <!-- ============================================================
+       Debug log
+       ============================================================ -->
+  <section class="card">
+    <h2>📋 ESP32 log</h2>
+    <pre id="log" class="log"></pre>
+  </section>
+
+</main>
+
+<footer>
+  <span class="muted">BOT32 — http://127.0.0.1:5000</span>
+  <span class="muted">USB ESP32 ↔ Python ↔ Browser</span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

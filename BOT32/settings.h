@@ -1,0 +1,59 @@
+/*
+ * Settings persistence — stores user-tunable params in ESP32 NVS (flash).
+ *
+ * Values survive reboot. Modified via USB serial (web UI on PC).
+ * Defaults defined here; load at boot, save on change.
+ */
+#ifndef BOT32_SETTINGS_H
+#define BOT32_SETTINGS_H
+
+#include <Arduino.h>
+
+struct Settings {
+  // MAP -> coolant byte mapping
+  float    map_min_mbar;     // MAP at idle -> displays as low needle (~50 C)
+  float    map_max_mbar;     // MAP at full boost -> displays as high needle (~130 C)
+  float    scale;            // fine adjustment (1.0 = no change)
+  float    offset_c;         // fine adjustment in C (0 = no change)
+
+  // OBD2 polling
+  uint16_t obd2_req_id;      // default 0x7E0
+  uint16_t obd2_resp_id;     // default 0x7E8
+  uint16_t obd2_did_map;     // default 0x39C0 (Saugrohrdruck)
+  uint16_t obd2_poll_hz;     // default 5
+
+  // Cluster TX rate
+  uint16_t tx_rate_hz;       // default 20 (Motor_09)
+
+  // Cluster CAN IDs (in case different cluster variant)
+  uint16_t cluster_motor09_id;  // default 0x647
+  uint16_t cluster_wba03_id;    // default 0x394
+
+  // Behavior flags
+  bool     tx_enabled;       // master switch: if false, NEVER TX on cluster (failsafe)
+  bool     listen_only_boot; // if true, stay in listen-only for 5s at boot
+
+  uint8_t  version;          // settings struct version (for migration)
+};
+
+// Initialize NVS, load settings (or defaults if none).
+void settings_init();
+
+// Get a reference to the current settings (read-only).
+const Settings& settings_get();
+
+// Set + persist a value. Returns true if saved.
+// Use these from serial_proto when a config update arrives from PC.
+bool settings_set_map_min_mbar(float v);
+bool settings_set_map_max_mbar(float v);
+bool settings_set_scale(float v);
+bool settings_set_offset_c(float v);
+bool settings_set_obd2_did_map(uint16_t v);
+bool settings_set_obd2_poll_hz(uint16_t v);
+bool settings_set_tx_rate_hz(uint16_t v);
+bool settings_set_tx_enabled(bool v);
+
+// Reset to defaults (factory reset).
+void settings_reset_to_defaults();
+
+#endif // BOT32_SETTINGS_H
