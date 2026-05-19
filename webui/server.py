@@ -20,6 +20,7 @@ import argparse
 import json
 import threading
 import time
+import webbrowser
 from pathlib import Path
 
 import serial
@@ -247,6 +248,8 @@ def main():
     ap.add_argument("--port", help="Serial port (auto-detected if omitted)")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--http-port", type=int, default=5000)
+    ap.add_argument("--no-browser", action="store_true",
+                    help="Don't auto-open the browser (default: opens after 1.5s)")
     args = ap.parse_args()
 
     # Start reader thread (always running, auto-reconnects)
@@ -258,6 +261,18 @@ def main():
         connect_serial(port)
     else:
         print("[serial] no port specified or detected — connect via UI later")
+
+    # Auto-open browser 1.5s after server starts
+    if not args.no_browser:
+        url = f"http://{args.host}:{args.http_port}"
+        def open_browser():
+            time.sleep(1.5)
+            print(f"[browser] opening {url}")
+            try:
+                webbrowser.open(url, new=1)
+            except Exception as e:
+                print(f"[browser] failed to open: {e}")
+        threading.Thread(target=open_browser, daemon=True).start()
 
     print(f"==> BOT32 web UI on http://{args.host}:{args.http_port}")
     socketio.run(app, host=args.host, port=args.http_port, allow_unsafe_werkzeug=True)

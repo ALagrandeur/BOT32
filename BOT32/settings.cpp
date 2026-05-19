@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 1
+#define SETTINGS_VERSION 2   // bumped when new fields added (force_tx_always, block_airbag)
 
 static Settings make_defaults() {
   Settings s;
@@ -26,6 +26,8 @@ static Settings make_defaults() {
   s.cluster_wba03_id   = CAN_ID_WBA_03;
   s.tx_enabled        = true;
   s.listen_only_boot  = true;
+  s.force_tx_always   = false;   // default: only TX in BOOST mode (S/M/N lever)
+  s.block_airbag      = true;    // default: airbag IDs blocked (SAFETY)
   s.version           = SETTINGS_VERSION;
   return s;
 }
@@ -55,6 +57,8 @@ void settings_init() {
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
   current.tx_enabled        = prefs.getBool("tx_en", true);
   current.listen_only_boot  = prefs.getBool("lo_boot", true);
+  current.force_tx_always   = prefs.getBool("fx_tx", false);
+  current.block_airbag      = prefs.getBool("blk_ab", true);
   current.version           = SETTINGS_VERSION;
   Serial.println("[NVS] Settings loaded from flash");
 }
@@ -105,6 +109,30 @@ bool settings_set_tx_enabled(bool v) {
   current.tx_enabled = v;
   return save_bool("tx_en", v);
 }
+bool settings_set_force_tx_always(bool v) {
+  current.force_tx_always = v;
+  return save_bool("fx_tx", v);
+}
+bool settings_set_block_airbag(bool v) {
+  current.block_airbag = v;
+  return save_bool("blk_ab", v);
+}
+bool settings_set_cluster_motor09_id(uint16_t v) {
+  current.cluster_motor09_id = v;
+  return save_ushort("cl_m09", v);
+}
+bool settings_set_cluster_wba03_id(uint16_t v) {
+  current.cluster_wba03_id = v;
+  return save_ushort("cl_wba", v);
+}
+bool settings_set_obd2_req_id(uint16_t v) {
+  current.obd2_req_id = v;
+  return save_ushort("obd_req", v);
+}
+bool settings_set_obd2_resp_id(uint16_t v) {
+  current.obd2_resp_id = v;
+  return save_ushort("obd_resp", v);
+}
 
 void settings_reset_to_defaults() {
   current = make_defaults();
@@ -121,6 +149,8 @@ void settings_reset_to_defaults() {
   prefs.putUShort("cl_wba", current.cluster_wba03_id);
   prefs.putBool("tx_en", current.tx_enabled);
   prefs.putBool("lo_boot", current.listen_only_boot);
+  prefs.putBool("fx_tx", current.force_tx_always);
+  prefs.putBool("blk_ab", current.block_airbag);
   prefs.putUChar("version", current.version);
   Serial.println("[NVS] Settings reset to defaults");
 }

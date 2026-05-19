@@ -13,10 +13,13 @@
  */
 #include "can_handler.h"
 #include "config.h"
+#include "settings.h"
 #include <ACAN2515.h>
 #include <SPI.h>
 
-// Safety blocklist (Airbag_01, Airbag_02) - NEVER transmit
+// Safety blocklist (Airbag_01, Airbag_02)
+// Active when settings.block_airbag = true (default).
+// User can disable via UI but only with explicit confirmation (UI safeguard).
 static const uint32_t FORBIDDEN_IDS[] = { 0x040, 0x572 };
 static const int N_FORBIDDEN = sizeof(FORBIDDEN_IDS) / sizeof(FORBIDDEN_IDS[0]);
 
@@ -124,12 +127,14 @@ void can_poll() {
 //  TX
 // =============================================================
 bool can_send(CanChannel ch, const CanFrame& frame) {
-  // Safety: airbag blocklist
-  for (int i = 0; i < N_FORBIDDEN; i++) {
-    if (frame.id == FORBIDDEN_IDS[i]) {
-      Serial.print("[CAN] BLOCKED forbidden TX id 0x");
-      Serial.println(frame.id, HEX);
-      return false;
+  // Safety: airbag blocklist (honored only if settings.block_airbag = true)
+  if (settings_get().block_airbag) {
+    for (int i = 0; i < N_FORBIDDEN; i++) {
+      if (frame.id == FORBIDDEN_IDS[i]) {
+        Serial.print("[CAN] BLOCKED forbidden TX id 0x");
+        Serial.println(frame.id, HEX);
+        return false;
+      }
     }
   }
 

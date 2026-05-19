@@ -3,6 +3,7 @@
  */
 #include "obd2.h"
 #include "config.h"
+#include "settings.h"
 
 static float    last_map_mbar = -1.0f;
 static uint32_t last_map_ms   = 0;
@@ -18,20 +19,19 @@ static uint32_t responses_garbled = 0;
 // =============================================================
 static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
   if (ch != CAN_OBD2) return;
-  if (f.id != CAN_ID_OBD2_RESP) return;
+  const Settings& s = settings_get();
+  if (f.id != s.obd2_resp_id) return;   // user-configurable response ID
   if (f.len < 6) {
     responses_garbled++;
     return;
   }
 
   // Expected: [LEN, 0x62, DID_hi, DID_lo, VAL_hi, VAL_lo, ...]
-  // LEN = f.data[0] (ISO-TP single frame length)
   uint8_t sid    = f.data[1];
   uint8_t did_hi = f.data[2];
   uint8_t did_lo = f.data[3];
 
   if (sid != 0x62) {
-    // Could be a negative response (0x7F SID NRC). Log but ignore.
     if (sid == 0x7F) {
       Serial.print("[OBD2] NRC: SID=0x");
       Serial.print(f.data[2], HEX);
@@ -43,7 +43,7 @@ static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
   }
 
   uint16_t did = (did_hi << 8) | did_lo;
-  if (did != UDS_DID_MAP) {
+  if (did != s.obd2_did_map) {
     // Response to a different DID — ignore
     return;
   }
@@ -63,7 +63,7 @@ void obd2_init() {
 
 bool obd2_send_uds_query(uint16_t did) {
   CanFrame f;
-  f.id  = CAN_ID_OBD2_REQ;
+  f.id  = settings_get().obd2_req_id;  // user-configurable request ID
   f.len = 8;
   f.data[0] = 0x03;                      // ISO-TP single frame, 3 data bytes
   f.data[1] = 0x22;                      // SID = ReadDataByIdentifier
@@ -91,8 +91,10 @@ void obd2_tick(bool active) {
   if (!active) return;
 
   uint32_t now = millis();
-  if (now - last_query_ms >= OBD2_POLL_INTERVAL_MS) {
-    obd2_send_uds_query(UDS_DID_MAP);
+  const Settings& s = settings_get();
+  uint32_t poll_period_ms = 1000UL / (s.obd2_poll_hz > 0 ? s.obd2_poll_hz : 5);
+  if (now - last_query_ms >= poll_period_ms) {
+    obd2_send_uds_query(s.obd2_did_map);   // user-configurable DID
     last_query_ms = now;
   }
 

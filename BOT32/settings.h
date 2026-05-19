@@ -32,6 +32,10 @@ struct Settings {
   // Behavior flags
   bool     tx_enabled;       // master switch: if false, NEVER TX on cluster (failsafe)
   bool     listen_only_boot; // if true, stay in listen-only for 5s at boot
+  bool     force_tx_always;  // if true, TX Motor_09 in ALL modes (P/R/D too)
+                             // — useful for bench diagnostic; default false
+  bool     block_airbag;     // if true, block all TX on airbag IDs (0x040, 0x572)
+                             // — default true (SAFETY); only disable knowingly
 
   uint8_t  version;          // settings struct version (for migration)
 };
@@ -52,6 +56,12 @@ bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
 bool settings_set_tx_rate_hz(uint16_t v);
 bool settings_set_tx_enabled(bool v);
+bool settings_set_force_tx_always(bool v);
+bool settings_set_block_airbag(bool v);
+bool settings_set_cluster_motor09_id(uint16_t v);
+bool settings_set_cluster_wba03_id(uint16_t v);
+bool settings_set_obd2_req_id(uint16_t v);
+bool settings_set_obd2_resp_id(uint16_t v);
 
 // Reset to defaults (factory reset).
 void settings_reset_to_defaults();

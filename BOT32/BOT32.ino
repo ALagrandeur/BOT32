@@ -96,7 +96,9 @@ void setup() {
 static void tx_motor_09_if_due(uint32_t now) {
   const Settings& s = settings_get();
   if (!s.tx_enabled) return;
-  if (currentMode != MODE_BOOST) return;
+  // Normally TX only in BOOST. If force_tx_always is set, TX in all modes
+  // (incl. BOOT/SILENT/SAFE_FAULT) — diagnostic mode for bench testing on P.
+  if (currentMode != MODE_BOOST && !s.force_tx_always) return;
 
   uint32_t period_ms = 1000 / max(1, (int)s.tx_rate_hz);
   if (now - lastTxMs < period_ms) return;
@@ -198,8 +200,8 @@ void loop() {
   // 1. Drain CAN RX queues + dispatch to listeners
   can_poll();
 
-  // 2. OBD2 periodic UDS query (only when in BOOST, to spare bus when not needed)
-  obd2_tick(currentMode == MODE_BOOST);
+  // 2. OBD2 periodic UDS query (in BOOST mode, or always if force_tx_always)
+  obd2_tick(currentMode == MODE_BOOST || settings_get().force_tx_always);
 
   // 3. Update state machine from lever + boot timer
   update_mode(now);

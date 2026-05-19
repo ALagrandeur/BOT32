@@ -3,6 +3,7 @@
  */
 #include "lever_decoder.h"
 #include "config.h"
+#include "settings.h"
 
 static char     current_lever = '?';
 static uint8_t  current_gear  = 0;
@@ -23,7 +24,7 @@ static char decode_high_nibble(uint8_t nibble) {
 
 static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
   if (ch != CAN_CLUSTER) return;
-  if (f.id != CAN_ID_WBA_03) return;
+  if (f.id != settings_get().cluster_wba03_id) return;  // user-configurable
   if (f.len < 4) return;
 
   char lever = decode_high_nibble(f.data[1] & 0xF0);

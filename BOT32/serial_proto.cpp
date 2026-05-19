@@ -54,6 +54,8 @@ static void emit_settings() {
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
   doc["tx_enabled"]        = s.tx_enabled;
   doc["listen_only_boot"]  = s.listen_only_boot;
+  doc["force_tx_always"]   = s.force_tx_always;
+  doc["block_airbag"]      = s.block_airbag;
   serializeJson(doc, Serial);
   Serial.println();
 }
@@ -172,14 +174,20 @@ static void handle_cmd(const char* line) {
     const char* key = doc["key"];
     if (!key) { emit_ack("set", false, "no key"); return; }
     bool ok = false;
-    if      (strcmp(key, "map_min_mbar")  == 0) ok = settings_set_map_min_mbar(doc["value"]  | 0.0f);
-    else if (strcmp(key, "map_max_mbar")  == 0) ok = settings_set_map_max_mbar(doc["value"]  | 0.0f);
-    else if (strcmp(key, "scale")         == 0) ok = settings_set_scale(doc["value"]         | 1.0f);
-    else if (strcmp(key, "offset_c")      == 0) ok = settings_set_offset_c(doc["value"]      | 0.0f);
-    else if (strcmp(key, "obd2_did_map")  == 0) ok = settings_set_obd2_did_map(doc["value"]  | 0);
-    else if (strcmp(key, "obd2_poll_hz")  == 0) ok = settings_set_obd2_poll_hz(doc["value"]  | 5);
-    else if (strcmp(key, "tx_rate_hz")    == 0) ok = settings_set_tx_rate_hz(doc["value"]    | 20);
-    else if (strcmp(key, "tx_enabled")    == 0) ok = settings_set_tx_enabled(doc["value"]    | false);
+    if      (strcmp(key, "map_min_mbar")       == 0) ok = settings_set_map_min_mbar(doc["value"]       | 0.0f);
+    else if (strcmp(key, "map_max_mbar")       == 0) ok = settings_set_map_max_mbar(doc["value"]       | 0.0f);
+    else if (strcmp(key, "scale")              == 0) ok = settings_set_scale(doc["value"]              | 1.0f);
+    else if (strcmp(key, "offset_c")           == 0) ok = settings_set_offset_c(doc["value"]           | 0.0f);
+    else if (strcmp(key, "obd2_did_map")       == 0) ok = settings_set_obd2_did_map(doc["value"]       | 0);
+    else if (strcmp(key, "obd2_req_id")        == 0) ok = settings_set_obd2_req_id(doc["value"]        | 0);
+    else if (strcmp(key, "obd2_resp_id")       == 0) ok = settings_set_obd2_resp_id(doc["value"]       | 0);
+    else if (strcmp(key, "obd2_poll_hz")       == 0) ok = settings_set_obd2_poll_hz(doc["value"]       | 5);
+    else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
+    else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
+    else if (strcmp(key, "force_tx_always")    == 0) ok = settings_set_force_tx_always(doc["value"]    | false);
+    else if (strcmp(key, "block_airbag")       == 0) ok = settings_set_block_airbag(doc["value"]       | true);
+    else if (strcmp(key, "cluster_motor09_id") == 0) ok = settings_set_cluster_motor09_id(doc["value"] | 0);
+    else if (strcmp(key, "cluster_wba03_id")   == 0) ok = settings_set_cluster_wba03_id(doc["value"]   | 0);
     else { emit_ack("set", false, "unknown key"); return; }
     emit_ack("set", ok);
     if (ok) emit_settings();

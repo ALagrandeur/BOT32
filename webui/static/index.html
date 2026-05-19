@@ -33,15 +33,11 @@
   </section>
 
   <!-- ============================================================
-       Status (live)
+       Live status (NO MODE field per user request)
        ============================================================ -->
   <section class="card card-status">
     <h2>📊 Live status</h2>
-    <div class="grid">
-      <div>
-        <span class="lbl">Mode</span>
-        <span id="live-mode" class="value-big">—</span>
-      </div>
+    <div class="grid grid-3">
       <div>
         <span class="lbl">Lever</span>
         <span id="live-lever" class="value-big">—</span>
@@ -60,14 +56,14 @@
     <h3 class="subtitle">Bus stats</h3>
     <div class="grid-2">
       <div class="bus-block">
-        <h4>🚌 CAN cluster (TWAI)</h4>
+        <h4>🚌 CAN cluster (MCP2515 #0)</h4>
         <div class="bus-row"><span>TX ok</span> <span id="cl-tx-ok">—</span></div>
         <div class="bus-row"><span>TX fail</span> <span id="cl-tx-fail">—</span></div>
         <div class="bus-row"><span>RX</span> <span id="cl-rx">—</span></div>
         <div class="bus-row"><span>Bus errors</span> <span id="cl-err">—</span></div>
       </div>
       <div class="bus-block">
-        <h4>🚌 CAN OBD2 (MCP2515)</h4>
+        <h4>🚌 CAN OBD2 (MCP2515 #1)</h4>
         <div class="bus-row"><span>TX ok</span> <span id="ob-tx-ok">—</span></div>
         <div class="bus-row"><span>TX fail</span> <span id="ob-tx-fail">—</span></div>
         <div class="bus-row"><span>RX</span> <span id="ob-rx">—</span></div>
@@ -77,27 +73,100 @@
   </section>
 
   <!-- ============================================================
-       Settings (sliders & inputs)
+       CAN addresses — Cluster bus
        ============================================================ -->
-  <section class="card card-settings">
-    <h2>⚙️ Settings (persisted to NVS)</h2>
-
+  <section class="card card-can-cluster">
+    <h2>🆔 CAN addresses — Cluster bus</h2>
+    <p class="muted small">Modifiable IDs used on the cluster CAN bus (CAN0 = MCP2515 #0).</p>
     <div class="row">
-      <label>MAP min (mbar)<br>
-        <input type="number" id="set-map_min_mbar" min="0" max="4000" step="10">
-      </label>
-      <label>MAP max (mbar)<br>
-        <input type="number" id="set-map_max_mbar" min="0" max="4000" step="10">
+      <label>Motor_09 (TX coolant override + sniff)<br>
+        <input type="text" id="set-cluster_motor09_id" class="hex-input" placeholder="0x647">
+        <span class="muted small">default <code>0x647</code> — Motor_09 frame on MK7 cluster</span>
       </label>
     </div>
     <div class="row">
-      <label>Scale<br>
+      <label>WBA_03 (RX lever position)<br>
+        <input type="text" id="set-cluster_wba03_id" class="hex-input" placeholder="0x394">
+        <span class="muted small">default <code>0x394</code> — gateway → cluster lever frame</span>
+      </label>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       CAN addresses — OBD2 bus
+       ============================================================ -->
+  <section class="card card-can-obd2">
+    <h2>🔍 CAN addresses — OBD2 bus</h2>
+    <p class="muted small">Modifiable IDs used on the OBD-II port CAN bus (CAN1 = MCP2515 #1).
+      We TX a UDS query and wait for the engine ECU response.</p>
+
+    <h3 class="subtitle">📤 TX — UDS request to engine ECU</h3>
+    <div class="row">
+      <label>Request CAN ID<br>
+        <input type="text" id="set-obd2_req_id" class="hex-input" placeholder="0x7E0">
+        <span class="muted small">default <code>0x7E0</code> — tester address (us → engine ECU)</span>
+      </label>
+    </div>
+    <div class="frame-preview">
+      <span class="lbl">Frame sent every <span id="obd2-poll-display">200</span> ms:</span>
+      <code><span id="obd2-req-display">7E0</span>#03.22.<span id="obd2-did-display">39.C0</span>.00.00.00.00</code>
+      <p class="muted small">
+        <code>0x03</code> = ISO-TP length, <code>0x22</code> = ReadDataByIdentifier SID,
+        <code id="obd2-did-display2">39 C0</code> = DID (Saugrohrdruck / MAP)
+      </p>
+    </div>
+
+    <h3 class="subtitle">📥 RX — Expected UDS response</h3>
+    <div class="row">
+      <label>Response CAN ID<br>
+        <input type="text" id="set-obd2_resp_id" class="hex-input" placeholder="0x7E8">
+        <span class="muted small">default <code>0x7E8</code> — engine ECU response (engine ECU → us)</span>
+      </label>
+      <label>DID (Data Identifier)<br>
+        <input type="text" id="set-obd2_did_map" class="hex-input" placeholder="0x39C0">
+        <span class="muted small">default <code>0x39C0</code> — MAP intake pressure (mbar)</span>
+      </label>
+    </div>
+    <div class="frame-preview">
+      <span class="lbl">Expected response format:</span>
+      <code><span id="obd2-resp-display">7E8</span>#LEN.62.<span id="obd2-did-display3">39.C0</span>.MAP_HI.MAP_LO.…</code>
+      <p class="muted small">
+        <code>0x62</code> = 0x22 + 0x40 (positive response SID),
+        then DID echo, then 16-bit MAP value big-endian (mbar)
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       Boost mapping
+       ============================================================ -->
+  <section class="card card-mapping">
+    <h2>🎯 MAP → boost gauge mapping</h2>
+    <div class="row">
+      <label>MAP min (mbar) — idle<br>
+        <input type="number" id="set-map_min_mbar" min="0" max="4000" step="10">
+        <span class="muted small">→ displays as ~50 °C (cold needle)</span>
+      </label>
+      <label>MAP max (mbar) — full boost<br>
+        <input type="number" id="set-map_max_mbar" min="0" max="4000" step="10">
+        <span class="muted small">→ displays as ~130 °C (red zone)</span>
+      </label>
+    </div>
+    <div class="row">
+      <label>Scale (fine-tune)<br>
         <input type="number" id="set-scale" min="0.1" max="3.0" step="0.05">
       </label>
       <label>Offset (°C)<br>
         <input type="number" id="set-offset_c" min="-50" max="50" step="1">
       </label>
     </div>
+  </section>
+
+  <!-- ============================================================
+       Behavior — rates + TX gate
+       ============================================================ -->
+  <section class="card card-behavior">
+    <h2>⚙️ Behavior</h2>
     <div class="row">
       <label>OBD2 poll rate (Hz)<br>
         <input type="number" id="set-obd2_poll_hz" min="1" max="20" step="1">
@@ -106,17 +175,53 @@
         <input type="number" id="set-tx_rate_hz" min="5" max="50" step="1">
       </label>
     </div>
+
+    <h3 class="subtitle">When to TX Motor_09 to cluster ?</h3>
     <div class="row">
       <label class="checkbox">
         <input type="checkbox" id="set-tx_enabled">
-        <span>TX enabled (master switch — uncheck for safety)</span>
+        <span>🟢 <b>TX enabled</b> (master switch — uncheck for total radio silence)</span>
       </label>
     </div>
+    <div class="row">
+      <label class="checkbox">
+        <input type="checkbox" id="set-force_tx_always">
+        <span>🔧 <b>Force TX in ALL modes</b> (diagnostic) — bypass lever check, TX even in P/R/D/Boot.<br>
+              <span class="muted small">Useful for bench testing without moving lever. Off in normal use.</span></span>
+      </label>
+    </div>
+    <p class="muted small">
+      In normal operation (force OFF), BOT32 only TXs when lever is in <b>S/M/N</b>.
+      In <b>P/R/D</b>, BOT32 stays silent and the cluster shows real engine coolant.
+    </p>
+  </section>
 
-    <p class="muted small">Changes are auto-saved to ESP32 NVS on focus loss.</p>
+  <!-- ============================================================
+       Safety — Airbag block toggle
+       ============================================================ -->
+  <section class="card card-safety">
+    <h2>🛡 Safety</h2>
+    <div class="row">
+      <label class="checkbox">
+        <input type="checkbox" id="set-block_airbag">
+        <span>🛡 <b>Block Airbag IDs</b> (<code>0x040</code> Airbag_01, <code>0x572</code> Airbag_02)<br>
+              <span class="muted small">When ON: BOT32 hardware-refuses to TX these IDs no matter what.
+              When OFF: removes that safety net — only disable if you know what you're doing.</span></span>
+      </label>
+    </div>
+    <div id="airbag-warning" class="warning-box" style="display:none">
+      ⚠ <b>WARNING</b>: Airbag block is OFF. BOT32 could now transmit on airbag IDs if any
+      code path requests it. This is intentionally allowed for advanced diagnostic but
+      <b>NEVER use on a vehicle with a real airbag controller</b>.
+    </div>
+  </section>
 
+  <!-- ============================================================
+       Factory reset
+       ============================================================ -->
+  <section class="card">
     <div class="actions">
-      <button id="btn-factory-reset" class="danger">↺ Factory reset</button>
+      <button id="btn-factory-reset" class="danger">↺ Factory reset (all settings → defaults)</button>
     </div>
   </section>
 

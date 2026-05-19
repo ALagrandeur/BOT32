@@ -29,13 +29,18 @@ main { padding: 14px; max-width: 980px; margin: 0 auto; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
         padding: 14px; margin-bottom: 14px; }
 .card h2 { margin: 0 0 8px; font-size: 15px; color: var(--muted); font-weight: 500; }
-.card-status { border-left: 4px solid var(--accent); }
-.card-settings { border-left: 4px solid var(--temp); }
+.card-status      { border-left: 4px solid var(--accent); }
+.card-can-cluster { border-left: 4px solid var(--temp); }
+.card-can-obd2    { border-left: 4px solid #b288ff; }
+.card-mapping     { border-left: 4px solid var(--waiting); }
+.card-behavior    { border-left: 4px solid #5dd1e0; }
+.card-safety      { border-left: 4px solid var(--danger); }
 
 .subtitle { font-size: 13px; color: var(--muted); margin: 14px 0 6px;
             font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid > div { background: #131820; border-radius: 8px; padding: 10px;
               display: flex; flex-direction: column; gap: 4px; }
 .lbl { font-size: 11px; color: var(--muted); }
@@ -93,6 +98,27 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
         max-height: 200px; overflow-y: auto; font-family: ui-monospace, monospace;
         font-size: 11px; line-height: 1.4; color: var(--muted);
         white-space: pre-wrap; word-break: break-all; }
+
+/* Hex inputs (CAN IDs) - mono font + slightly different style */
+.hex-input { font-family: ui-monospace, monospace !important; text-transform: uppercase; }
+
+/* Frame preview boxes (in OBD2 card) */
+.frame-preview { background: #131820; border-radius: 6px; padding: 8px 10px;
+                  margin: 8px 0 12px; border: 1px dashed var(--border); }
+.frame-preview code { background: #0a0d12; padding: 4px 6px; border-radius: 4px;
+                       font-family: ui-monospace, monospace; font-size: 13px;
+                       color: var(--accent); display: inline-block; margin: 4px 0; }
+.frame-preview p { margin: 4px 0 0; }
+
+/* Safety warning box */
+.warning-box { background: #3a1c1c; color: #ffb0b0; padding: 12px;
+                border-radius: 6px; margin-top: 10px; border: 1px solid var(--danger);
+                font-size: 13px; line-height: 1.5; }
+
+/* Inline code styling */
+code { background: #0a0d12; padding: 2px 6px; border-radius: 3px;
+        font-family: ui-monospace, monospace; font-size: 0.9em;
+        color: var(--accent); }
 
 footer { display: flex; justify-content: space-between; padding: 10px 20px;
          border-top: 1px solid var(--border); margin-top: 20px; font-size: 12px; }
