@@ -100,8 +100,12 @@ void setup() {
 static void tx_motor_09_if_due(uint32_t now) {
   const Settings& s = settings_get();
   if (!s.tx_enabled) return;
-  // Normally TX only in BOOST. If force_tx_always is set, TX in all modes
-  // (incl. BOOT/SILENT/SAFE_FAULT) — diagnostic mode for bench testing on P.
+  // SAFETY: never TX during BOOT listen-only phase or in SAFE_FAULT,
+  // regardless of force_tx_always. This protects the bus on first power-on.
+  if (currentMode == MODE_BOOT)       return;
+  if (currentMode == MODE_SAFE_FAULT) return;
+  // Normally TX only in BOOST. If force_tx_always is set, TX in SILENT too
+  // (diagnostic mode for bench testing on P/R/D).
   if (currentMode != MODE_BOOST && !s.force_tx_always) return;
 
   uint32_t period_ms = 1000 / max(1, (int)s.tx_rate_hz);

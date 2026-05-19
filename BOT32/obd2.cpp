@@ -87,6 +87,10 @@ uint32_t obd2_get_map_age_ms() {
   return millis() - last_map_ms;
 }
 
+uint32_t obd2_get_queries_sent()      { return queries_sent; }
+uint32_t obd2_get_responses_ok()      { return responses_ok; }
+uint32_t obd2_get_responses_garbled() { return responses_garbled; }
+
 void obd2_tick(bool active) {
   if (!active) return;
 

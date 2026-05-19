@@ -89,6 +89,10 @@ static void emit_status() {
   obd2_stats["tx_fail"] = so.tx_fail;
   obd2_stats["rx"]      = so.rx_count;
   obd2_stats["errors"]  = so.bus_errors;
+  // OBD2-specific UDS diagnostic counters
+  obd2_stats["uds_sent"]       = obd2_get_queries_sent();
+  obd2_stats["uds_resp_ok"]    = obd2_get_responses_ok();
+  obd2_stats["uds_resp_bad"]   = obd2_get_responses_garbled();
 
   serializeJson(doc, Serial);
   Serial.println();

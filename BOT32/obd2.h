@@ -43,4 +43,9 @@ uint32_t obd2_get_map_age_ms();
 // Pass active=true to enable polling, false to pause (e.g., in SILENT mode).
 void obd2_tick(bool active);
 
+// Diagnostic counters
+uint32_t obd2_get_queries_sent();
+uint32_t obd2_get_responses_ok();
+uint32_t obd2_get_responses_garbled();
+
 #endif // BOT32_OBD2_H
