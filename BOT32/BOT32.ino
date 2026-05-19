@@ -1,11 +1,18 @@
 /*
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
- * Architecture:
- *   - CAN0 (TWAI internal) → MK7 cluster bus (TX Motor_09, RX WBA_03)
- *   - CAN1 (MCP2515 SPI)   → OBD-II port (UDS query DID 0x39C0 for MAP)
+ * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
+ *   - CAN0 (MCP2515 #0 on shared SPI, CS=5, INT=4) → MK7 cluster bus
+ *       └── TX Motor_09 (0x647) coolant override
+ *       └── RX WBA_03 (0x394) gear lever
+ *   - CAN1 (MCP2515 #1 on shared SPI, CS=25, INT=26) → OBD-II port
+ *       └── TX UDS query DID 0x39C0 (MAP) @ 5 Hz
+ *       └── RX UDS response from engine ECU
  *   - USB serial @ 115200 → debug/config interface to PC web UI
- *   - NVS storage         → persistent user settings
+ *   - NVS storage → persistent user settings
+ *
+ *   Both MCP2515 use the SAME SPI bus (SCK 18, MISO 19, MOSI 23).
+ *   Both run at 3.3V via SIT65HVD230 transceivers — NO level shifter needed.
  *
  * State machine:
  *   BOOT       (5s listen-only at startup)
@@ -14,8 +21,8 @@
  *   SAFE_FAULT (TX disabled by user or fatal error: no TX)
  *
  * Libraries required (install via Arduino IDE Library Manager):
- *   - ACAN2515       (Pierre Molinaro)
- *   - ArduinoJson    (Benoit Blanchon)
+ *   - ACAN2515       (Pierre Molinaro)  — drives both MCP2515 chips
+ *   - ArduinoJson    (Benoit Blanchon)  — USB serial protocol
  */
 #include "config.h"
 #include "vw_mqb.h"

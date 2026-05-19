@@ -1,17 +1,18 @@
 /*
  * Unified CAN handler — implementation.
  *
- * CAN_CLUSTER (channel 0) uses ESP32 TWAI internal controller.
- * CAN_OBD2    (channel 1) uses MCP2515 over SPI via ACAN2515 library.
+ * Both CAN_CLUSTER (channel 0) and CAN_OBD2 (channel 1) use MCP2515 chips
+ * on a SHARED SPI bus. Each has its own CS (chip select) and INT (interrupt)
+ * pin. The ACAN2515 library handles SPI transactions safely.
  *
- * Required Arduino libraries:
- *   - none for TWAI (driver is in ESP32 core)
- *   - ACAN2515 by Pierre Molinaro
- *       Library Manager search: "ACAN2515"
+ * This setup matches the WaveShare 2-CH CAN HAT, which exposes 2 separate
+ * MCP2515 controllers on one SPI bus, both with 3.3V SIT65HVD230 transceivers.
+ *
+ * Required Arduino libraries (install via Library Manager):
+ *   - ACAN2515 by Pierre Molinaro (>= 2.1.x)
  */
 #include "can_handler.h"
 #include "config.h"
-#include "driver/twai.h"
 #include <ACAN2515.h>
 #include <SPI.h>
 
@@ -27,63 +28,49 @@ static CanRxCallback listeners[2][MAX_LISTENERS] = { { nullptr } };
 static uint8_t        n_listeners[2] = { 0, 0 };
 
 // =============================================================
-//  Stats
+//  Stats per channel
 // =============================================================
 static CanStats stats[2] = { {0}, {0} };
 
 // =============================================================
-//  CAN_OBD2 — MCP2515 instance
+//  Two MCP2515 instances on the SAME SPI bus.
+//  Each has its own CS + INT pin. ACAN2515 uses SPI.beginTransaction()
+//  internally so two instances share the bus safely.
 // =============================================================
-static ACAN2515 mcp2515(PIN_CAN1_CS, SPI, PIN_CAN1_INT);
+static ACAN2515 mcp_cluster(PIN_CAN0_CS, SPI, PIN_CAN0_INT);
+static ACAN2515 mcp_obd2   (PIN_CAN1_CS, SPI, PIN_CAN1_INT);
 
 // =============================================================
-//  CAN_CLUSTER — TWAI init
+//  Init helpers
 // =============================================================
-static bool init_twai_cluster() {
-  twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
-    (gpio_num_t)PIN_CAN0_TX,
-    (gpio_num_t)PIN_CAN0_RX,
-    TWAI_MODE_NORMAL
-  );
-  // Increase TX queue size to absorb bursts
-  g_config.tx_queue_len = 32;
-  g_config.rx_queue_len = 32;
-
-  twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
-  twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-
-  if (twai_driver_install(&g_config, &t_config, &f_config) != ESP_OK) {
-    Serial.println("[CAN] TWAI driver install FAILED");
-    return false;
-  }
-  if (twai_start() != ESP_OK) {
-    Serial.println("[CAN] TWAI start FAILED");
-    return false;
-  }
-  Serial.println("[CAN] TWAI started (cluster, 500 kbps)");
-  return true;
-}
-
-// =============================================================
-//  CAN_OBD2 — MCP2515 init
-// =============================================================
-static bool init_mcp2515_obd2() {
-  SPI.begin(PIN_CAN1_SCK, PIN_CAN1_MISO, PIN_CAN1_MOSI);
-
+static bool init_mcp(ACAN2515& chip, const char* name) {
   ACAN2515Settings settings(
     (uint32_t)MCP2515_CLOCK_MHZ * 1000000UL,
     500UL * 1000UL
   );
-  // Use interrupt + polling fallback. ACAN2515 needs an ISR.
   settings.mRequestedMode = ACAN2515Settings::NormalMode;
 
-  const uint16_t errorCode = mcp2515.begin(settings, [] { mcp2515.isr(); });
+  // Each chip needs its own ISR lambda capturing the right instance.
+  // We pass the lambda inline; it's stored in a static slot by ACAN2515.
+  uint16_t errorCode;
+  if (&chip == &mcp_cluster) {
+    errorCode = chip.begin(settings, [] { mcp_cluster.isr(); });
+  } else {
+    errorCode = chip.begin(settings, [] { mcp_obd2.isr(); });
+  }
+
   if (errorCode != 0) {
-    Serial.print("[CAN] MCP2515 begin FAILED, error 0x");
+    Serial.print("[CAN] ");
+    Serial.print(name);
+    Serial.print(" begin FAILED, error 0x");
     Serial.println(errorCode, HEX);
     return false;
   }
-  Serial.println("[CAN] MCP2515 started (OBD2, 500 kbps, 8 MHz xtal)");
+  Serial.print("[CAN] ");
+  Serial.print(name);
+  Serial.print(" MCP2515 started at 500 kbps (");
+  Serial.print(MCP2515_CLOCK_MHZ);
+  Serial.println(" MHz xtal)");
   return true;
 }
 
@@ -91,21 +78,25 @@ static bool init_mcp2515_obd2() {
 //  Public lifecycle
 // =============================================================
 bool can_init() {
+  // Init shared SPI bus
+  SPI.begin(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI);
+
   bool ok = true;
-  ok &= init_twai_cluster();
-  ok &= init_mcp2515_obd2();
+  ok &= init_mcp(mcp_cluster, "cluster");
+  ok &= init_mcp(mcp_obd2,    "obd2");
   return ok;
 }
 
 void can_poll() {
-  // 1. Drain TWAI RX queue
-  twai_message_t twai_msg;
-  while (twai_receive(&twai_msg, 0) == ESP_OK) {
+  // Drain MCP2515 #0 RX queue (cluster)
+  CANMessage rx;
+  while (mcp_cluster.available()) {
+    mcp_cluster.receive(rx);
     CanFrame f;
-    f.id  = twai_msg.identifier;
-    f.len = twai_msg.data_length_code;
+    f.id  = rx.id;
+    f.len = rx.len;
     f.timestamp = millis();
-    memcpy(f.data, twai_msg.data, f.len);
+    memcpy(f.data, rx.data, f.len);
     stats[CAN_CLUSTER].rx_count++;
     stats[CAN_CLUSTER].last_rx_ms = f.timestamp;
     for (uint8_t i = 0; i < n_listeners[CAN_CLUSTER]; i++) {
@@ -113,29 +104,18 @@ void can_poll() {
     }
   }
 
-  // 2. Drain MCP2515 RX queue
-  CANMessage mcp_msg;
-  while (mcp2515.available()) {
-    mcp2515.receive(mcp_msg);
+  // Drain MCP2515 #1 RX queue (OBD2)
+  while (mcp_obd2.available()) {
+    mcp_obd2.receive(rx);
     CanFrame f;
-    f.id  = mcp_msg.id;
-    f.len = mcp_msg.len;
+    f.id  = rx.id;
+    f.len = rx.len;
     f.timestamp = millis();
-    memcpy(f.data, mcp_msg.data, f.len);
+    memcpy(f.data, rx.data, f.len);
     stats[CAN_OBD2].rx_count++;
     stats[CAN_OBD2].last_rx_ms = f.timestamp;
     for (uint8_t i = 0; i < n_listeners[CAN_OBD2]; i++) {
       listeners[CAN_OBD2][i](CAN_OBD2, f);
-    }
-  }
-
-  // 3. Check TWAI for bus errors (poll alerts)
-  twai_status_info_t status;
-  if (twai_get_status_info(&status) == ESP_OK) {
-    stats[CAN_CLUSTER].bus_errors = status.bus_error_count;
-    if (status.state == TWAI_STATE_BUS_OFF) {
-      Serial.println("[CAN] TWAI bus-off detected, initiating recovery");
-      twai_initiate_recovery();
     }
   }
 }
@@ -153,42 +133,29 @@ bool can_send(CanChannel ch, const CanFrame& frame) {
     }
   }
 
+  CANMessage msg;
+  msg.id  = frame.id;
+  msg.len = frame.len;
+  msg.ext = false;
+  msg.rtr = false;
+  memcpy(msg.data, frame.data, frame.len);
+
+  bool ok = false;
   if (ch == CAN_CLUSTER) {
-    twai_message_t msg;
-    msg.identifier = frame.id;
-    msg.data_length_code = frame.len;
-    msg.flags = 0;  // standard frame, not RTR
-    memcpy(msg.data, frame.data, frame.len);
-    esp_err_t r = twai_transmit(&msg, pdMS_TO_TICKS(10));
-    if (r == ESP_OK) {
-      stats[CAN_CLUSTER].tx_ok++;
-      stats[CAN_CLUSTER].last_tx_ms = millis();
-      return true;
-    } else {
-      stats[CAN_CLUSTER].tx_fail++;
-      return false;
-    }
+    ok = mcp_cluster.tryToSend(msg);
+  } else if (ch == CAN_OBD2) {
+    ok = mcp_obd2.tryToSend(msg);
+  } else {
+    return false;
   }
 
-  if (ch == CAN_OBD2) {
-    CANMessage msg;
-    msg.id = frame.id;
-    msg.len = frame.len;
-    msg.ext = false;
-    msg.rtr = false;
-    memcpy(msg.data, frame.data, frame.len);
-    bool ok = mcp2515.tryToSend(msg);
-    if (ok) {
-      stats[CAN_OBD2].tx_ok++;
-      stats[CAN_OBD2].last_tx_ms = millis();
-      return true;
-    } else {
-      stats[CAN_OBD2].tx_fail++;
-      return false;
-    }
+  if (ok) {
+    stats[ch].tx_ok++;
+    stats[ch].last_tx_ms = millis();
+  } else {
+    stats[ch].tx_fail++;
   }
-
-  return false;
+  return ok;
 }
 
 // =============================================================
@@ -209,16 +176,16 @@ CanStats can_get_stats(CanChannel ch) {
 }
 
 bool can_recover(CanChannel ch) {
+  // MCP2515 recovery: re-init the chip from scratch
   if (ch == CAN_CLUSTER) {
-    twai_initiate_recovery();
-    Serial.println("[CAN] TWAI recovery initiated");
-    return true;
+    mcp_cluster.end();
+    delay(50);
+    return init_mcp(mcp_cluster, "cluster (recovery)");
   }
   if (ch == CAN_OBD2) {
-    // MCP2515 has no specific bus-off recovery API in ACAN2515 — re-init
-    mcp2515.end();
+    mcp_obd2.end();
     delay(50);
-    return init_mcp2515_obd2();
+    return init_mcp(mcp_obd2, "obd2 (recovery)");
   }
   return false;
 }

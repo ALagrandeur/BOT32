@@ -71,26 +71,34 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define MAP_STALE_TIMEOUT_MS    1500   // if no MAP for 1.5s -> fall back to min
 
 // =============================================================
-//  Pins — Option A hardware (see docs/wiring.md)
-//    CAN0 = TWAI internal + SN65HVD230 (3.3V) -> CLUSTER bus
-//    CAN1 = MCP2515 SPI + TJA1050 (5V) + level shifter -> OBD2 bus
+//  Pins — Hardware: WaveShare 2-CH CAN HAT (2x MCP2515 + 2x SIT65HVD230)
+//  wired to ESP32 via Dupont jumpers on shared SPI bus.
+//  See docs/wiring_waveshare_hat.md for the schema.
+//
+//    CAN0 = MCP2515 #0 (CS0) -> SIT65HVD230 #0 (3.3V) -> CLUSTER bus
+//    CAN1 = MCP2515 #1 (CS1) -> SIT65HVD230 #1 (3.3V) -> OBD2 bus
+//
+//  Both buses use the SAME SPI bus (SCK/MISO/MOSI shared), distinguished
+//  by separate CS (chip select) and INT pins. No level shifter needed —
+//  HAT runs entirely at 3.3V via the VIO jumper position "3V3".
 // =============================================================
 #define PIN_LED_STATUS    2     // built-in LED on most ESP32 boards
 
-// CAN0 (TWAI internal -> cluster)
-#define PIN_CAN0_TX      21     // ESP32 GPIO 21 -> SN65HVD230 CTX
-#define PIN_CAN0_RX      22     // ESP32 GPIO 22 <- SN65HVD230 CRX
+// Shared SPI bus (VSPI on ESP32)
+#define PIN_SPI_SCK      18     // SPI clock      -> HAT SCK
+#define PIN_SPI_MISO     19     // SPI MISO       <- HAT MISO
+#define PIN_SPI_MOSI     23     // SPI MOSI       -> HAT MOSI
 
-// CAN1 (MCP2515 over SPI -> OBD2)
-// IMPORTANT: MISO + INT lines need 3.3V/5V level shifter (TXS0108E or BSS138)
-#define PIN_CAN1_CS       5     // SPI chip select (via shifter)
-#define PIN_CAN1_INT      4     // MCP2515 IRQ (via shifter, MCP2515 -> ESP32)
-#define PIN_CAN1_SCK     18     // SPI clock (via shifter)
-#define PIN_CAN1_MISO    19     // SPI MISO (via shifter, MCP2515 -> ESP32)
-#define PIN_CAN1_MOSI    23     // SPI MOSI (via shifter)
+// CAN0 = MCP2515 #0 = cluster bus
+#define PIN_CAN0_CS       5     // -> HAT CS0
+#define PIN_CAN0_INT      4     // <- HAT INT0
 
-// MCP2515 module clock frequency (most modules: 8 MHz; some: 16 MHz)
-// Common Chinese MCP2515 modules use 8 MHz crystal.
-#define MCP2515_CLOCK_MHZ  8
+// CAN1 = MCP2515 #1 = OBD2 bus
+#define PIN_CAN1_CS      25     // -> HAT CS1 (GPIO 25 chosen to avoid strapping pins)
+#define PIN_CAN1_INT     26     // <- HAT INT1
+
+// MCP2515 module clock frequency
+// WaveShare 2-CH CAN HAT uses 12 MHz crystals (visible on the PCB next to each MCP2515)
+#define MCP2515_CLOCK_MHZ  12
 
 #endif // BOT32_CONFIG_H

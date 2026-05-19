@@ -21,16 +21,22 @@ In **P/R/D**, BOT32 stays silent and the cluster displays real engine coolant.
 ┌─────────────────────────────────────────────────────────────┐
 │  ESP32 (always-on, autonomous in vehicle)                   │
 │                                                             │
-│  ┌─── CAN0 (TWAI internal)                                  │
-│  │    └── SN65HVD230 (3.3V) → MK7 cluster CAN bus           │
-│  │        ├── RX: WBA_03 (0x394) gear lever                 │
-│  │        └── TX: Motor_09 (0x647) coolant override         │
+│  ┌─── Shared SPI bus (SCK 18, MISO 19, MOSI 23)             │
 │  │                                                          │
-│  └─── CAN1 (MCP2515 over SPI + level shifter)               │
-│       └── TJA1050 (5V) → OBD-II port                        │
-│           ├── TX: UDS query DID 0x39C0 @ 5 Hz               │
-│           └── RX: UDS response → MAP value                  │
-│                                                             │
+│  │    ├── MCP2515 #0 (CS 5, INT 4)                          │
+│  │    │   └── SIT65HVD230 (3.3V) → MK7 cluster CAN bus      │
+│  │    │       ├── RX: WBA_03 (0x394) gear lever             │
+│  │    │       └── TX: Motor_09 (0x647) coolant override     │
+│  │    │                                                     │
+│  │    └── MCP2515 #1 (CS 25, INT 26)                        │
+│  │        └── SIT65HVD230 (3.3V) → OBD-II port              │
+│  │            ├── TX: UDS query DID 0x39C0 @ 5 Hz           │
+│  │            └── RX: UDS response → MAP value              │
+│  │                                                          │
+│  │    Hardware: WaveShare 2-CH CAN HAT (2x MCP2515 +        │
+│  │    2x SIT65HVD230 3.3V transceivers).                    │
+│  │    See docs/wiring_waveshare_hat.md.                     │
+│  │                                                          │
 │  ┌─── USB serial (debug + config when PC connected)         │
 │  │    └── Line-delimited JSON protocol                      │
 │  │                                                          │
@@ -49,8 +55,13 @@ In **P/R/D**, BOT32 stays silent and the cluster displays real engine coolant.
 
 ## Hardware
 
-Option A retained: **1× TWAI internal + 1× MCP2515 over SPI + level shifter**.
-See [docs/wiring.md](docs/wiring.md) for the complete schema, BOM (~$64 CAD), and assembly procedure.
+**Réutilisation du HAT WaveShare 2-CH CAN** (déjà en main) : 2× MCP2515 sur SPI partagé + 2× SIT65HVD230 3.3V transceivers + jumpers de terminaison 120Ω + borniers H/L/G à vis.
+
+→ Voir [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md) pour le pinout HAT↔ESP32 (10 fils Dupont).
+
+Coût hardware additionnel : ~$15 (ESP32 + LM2596 + connecteur OBD2).
+
+> _Note historique : initialement on planifiait Option A (1× TWAI + 1× MCP2515 + level shifter), documentée dans [docs/wiring.md](docs/wiring.md) et [docs/hardware.md](docs/hardware.md). Abandonné car la réutilisation du HAT existant est plus simple et moins chère._
 
 ## Firmware setup (Arduino IDE)
 
