@@ -1,10 +1,14 @@
 /*
- * Unified CAN handler — wraps TWAI (internal, cluster bus) and MCP2515 (SPI, OBD2 bus)
- * behind a single API.
+ * Unified CAN handler — wraps 2x MCP2515 (shared SPI) behind a single API.
+ *
+ * Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont jumpers.
+ *   - 2x MCP2515 chips on the SAME SPI bus (SCK, MISO, MOSI shared)
+ *   - 2x SIT65HVD230 3.3V CAN transceivers (one per controller)
+ *   - Each MCP2515 has its own CS (chip select) and INT pins
  *
  * Channel naming:
- *   CAN_CLUSTER  = TWAI internal -> SN65HVD230 -> MK7 cluster bus (500 kbps)
- *   CAN_OBD2     = MCP2515 SPI -> TJA1050 -> OBD-II port (500 kbps)
+ *   CAN_CLUSTER  = MCP2515 #0 (CS pin 5, INT pin 4)  -> MK7 cluster bus
+ *   CAN_OBD2     = MCP2515 #1 (CS pin 25, INT pin 26) -> OBD-II port
  *
  * Both buses are 500 kbps standard 11-bit IDs.
  */

@@ -21,6 +21,10 @@ static uint16_t line_len = 0;
 static uint32_t last_status_ms = 0;
 static const uint32_t STATUS_INTERVAL_MS = 500;
 
+// Mirrored from BOT32.ino via setters
+static const char* current_mode_name = "BOOT";
+static uint8_t     current_coolant_byte = 0x80;
+
 // =============================================================
 //  Helpers — emit JSON line
 // =============================================================
@@ -57,13 +61,15 @@ static void emit_settings() {
 static void emit_status() {
   JsonDocument doc;
   doc["evt"] = "status";
-  doc["uptime_ms"]   = millis();
-  doc["lever"]       = String(lever_get());
-  doc["gear"]        = lever_get_gear();
+  doc["uptime_ms"]    = millis();
+  doc["mode"]         = current_mode_name;
+  doc["coolant_byte"] = current_coolant_byte;
+  doc["lever"]        = String(lever_get());
+  doc["gear"]         = lever_get_gear();
   doc["lever_age_ms"] = lever_get_age_ms();
   float map = obd2_get_last_map_mbar();
-  doc["map_mbar"]    = map >= 0 ? map : (float)-1;
-  doc["map_age_ms"]  = obd2_get_map_age_ms();
+  doc["map_mbar"]     = map >= 0 ? map : (float)-1;
+  doc["map_age_ms"]   = obd2_get_map_age_ms();
 
   CanStats sc = can_get_stats(CAN_CLUSTER);
   CanStats so = can_get_stats(CAN_OBD2);
@@ -223,6 +229,14 @@ void serial_proto_report_tx(CanChannel ch, const CanFrame& f) {
   if (subscribe_frames) {
     emit_frame(ch, "tx", f);
   }
+}
+
+void serial_proto_set_mode(const char* mode_name) {
+  current_mode_name = mode_name;
+}
+
+void serial_proto_set_coolant_byte(uint8_t b) {
+  current_coolant_byte = b;
 }
 
 void serial_proto_log(const char* level, const char* msg) {

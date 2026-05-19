@@ -93,7 +93,11 @@ socket.on("settings", (s) => {
 //  Live status
 // ===========================================================
 socket.on("status", (s) => {
-  $("live-mode").textContent = "—";  // mode not in status yet (TODO)
+  // Mode with color coding via class
+  const modeEl = $("live-mode");
+  modeEl.textContent = s.mode || "—";
+  modeEl.className = "value-big mode-" + (s.mode || "unknown");
+
   $("live-lever").textContent = (s.lever && s.lever !== "?")
     ? (s.gear ? `${s.lever}${s.gear}` : s.lever) : "—";
   if (s.map_mbar >= 0) {
@@ -102,6 +106,12 @@ socket.on("status", (s) => {
   } else {
     $("live-map").textContent = "—";
     $("live-map-age").textContent = "no data";
+  }
+  // Coolant byte (in BOOST mode this is what we send)
+  if (s.coolant_byte !== undefined) {
+    const b = s.coolant_byte;
+    const temp = (b * 0.7339 - 43.94).toFixed(1);
+    $("live-coolant").textContent = `0x${b.toString(16).toUpperCase().padStart(2,"0")} (${temp}°C)`;
   }
   // Cluster + OBD2 stats
   if (s.cluster) {

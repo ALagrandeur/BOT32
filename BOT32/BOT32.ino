@@ -83,6 +83,7 @@ void setup() {
     lever_init();
   }
   serial_proto_init();
+  serial_proto_set_mode(mode_name(currentMode));
 
   bootStartMs = millis();
   Serial.print("[main] Entering ");
@@ -110,6 +111,7 @@ static void tx_motor_09_if_due(uint32_t now) {
     map, s.map_min_mbar, s.map_max_mbar, s.scale, s.offset_c
   );
   lastCoolantByte = byte0;
+  serial_proto_set_coolant_byte(byte0);
 
   // Build Motor_09 frame
   CanFrame f;
@@ -158,6 +160,7 @@ static void update_mode(uint32_t now) {
     Serial.print(" -> ");
     Serial.println(mode_name(want));
     currentMode = want;
+    serial_proto_set_mode(mode_name(currentMode));
   }
 }
 

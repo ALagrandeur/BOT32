@@ -224,8 +224,8 @@ Le `BOT32/config.h` est déjà configuré pour cette wiring :
 #define PIN_CAN1_CS    25
 #define PIN_CAN1_INT   26
 
-// Cristal MCP2515 sur HAT WaveShare = 12 MHz (visible sur PCB)
-#define MCP2515_CLOCK_MHZ 12
+// Cristal MCP2515 sur HAT WaveShare = 16 MHz (officiel WaveShare wiki)
+#define MCP2515_CLOCK_MHZ 16
 ```
 
 Si tu changes de HAT (par exemple un module MCP2515 chinois avec cristal 8 MHz), change juste `MCP2515_CLOCK_MHZ`. Le reste du code n'a aucune notion du hardware spécifique.

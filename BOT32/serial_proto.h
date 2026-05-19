@@ -55,6 +55,13 @@ void serial_proto_tick();
 // Call this after every successful can_send().
 void serial_proto_report_tx(CanChannel ch, const CanFrame& f);
 
+// Set the current operating mode (BOOT/SILENT/BOOST/SAFE_FAULT) — included
+// in the status JSON emitted to the PC.
+void serial_proto_set_mode(const char* mode_name);
+
+// Set the last computed coolant byte (Motor_09 byte 0) — included in status.
+void serial_proto_set_coolant_byte(uint8_t b);
+
 // Emit a log line to the PC.
 void serial_proto_log(const char* level, const char* msg);
 

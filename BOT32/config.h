@@ -97,8 +97,19 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define PIN_CAN1_CS      25     // -> HAT CS1 (GPIO 25 chosen to avoid strapping pins)
 #define PIN_CAN1_INT     26     // <- HAT INT1
 
-// MCP2515 module clock frequency
-// WaveShare 2-CH CAN HAT uses 12 MHz crystals (visible on the PCB next to each MCP2515)
-#define MCP2515_CLOCK_MHZ  12
+// MCP2515 module clock frequency — CRITICAL: must match physical crystal !
+//
+// WaveShare 2-CH CAN HAT uses 16 MHz crystals (confirmed via WaveShare wiki +
+// product page + community forums). If you have a DIFFERENT board, check the
+// silver crystal cans next to each MCP2515 chip — markings will say "8.000",
+// "12.000", "16.000", or "20.000".
+//
+// IF THIS VALUE IS WRONG:
+//   - chip initialization succeeds (SPI works regardless)
+//   - BUT all CAN bit timing is OFF by ratio (config/actual)
+//   - example: setting 12 here when crystal is 16 -> bit rate becomes
+//     500 * (16/12) = 666 kbps instead of 500 -> no frames ever go through
+//   - symptom: "MCP2515 started" in Serial but rx=0, tx_fail high, no CAN
+#define MCP2515_CLOCK_MHZ  16
 
 #endif // BOT32_CONFIG_H

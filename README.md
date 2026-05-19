@@ -106,17 +106,23 @@ Open **Serial Monitor** @ 115200 baud. You should see:
   BOT32 - boost gauge override
 ================================
 [NVS] Settings loaded from flash
-[CAN] TWAI started (cluster, 500 kbps)
-[CAN] MCP2515 started (OBD2, 500 kbps, 8 MHz xtal)
+[CAN] cluster MCP2515 started at 500 kbps (16 MHz xtal)
+[CAN] obd2 MCP2515 started at 500 kbps (16 MHz xtal)
 [main] Entering BOOT
 {"evt":"boot","version":"0.1","build":"..."}
 {"evt":"settings", ...}
+{"evt":"status", "mode":"BOOT", ...}
 ```
 
-If MCP2515 init fails, check:
-- 5V supply to MCP2515 module
-- SPI wiring + level shifter
-- Crystal frequency in `BOT32/config.h` (set to 8 or 16 MHz depending on module)
+If MCP2515 init fails (error code in Serial), check:
+- HAT power: LED `PWR` on HAT should be lit (orange)
+- HAT jumper VIO in position **3V3** (CRITICAL — protects ESP32)
+- SPI wiring: 10 Dupont jumpers per [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md)
+
+If MCP2515 init succeeds BUT no CAN traffic flows (`rx=0`, `tx_fail` high):
+- Crystal frequency mismatch — check the silver crystal cans on your HAT.
+  WaveShare 2-CH CAN HAT uses **16 MHz** (set in `MCP2515_CLOCK_MHZ` in config.h).
+  If your board uses 8 or 20 MHz, update the define.
 
 ## PC web UI (USB debug + config)
 
