@@ -1,0 +1,33 @@
+# Arduino IDE build artifacts
+*.elf
+*.hex
+*.bin
+*.eep
+*.map
+*.lst
+*.o
+*.a
+*.d
+build/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python helper tools
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor
+.idea/
+*.swp
+*.swo
+*~
+
+# Local config / secrets
+secrets.h
+local_config.h
