@@ -179,21 +179,25 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 
 ## Status
 
-🟡 **Early development** — core firmware structure complete, hardware bring-up pending.
+🟢 **v1.0 — Bench-validated** (2026-05-19). Vehicle install pending.
 
 | Component | Status |
 |---|---|
 | MQB CRC8H2F + constants | ✅ ported from sister Python project |
 | Coolant byte ↔ temp formula + dead zone skip | ✅ ported |
-| CAN handler (TWAI + MCP2515 unified API) | ✅ written |
+| CAN handler (2× MCP2515 unified API on shared SPI) | ✅ working |
 | OBD2 UDS query + response parsing | ✅ written |
 | WBA_03 lever decoder | ✅ written |
-| NVS settings persistence | ✅ written |
-| USB serial JSON protocol | ✅ written |
-| Main sketch + state machine | ✅ written |
-| Python web UI | ✅ written |
-| Bench hardware test | ⏳ pending hardware delivery |
-| Vehicle install + calibration | ⏳ pending bench validation |
+| NVS settings persistence | ✅ working |
+| USB serial JSON protocol | ✅ working |
+| Main sketch + state machine | ✅ working |
+| Python web UI (auto-open browser) | ✅ working |
+| Bench test mode (full sister-project bundle) | ✅ validated on real cluster |
+| **Bench cluster test — CAN0** | ✅ **passed (cluster reacts to RPM + MAP sliders)** |
+| **Bench cluster test — CAN1** | ✅ **passed (same behavior on second bus)** |
+| Vehicle install — OBD2 listen-only sniff | ⏳ planned 2026-05-20 |
+| Vehicle install — Cluster Motor_09 override | ⏳ planned after OBD2 sniff validation |
+| Long-term in-vehicle calibration | ⏳ planned after install |
 
 ## License
 
