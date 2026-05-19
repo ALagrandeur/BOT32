@@ -32,6 +32,7 @@
 #include "lever_decoder.h"
 #include "settings.h"
 #include "serial_proto.h"
+#include "bench_test.h"
 
 // =============================================================
 //  State
@@ -41,6 +42,7 @@ enum Mode {
   MODE_SILENT,
   MODE_BOOST,
   MODE_SAFE_FAULT,
+  MODE_BENCH_TEST,
 };
 
 static Mode     currentMode    = MODE_BOOT;
@@ -54,6 +56,7 @@ static const char* mode_name(Mode m) {
     case MODE_SILENT:     return "SILENT";
     case MODE_BOOST:      return "BOOST";
     case MODE_SAFE_FAULT: return "SAFE_FAULT";
+    case MODE_BENCH_TEST: return "BENCH_TEST";
     default:              return "?";
   }
 }
@@ -81,6 +84,7 @@ void setup() {
   } else {
     obd2_init();
     lever_init();
+    bench_test_init();
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));
@@ -181,6 +185,7 @@ static void update_led(uint32_t now) {
     case MODE_BOOT:        digitalWrite(PIN_LED_STATUS, HIGH); return;
     case MODE_SILENT:      interval = 500; break;
     case MODE_BOOST:       interval = 100; break;
+    case MODE_BENCH_TEST:  interval = 200; break;  // medium blink (active bench)
     case MODE_SAFE_FAULT:  interval = 50;  break;
     default:               interval = 1000;
   }
@@ -200,22 +205,40 @@ void loop() {
   // 1. Drain CAN RX queues + dispatch to listeners
   can_poll();
 
-  // 2. OBD2 periodic UDS query (in BOOST mode, or always if force_tx_always)
-  obd2_tick(currentMode == MODE_BOOST || settings_get().force_tx_always);
+  // 2. Bench test mode — preempts normal logic if enabled.
+  //    When bench is on, we emit the full sister-project bundle to test
+  //    a standalone cluster (no vehicle). Normal Motor_09 TX is suppressed.
+  bool bench_active = bench_test_tick();
+  if (bench_active) {
+    if (currentMode != MODE_BENCH_TEST) {
+      currentMode = MODE_BENCH_TEST;
+      serial_proto_set_mode("BENCH_TEST");
+      Serial.println("[main] Bench test mode active");
+    }
+  } else {
+    // 3. OBD2 periodic UDS query (in BOOST mode, or always if force_tx_always)
+    obd2_tick(currentMode == MODE_BOOST || settings_get().force_tx_always);
 
-  // 3. Update state machine from lever + boot timer
-  update_mode(now);
+    // 4. Update state machine from lever + boot timer
+    if (currentMode == MODE_BENCH_TEST) {
+      // Coming out of bench — back to BOOT cycle
+      currentMode = MODE_BOOT;
+      bootStartMs = now;
+      serial_proto_set_mode(mode_name(currentMode));
+    }
+    update_mode(now);
 
-  // 4. TX Motor_09 if in BOOST mode and due
-  tx_motor_09_if_due(now);
+    // 5. TX Motor_09 if in BOOST mode and due
+    tx_motor_09_if_due(now);
+  }
 
-  // 5. Handle serial commands from PC (if USB connected)
+  // 6. Handle serial commands from PC (if USB connected)
   serial_proto_poll();
   serial_proto_tick();
 
-  // 6. Status LED
+  // 7. Status LED
   update_led(now);
 
-  // 7. Small yield to keep watchdog happy
+  // 8. Small yield to keep watchdog happy
   delay(1);
 }

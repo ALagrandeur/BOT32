@@ -37,7 +37,16 @@ struct Settings {
   bool     block_airbag;     // if true, block all TX on airbag IDs (0x040, 0x572)
                              // — default true (SAFETY); only disable knowingly
 
-  uint8_t  version;          // settings struct version (for migration)
+  // Bench test mode — standalone cluster test, no vehicle.
+  // When enabled, BOT32 emits the full sister-project bundle (Wake, Motor_Code_01,
+  // RPM, Motor_09, ESP/TSK/LH_EPS heartbeats) so a standalone cluster on the bench
+  // accepts our signals. Normal vehicle logic is suspended while bench is ON.
+  bool     bench_test_enabled;   // master toggle, default false
+  uint16_t bench_rpm;            // 0..8000 RPM (Motor_04 bytes 3-4)
+  uint16_t bench_map_mbar;       // 0..3000 mbar (Motor_09 byte 0 via coolant mapping)
+  uint8_t  bench_test_bus;       // 0 = TX on CAN_CLUSTER, 1 = TX on CAN_OBD2
+
+  uint8_t  version;              // settings struct version (for migration)
 };
 
 // Initialize NVS, load settings (or defaults if none).
@@ -62,6 +71,10 @@ bool settings_set_cluster_motor09_id(uint16_t v);
 bool settings_set_cluster_wba03_id(uint16_t v);
 bool settings_set_obd2_req_id(uint16_t v);
 bool settings_set_obd2_resp_id(uint16_t v);
+bool settings_set_bench_test_enabled(bool v);
+bool settings_set_bench_rpm(uint16_t v);
+bool settings_set_bench_map_mbar(uint16_t v);
+bool settings_set_bench_test_bus(uint8_t v);
 
 // Reset to defaults (factory reset).
 void settings_reset_to_defaults();

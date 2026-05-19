@@ -217,6 +217,75 @@
   </section>
 
   <!-- ============================================================
+       Bench test mode — standalone cluster test, NO vehicle
+       ============================================================ -->
+  <section class="card card-bench">
+    <h2>🧪 Bench test mode</h2>
+    <p class="muted small">
+      Test ESP32 ↔ cluster communication on the bench (NO vehicle required).
+      Emits the full sister-project bundle (Wake + Engine context + RPM + Coolant)
+      so a standalone cluster wakes up and reacts to the sliders below.
+      <br><b>Disable before re-installing on the vehicle</b> — bundle would
+      conflict with the real gateway.
+    </p>
+
+    <div class="row">
+      <label class="checkbox">
+        <input type="checkbox" id="set-bench_test_enabled">
+        <span>🧪 <b>Enable bench test mode</b> (preempts normal vehicle logic)</span>
+      </label>
+    </div>
+
+    <div class="row">
+      <label>TX on which bus?<br>
+        <select id="set-bench_test_bus">
+          <option value="0">CAN0 (cluster bus — bornier H/L/G du HAT côté cluster)</option>
+          <option value="1">CAN1 (OBD2 bus — bornier H/L/G du HAT côté OBD2)</option>
+        </select>
+        <span class="muted small">Permet de tester chaque bus à tour de rôle en déplaçant le cluster physiquement.</span>
+      </label>
+    </div>
+
+    <h3 class="subtitle">🎚 Live sliders</h3>
+
+    <div class="slider-row">
+      <label>RPM tachometer <span class="slider-value" id="bench-rpm-display">1500</span> RPM</label>
+      <input type="range" id="set-bench_rpm" min="0" max="8000" step="50" value="1500" class="slider">
+      <div class="slider-axis">
+        <span>0</span><span>2000</span><span>4000</span><span>6000</span><span>8000</span>
+      </div>
+    </div>
+
+    <div class="slider-row">
+      <label>MAP pressure (boost) <span class="slider-value" id="bench-map-display">1500</span> mbar</label>
+      <input type="range" id="set-bench_map_mbar" min="0" max="3000" step="20" value="1500" class="slider">
+      <div class="slider-axis">
+        <span>0 (vacuum)</span><span>1000</span><span>2000</span><span>3000 (full boost)</span>
+      </div>
+      <p class="muted small">
+        MAP value drives the coolant gauge via your MAP→temp mapping above.
+        Move this slider and watch the cluster needle move in real time.
+      </p>
+    </div>
+
+    <h3 class="subtitle">📡 Frames emitted (when bench is ON)</h3>
+    <div class="frame-list">
+      <div class="frame-item"><code>0x3C0</code> Klemmen_Status_01 wake @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+      <div class="frame-item"><code>0x641</code> Motor_Code_01 alive @ 20 Hz <span class="muted">(MQB CRC)</span></div>
+      <div class="frame-item"><code>0x107</code> Motor_04 RPM @ 20 Hz <span class="muted">(no CRC, sliders bytes 3-4)</span></div>
+      <div class="frame-item"><code>0x647</code> Motor_09 coolant @ 20 Hz <span class="muted">(no CRC, sliders byte 0)</span></div>
+      <div class="frame-item"><code>0x106</code> ESP_05 @ 10 Hz <span class="muted">(no CRC)</span></div>
+      <div class="frame-item"><code>0x116</code> ESP_10 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+      <div class="frame-item"><code>0x65D</code> ESP_20 @ 10 Hz <span class="muted">(no CRC)</span></div>
+      <div class="frame-item"><code>0x31E</code> TSK_07 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+      <div class="frame-item"><code>0x32A</code> LH_EPS_01 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+      <div class="frame-item frame-item-airbag" id="bench-airbag-line">
+        <code>0x040</code> Airbag_01 @ 10 Hz <span class="muted">(only emitted if "Block Airbag IDs" is OFF in Safety)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
        Factory reset
        ============================================================ -->
   <section class="card">

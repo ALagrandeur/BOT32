@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 2   // bumped when new fields added (force_tx_always, block_airbag)
+#define SETTINGS_VERSION 3   // bumped when new fields added (force_tx_always, block_airbag, bench_*)
 
 static Settings make_defaults() {
   Settings s;
@@ -28,6 +28,10 @@ static Settings make_defaults() {
   s.listen_only_boot  = true;
   s.force_tx_always   = false;   // default: only TX in BOOST mode (S/M/N lever)
   s.block_airbag      = true;    // default: airbag IDs blocked (SAFETY)
+  s.bench_test_enabled = false;  // default: bench mode OFF
+  s.bench_rpm          = 1500;
+  s.bench_map_mbar     = 1500;
+  s.bench_test_bus     = 0;      // default: CAN_CLUSTER
   s.version           = SETTINGS_VERSION;
   return s;
 }
@@ -59,6 +63,10 @@ void settings_init() {
   current.listen_only_boot  = prefs.getBool("lo_boot", true);
   current.force_tx_always   = prefs.getBool("fx_tx", false);
   current.block_airbag      = prefs.getBool("blk_ab", true);
+  current.bench_test_enabled = prefs.getBool("bch_en", false);
+  current.bench_rpm          = prefs.getUShort("bch_rpm", 1500);
+  current.bench_map_mbar     = prefs.getUShort("bch_map", 1500);
+  current.bench_test_bus     = prefs.getUChar("bch_bus", 0);
   current.version           = SETTINGS_VERSION;
   Serial.println("[NVS] Settings loaded from flash");
 }
@@ -133,6 +141,22 @@ bool settings_set_obd2_resp_id(uint16_t v) {
   current.obd2_resp_id = v;
   return save_ushort("obd_resp", v);
 }
+bool settings_set_bench_test_enabled(bool v) {
+  current.bench_test_enabled = v;
+  return save_bool("bch_en", v);
+}
+bool settings_set_bench_rpm(uint16_t v) {
+  current.bench_rpm = (v > 8000) ? 8000 : v;
+  return save_ushort("bch_rpm", current.bench_rpm);
+}
+bool settings_set_bench_map_mbar(uint16_t v) {
+  current.bench_map_mbar = (v > 3000) ? 3000 : v;
+  return save_ushort("bch_map", current.bench_map_mbar);
+}
+bool settings_set_bench_test_bus(uint8_t v) {
+  current.bench_test_bus = (v > 1) ? 0 : v;
+  return prefs.putUChar("bch_bus", current.bench_test_bus) > 0;
+}
 
 void settings_reset_to_defaults() {
   current = make_defaults();
@@ -151,6 +175,10 @@ void settings_reset_to_defaults() {
   prefs.putBool("lo_boot", current.listen_only_boot);
   prefs.putBool("fx_tx", current.force_tx_always);
   prefs.putBool("blk_ab", current.block_airbag);
+  prefs.putBool("bch_en", current.bench_test_enabled);
+  prefs.putUShort("bch_rpm", current.bench_rpm);
+  prefs.putUShort("bch_map", current.bench_map_mbar);
+  prefs.putUChar("bch_bus", current.bench_test_bus);
   prefs.putUChar("version", current.version);
   Serial.println("[NVS] Settings reset to defaults");
 }

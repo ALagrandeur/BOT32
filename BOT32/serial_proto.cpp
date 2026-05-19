@@ -54,8 +54,12 @@ static void emit_settings() {
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
   doc["tx_enabled"]        = s.tx_enabled;
   doc["listen_only_boot"]  = s.listen_only_boot;
-  doc["force_tx_always"]   = s.force_tx_always;
-  doc["block_airbag"]      = s.block_airbag;
+  doc["force_tx_always"]    = s.force_tx_always;
+  doc["block_airbag"]       = s.block_airbag;
+  doc["bench_test_enabled"] = s.bench_test_enabled;
+  doc["bench_rpm"]          = s.bench_rpm;
+  doc["bench_map_mbar"]     = s.bench_map_mbar;
+  doc["bench_test_bus"]     = s.bench_test_bus;
   serializeJson(doc, Serial);
   Serial.println();
 }
@@ -184,10 +188,14 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "obd2_poll_hz")       == 0) ok = settings_set_obd2_poll_hz(doc["value"]       | 5);
     else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
     else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
-    else if (strcmp(key, "force_tx_always")    == 0) ok = settings_set_force_tx_always(doc["value"]    | false);
-    else if (strcmp(key, "block_airbag")       == 0) ok = settings_set_block_airbag(doc["value"]       | true);
-    else if (strcmp(key, "cluster_motor09_id") == 0) ok = settings_set_cluster_motor09_id(doc["value"] | 0);
-    else if (strcmp(key, "cluster_wba03_id")   == 0) ok = settings_set_cluster_wba03_id(doc["value"]   | 0);
+    else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);
+    else if (strcmp(key, "block_airbag")        == 0) ok = settings_set_block_airbag(doc["value"]       | true);
+    else if (strcmp(key, "cluster_motor09_id")  == 0) ok = settings_set_cluster_motor09_id(doc["value"] | 0);
+    else if (strcmp(key, "cluster_wba03_id")    == 0) ok = settings_set_cluster_wba03_id(doc["value"]   | 0);
+    else if (strcmp(key, "bench_test_enabled") == 0) ok = settings_set_bench_test_enabled(doc["value"] | false);
+    else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(doc["value"]          | 0);
+    else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(doc["value"]     | 0);
+    else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(doc["value"]     | 0);
     else { emit_ack("set", false, "unknown key"); return; }
     emit_ack("set", ok);
     if (ok) emit_settings();

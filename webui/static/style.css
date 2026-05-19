@@ -35,6 +35,7 @@ main { padding: 14px; max-width: 980px; margin: 0 auto; }
 .card-mapping     { border-left: 4px solid var(--waiting); }
 .card-behavior    { border-left: 4px solid #5dd1e0; }
 .card-safety      { border-left: 4px solid var(--danger); }
+.card-bench       { border-left: 4px solid #ff8c00; background: #1a1820; }
 
 .subtitle { font-size: 13px; color: var(--muted); margin: 14px 0 6px;
             font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -48,6 +49,7 @@ main { padding: 14px; max-width: 980px; margin: 0 auto; }
 .mode-BOOT       { color: var(--waiting); }
 .mode-SILENT     { color: var(--temp); }
 .mode-BOOST      { color: var(--boost); }
+.mode-BENCH_TEST { color: #ff8c00; }
 .mode-SAFE_FAULT { color: var(--danger); }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -119,6 +121,37 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 code { background: #0a0d12; padding: 2px 6px; border-radius: 3px;
         font-family: ui-monospace, monospace; font-size: 0.9em;
         color: var(--accent); }
+
+/* Slider styling (bench test mode) */
+.slider-row { background: #131820; border-radius: 8px;
+               padding: 12px 14px; margin: 10px 0; }
+.slider-row label { display: flex; justify-content: space-between;
+                     align-items: baseline; color: var(--text); font-size: 14px;
+                     font-weight: 600; margin-bottom: 8px; }
+.slider-value { color: #ff8c00; font-size: 20px; font-weight: 700;
+                 font-family: ui-monospace, monospace; }
+.slider { width: 100%; height: 6px; -webkit-appearance: none; appearance: none;
+           background: linear-gradient(90deg, #4ddb8a 0%, #ffb84d 50%, #ff5e5e 100%);
+           border-radius: 3px; outline: none; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+           width: 22px; height: 22px; border-radius: 50%; background: #ff8c00;
+           cursor: pointer; border: 2px solid #fff; }
+.slider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%;
+           background: #ff8c00; cursor: pointer; border: 2px solid #fff; }
+.slider-axis { display: flex; justify-content: space-between; margin-top: 6px;
+                font-size: 10px; color: var(--muted);
+                font-family: ui-monospace, monospace; }
+
+/* Frame list (bench test mode summary) */
+.frame-list { background: #131820; border-radius: 6px; padding: 10px;
+               margin-top: 10px; }
+.frame-item { padding: 5px 0; border-bottom: 1px dashed var(--border);
+               font-size: 13px; }
+.frame-item:last-child { border-bottom: none; }
+.frame-item code { margin-right: 8px; }
+.frame-item-airbag { background: #2a1820; border-radius: 4px;
+                     padding: 6px 10px; margin: 4px -6px;
+                     border-left: 3px solid var(--danger); }
 
 footer { display: flex; justify-content: space-between; padding: 10px 20px;
          border-top: 1px solid var(--border); margin-top: 20px; font-size: 12px; }

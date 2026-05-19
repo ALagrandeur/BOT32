@@ -80,6 +80,8 @@ const SETTING_KEYS = [
   "obd2_poll_hz", "tx_rate_hz",
   // Behavior flags
   "tx_enabled", "force_tx_always", "block_airbag",
+  // Bench test
+  "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
 ];
 
 function applySettings(s) {
@@ -93,6 +95,14 @@ function applySettings(s) {
     } else {
       el.value = s[k];
     }
+  }
+  // Update slider displays (sliders need their displayed value updated)
+  if (s.bench_rpm !== undefined) $("bench-rpm-display").textContent = s.bench_rpm;
+  if (s.bench_map_mbar !== undefined) $("bench-map-display").textContent = s.bench_map_mbar;
+  // Highlight airbag line in bench list if block_airbag is OFF
+  const airbagLine = $("bench-airbag-line");
+  if (airbagLine) {
+    airbagLine.style.opacity = s.block_airbag ? "0.4" : "1.0";
   }
   // Update preview labels
   updateFramePreviews(s);
@@ -121,24 +131,55 @@ function updateAirbagWarning(blockEnabled) {
 }
 
 // ===========================================================
-//  Auto-save on focus loss (text/number)
+//  Auto-save on focus loss (text/number inputs + selects)
 // ===========================================================
 document.addEventListener("blur", (e) => {
   if (!(e.target && e.target.id && e.target.id.startsWith("set-"))) return;
+  if (e.target.type === "checkbox" || e.target.type === "range") return;
   const key = e.target.id.replace("set-", "");
   let value;
-  if (e.target.type === "checkbox") {
-    value = e.target.checked;
-  } else if (isHexInput(e.target)) {
+  if (isHexInput(e.target)) {
     value = parseHexOrInt(e.target.value);
     if (isNaN(value)) { alert(`Invalid hex value: ${e.target.value}`); return; }
-    // Reformat the input to canonical 0xXXX form
     e.target.value = toHex(value);
   } else {
     value = isNaN(+e.target.value) ? e.target.value : +e.target.value;
   }
   socket.emit("cmd", { cmd: "set", key, value });
 }, true);
+
+// Select changes (e.g., bench_test_bus) — save on change
+document.addEventListener("change", (e) => {
+  if (!(e.target && e.target.id && e.target.id.startsWith("set-"))) return;
+  if (e.target.tagName !== "SELECT") return;
+  const key = e.target.id.replace("set-", "");
+  socket.emit("cmd", { cmd: "set", key, value: +e.target.value });
+});
+
+// ===========================================================
+//  Sliders — live update display + throttled send (max 10/sec)
+// ===========================================================
+const sliderSendThrottle = {};
+function throttledSliderSend(key, value) {
+  // Cancel any pending send for this key, schedule a new one in 100ms
+  if (sliderSendThrottle[key]) clearTimeout(sliderSendThrottle[key]);
+  sliderSendThrottle[key] = setTimeout(() => {
+    socket.emit("cmd", { cmd: "set", key, value });
+    sliderSendThrottle[key] = null;
+  }, 100);
+}
+
+document.querySelectorAll('input[type="range"]').forEach(slider => {
+  slider.addEventListener("input", (e) => {
+    const key = e.target.id.replace("set-", "");
+    const value = +e.target.value;
+    // Update visible display immediately
+    if (key === "bench_rpm") $("bench-rpm-display").textContent = value;
+    if (key === "bench_map_mbar") $("bench-map-display").textContent = value;
+    // Send to ESP32 (throttled to 10/sec)
+    throttledSliderSend(key, value);
+  });
+});
 
 // ===========================================================
 //  Checkbox: immediate save + special handling for safety toggles
