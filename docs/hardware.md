@@ -2,7 +2,11 @@
 
 ## Status
 
-🟡 **Hardware NOT yet finalized.** This doc captures what's needed and the options being considered.
+🟢 **Hardware decided: Option A** (1× TWAI internal + 1× MCP2515 over SPI).
+
+→ **Voir [wiring.md](wiring.md) pour le schéma de câblage détaillé**, BOM, et procédure de montage.
+
+Ce doc garde les notes d'analyse des autres options pour référence historique.
 
 ## Requirements
 
@@ -53,7 +57,11 @@ Two MCP2515 on separate CS lines. Same SPI bus, different CE pins.
 
 ## Recommended path (initial)
 
-**Start with Option A** for prototyping (cheap, off-the-shelf), then migrate to a dedicated module (Option B) if reliability issues arise.
+**Option A retenue** ✅ : 1× TWAI interne (cluster, fast) + 1× MCP2515 sur SPI (OBD2, slow polling 5 Hz).
+Justification : symmetrie pas nécessaire vu les rates différents (cluster 20 Hz vs OBD2 5 Hz).
+TWAI dédié au cluster pour fiabilité, MCP2515 OK pour OBD2 où la latence ne compte pas.
+
+→ Voir [wiring.md](wiring.md) pour le schéma.
 
 **Suggested initial parts list**:
 

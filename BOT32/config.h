@@ -71,17 +71,26 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define MAP_STALE_TIMEOUT_MS    1500   // if no MAP for 1.5s -> fall back to min
 
 // =============================================================
-//  Pins (TBD - depend on hardware choice)
+//  Pins — Option A hardware (see docs/wiring.md)
+//    CAN0 = TWAI internal + SN65HVD230 (3.3V) -> CLUSTER bus
+//    CAN1 = MCP2515 SPI + TJA1050 (5V) + level shifter -> OBD2 bus
 // =============================================================
 #define PIN_LED_STATUS    2     // built-in LED on most ESP32 boards
-// CAN0 pins (TWAI internal):
-// #define PIN_CAN0_TX    21
-// #define PIN_CAN0_RX    22
-// CAN1 pins (MCP2515 over SPI, if used):
-// #define PIN_CAN1_CS    5
-// #define PIN_CAN1_INT   4
-// #define PIN_CAN1_SCK   18
-// #define PIN_CAN1_MISO  19
-// #define PIN_CAN1_MOSI  23
+
+// CAN0 (TWAI internal -> cluster)
+#define PIN_CAN0_TX      21     // ESP32 GPIO 21 -> SN65HVD230 CTX
+#define PIN_CAN0_RX      22     // ESP32 GPIO 22 <- SN65HVD230 CRX
+
+// CAN1 (MCP2515 over SPI -> OBD2)
+// IMPORTANT: MISO + INT lines need 3.3V/5V level shifter (TXS0108E or BSS138)
+#define PIN_CAN1_CS       5     // SPI chip select (via shifter)
+#define PIN_CAN1_INT      4     // MCP2515 IRQ (via shifter, MCP2515 -> ESP32)
+#define PIN_CAN1_SCK     18     // SPI clock (via shifter)
+#define PIN_CAN1_MISO    19     // SPI MISO (via shifter, MCP2515 -> ESP32)
+#define PIN_CAN1_MOSI    23     // SPI MOSI (via shifter)
+
+// MCP2515 module clock frequency (most modules: 8 MHz; some: 16 MHz)
+// Common Chinese MCP2515 modules use 8 MHz crystal.
+#define MCP2515_CLOCK_MHZ  8
 
 #endif // BOT32_CONFIG_H
