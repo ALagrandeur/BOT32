@@ -70,6 +70,26 @@ static void emit_status() {
   doc["uptime_ms"]    = millis();
   doc["mode"]         = current_mode_name;
   doc["coolant_byte"] = current_coolant_byte;
+  // Compute whether Motor_09 is actively being transmitted to cluster.
+  // The UI uses this to decide whether to show 'Coolant override' value
+  // or '—' (we're not TXing, last value is stale/initial).
+  const Settings& s_status = settings_get();
+  bool motor09_tx_active = false;
+  if (s_status.tx_enabled) {
+    if (s_status.bench_test_enabled) {
+      motor09_tx_active = true;
+    } else if (strcmp(current_mode_name, "BOOST") == 0) {
+      motor09_tx_active = true;
+    } else if (s_status.force_tx_always
+               && strcmp(current_mode_name, "BOOT") != 0
+               && strcmp(current_mode_name, "SAFE_FAULT") != 0) {
+      motor09_tx_active = true;
+    }
+  }
+  doc["motor09_tx_active"] = motor09_tx_active;
+  // Real coolant temp sniffed from Motor_09 on cluster bus (CAN0)
+  doc["real_coolant_c"]     = coolant_get_real_temp_c();   // -1 if no data
+  doc["real_coolant_age_ms"] = coolant_get_real_age_ms();
   doc["lever"]        = String(lever_get());
   doc["gear"]         = lever_get_gear();
   doc["lever_age_ms"] = lever_get_age_ms();

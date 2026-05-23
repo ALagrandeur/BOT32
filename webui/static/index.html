@@ -37,19 +37,25 @@
        ============================================================ -->
   <section class="card card-status">
     <h2>📊 Live status</h2>
-    <div class="grid grid-3">
+    <div class="grid grid-4">
       <div>
         <span class="lbl">Lever</span>
         <span id="live-lever" class="value-big">—</span>
       </div>
       <div>
-        <span class="lbl">MAP (mbar)</span>
+        <span class="lbl">MAP (mbar) — from OBD2</span>
         <span id="live-map" class="value-big">—</span>
         <span id="live-map-age" class="lbl">—</span>
       </div>
       <div>
-        <span class="lbl">Coolant byte</span>
+        <span class="lbl">Coolant override (we TX)</span>
         <span id="live-coolant" class="value-big">—</span>
+        <span id="live-coolant-note" class="lbl">—</span>
+      </div>
+      <div>
+        <span class="lbl">Real coolant (cluster sniff)</span>
+        <span id="live-real-coolant" class="value-big">—</span>
+        <span id="live-real-coolant-age" class="lbl">—</span>
       </div>
     </div>
 

@@ -235,8 +235,11 @@ socket.on("settings", (s) => {
 //  Live status (NO mode display per user request)
 // ===========================================================
 socket.on("status", (s) => {
+  // Lever
   $("live-lever").textContent = (s.lever && s.lever !== "?")
     ? (s.gear ? `${s.lever}${s.gear}` : s.lever) : "—";
+
+  // MAP (from OBD2 polling)
   if (s.map_mbar >= 0) {
     $("live-map").textContent = Math.round(s.map_mbar);
     $("live-map-age").textContent = `${(s.map_age_ms/1000).toFixed(1)}s ago`;
@@ -244,11 +247,40 @@ socket.on("status", (s) => {
     $("live-map").textContent = "—";
     $("live-map-age").textContent = "no data";
   }
-  if (s.coolant_byte !== undefined) {
+
+  // Coolant override (what WE are sending to cluster) — show only if active
+  const coolEl = $("live-coolant");
+  const coolNote = $("live-coolant-note");
+  if (s.motor09_tx_active && s.coolant_byte !== undefined) {
     const b = s.coolant_byte;
     const temp = (b * 0.7339 - 43.94).toFixed(1);
-    $("live-coolant").textContent = `0x${b.toString(16).toUpperCase().padStart(2,"0")} (${temp}°C)`;
+    coolEl.textContent = `${temp}°C`;
+    coolEl.className = "value-big";
+    coolNote.textContent = `byte 0x${b.toString(16).toUpperCase().padStart(2,"0")}`;
+  } else {
+    coolEl.textContent = "—";
+    coolEl.className = "value-big inactive";
+    coolNote.textContent = "TX inactif";
   }
+
+  // Real coolant sniffed from cluster Motor_09 bus (CAN0)
+  const realEl = $("live-real-coolant");
+  const realAge = $("live-real-coolant-age");
+  if (s.real_coolant_c !== undefined && s.real_coolant_c >= 0) {
+    realEl.textContent = `${s.real_coolant_c.toFixed(1)}°C`;
+    realEl.className = "value-big";
+    if (s.real_coolant_age_ms !== undefined && s.real_coolant_age_ms < 60000) {
+      realAge.textContent = `il y a ${(s.real_coolant_age_ms/1000).toFixed(1)}s`;
+    } else {
+      realAge.textContent = "stale";
+    }
+  } else {
+    realEl.textContent = "—";
+    realEl.className = "value-big inactive";
+    realAge.textContent = "no Motor_09 RX";
+  }
+
+  // Bus stats
   if (s.cluster) {
     $("cl-tx-ok").textContent   = s.cluster.tx_ok;
     $("cl-tx-fail").textContent = s.cluster.tx_fail;

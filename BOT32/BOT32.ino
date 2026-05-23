@@ -84,6 +84,7 @@ void setup() {
   } else {
     obd2_init();
     lever_init();
+    coolant_sniffer_init();   // sniff real Motor_09 from cluster bus
     bench_test_init();
   }
   serial_proto_init();

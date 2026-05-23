@@ -42,6 +42,13 @@ main { padding: 14px; max-width: 980px; margin: 0 auto; }
 
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 768px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Dim coolant override field when not actively TXing */
+.value-big.inactive { color: var(--muted); font-style: italic; }
 .grid > div { background: #131820; border-radius: 8px; padding: 10px;
               display: flex; flex-direction: column; gap: 4px; }
 .lbl { font-size: 11px; color: var(--muted); }
