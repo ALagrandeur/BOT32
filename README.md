@@ -195,8 +195,9 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 | Bench test mode (full sister-project bundle) | ✅ validated on real cluster |
 | **Bench cluster test — CAN0** | ✅ **passed (cluster reacts to RPM + MAP sliders)** |
 | **Bench cluster test — CAN1** | ✅ **passed (same behavior on second bus)** |
-| Vehicle install — OBD2 listen-only sniff | ⏳ planned 2026-05-20 |
-| Vehicle install — Cluster Motor_09 override | ⏳ planned after OBD2 sniff validation |
+| **Vehicle OBD2 listen-only — MAP via UDS DID 0x39C0** | ✅ **passed 2026-05-23 (MAP reads back live in UI)** |
+| **Vehicle lever decode (WBA_03 0x394)** | ✅ **passed 2026-05-23 (lever live in UI)** |
+| Vehicle install — Cluster Motor_09 override (full TX) | ⏳ pending coolant byte mapping fix + needle proportionality fix |
 | Long-term in-vehicle calibration | ⏳ planned after install |
 
 ## License
