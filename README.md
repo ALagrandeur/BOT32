@@ -200,6 +200,16 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 | Vehicle install — Cluster Motor_09 override (full TX) | ⏳ pending coolant byte mapping fix + needle proportionality fix |
 | Long-term in-vehicle calibration | ⏳ planned after install |
 
+## Roadmap
+
+Planned features not yet implemented:
+
+- 🔮 **Clear DTC via MFSW button combo** — driver presses combo at steering wheel, BOT32 sends UDS Clear DTC to all ECUs. Needs MFSW frame sniff + UDS ECU list.
+- 🔮 **Haldex AWD pump monitor + control** — live display of rear-axle torque %, manual override slider. Needs CAN MITM hardware + Haldex bus reverse-engineering.
+
+See [docs/future_features.md](docs/future_features.md) for full technical
+requirements, effort estimates, and safety considerations per feature.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

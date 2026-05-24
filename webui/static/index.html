@@ -360,6 +360,136 @@
     </div>
   </details>
 
+  <!-- ================================================================
+       SECTION 5 — ROADMAP / FUTURE FEATURES
+       Placeholders pour features planifiées. Pas encore codées.
+       Voir docs/future_features.md pour les détails techniques.
+       ================================================================ -->
+  <h2 class="section-header">🔮 Roadmap — Fonctions futures</h2>
+
+  <details class="card collapsible card-roadmap">
+    <summary>
+      <h3 class="card-title">🔮 Clear DTC via combo MFSW <span class="badge-soon">Coming soon</span></h3>
+      <span class="summary-hint muted small">Effacer codes erreurs via combinaison de boutons au volant</span>
+    </summary>
+    <div class="collapsible-body">
+      <p class="muted small">
+        Le conducteur appuie sur une combinaison de boutons MFSW (volant)
+        — par exemple "OK + DOWN maintenus 3 sec" — et BOT32 envoie automatiquement
+        une commande UDS Clear DTC à tous les ECUs présents sur le bus.
+      </p>
+
+      <div class="roadmap-status">
+        <span class="status-badge status-pending">🚧 Pas encore codé</span>
+      </div>
+
+      <h4 class="subtitle">Ce qu'il manque pour l'implémenter</h4>
+      <ul class="todo-list">
+        <li>📡 Sniffer les payloads MFSW (CAN ID <code>0x5BF</code>) en vrai véhicule pour boutons OK et BACK (les autres sont déjà connus du projet frère)</li>
+        <li>🔍 Identifier les adresses UDS des ECUs présents sur ta voiture (Tester Present à <code>0x7E0</code>, <code>0x7E1</code>, <code>0x713</code>, <code>0x714</code>, etc.)</li>
+        <li>🧠 Coder les modules firmware <code>mfsw_decoder</code>, <code>combo_detector</code>, <code>dtc_clear</code></li>
+        <li>🎨 UI : configurateur de combo + bouton trigger manuel + status display</li>
+      </ul>
+
+      <h4 class="subtitle">Effort estimé</h4>
+      <p class="muted small">~10 h de travail une fois les données reverse-engineering disponibles.</p>
+
+      <h4 class="subtitle">Disabled placeholder controls</h4>
+      <div class="row disabled-row">
+        <label>Combo trigger
+          <select disabled>
+            <option>OK + DOWN (3 sec)</option>
+            <option>UP + DOWN + OK</option>
+            <option>BACK x3</option>
+          </select>
+        </label>
+        <label>Hold duration (ms)
+          <input type="number" value="3000" disabled>
+        </label>
+      </div>
+      <div class="actions disabled-row">
+        <button class="secondary" disabled>🔄 Clear DTCs now (manual)</button>
+      </div>
+
+      <p class="muted small">
+        📖 Détails techniques : <code>docs/future_features.md</code> — Feature 1
+      </p>
+    </div>
+  </details>
+
+  <details class="card collapsible card-roadmap">
+    <summary>
+      <h3 class="card-title">🔮 Haldex AWD pump monitor + control <span class="badge-soon">Coming soon</span></h3>
+      <span class="summary-hint muted small">Voir et contrôler la répartition traction avant/arrière</span>
+    </summary>
+    <div class="collapsible-body">
+      <p class="muted small">
+        Le contrôleur Haldex (4Motion) module la pompe électrohydraulique
+        de 0% (traction avant seulement) à 100% (~50/50 AWD). Cette feature
+        permet d'<b>afficher en live</b> le % envoyé par le PCM et
+        d'<b>override manuellement</b> via un slider.
+      </p>
+
+      <div class="roadmap-status">
+        <span class="status-badge status-pending">🚧 Pas encore codé</span>
+        <span class="status-badge status-warning">⚠ Nécessite hardware additionnel</span>
+      </div>
+
+      <h4 class="subtitle">Hardware additionnel requis</h4>
+      <p class="muted small">
+        Le bus Haldex est <b>privé</b> entre PCM et contrôleur AWD — on ne
+        peut pas juste T-tap. Pour <b>override</b> il faut un <b>man-in-the-middle</b> :
+        couper physiquement le bus et insérer BOT32 (ou un 2nd ESP32 dédié) entre les deux.
+      </p>
+      <ul class="todo-list">
+        <li><b>Option A</b> : utiliser CAN0 + CAN1 de BOT32 actuel pour MITM (risque si BOT32 reboot)</li>
+        <li><b>Option B</b> : ajouter un 2ème ESP32+HAT dédié à Haldex MITM (~$40, plus propre)</li>
+        <li><b>Option C</b> : passive READ-ONLY (pas de MITM, juste sniff) — fiable mais pas de contrôle</li>
+      </ul>
+
+      <h4 class="subtitle">Ce qu'il manque pour l'implémenter</h4>
+      <ul class="todo-list">
+        <li>📐 Schéma de câblage MK7 Alltrack 2017 4Motion pour localiser le bus Haldex</li>
+        <li>🔍 Sniffer le bus Haldex pour identifier le CAN ID + byte position du pump duty</li>
+        <li>🛡 Identifier si le frame Haldex utilise MQB CRC + counter (probable)</li>
+        <li>🧠 Coder <code>haldex_decoder</code> (sniff) + éventuellement <code>can_bridge</code> (MITM)</li>
+        <li>🎨 UI : gauge live + slider override + sélecteur de mode + graph temps réel</li>
+      </ul>
+
+      <h4 class="subtitle">Effort estimé</h4>
+      <p class="muted small">~25-45 h (selon Option A/B/C). Recommandé : commencer par READ-ONLY (Option C) pour valider la lecture, puis évaluer l'override.</p>
+
+      <h4 class="subtitle">Disabled placeholder controls</h4>
+      <div class="row disabled-row">
+        <label>Live Haldex pump %
+          <input type="text" value="--%" disabled>
+        </label>
+        <label>Manual override %
+          <input type="range" min="0" max="100" value="0" disabled class="slider">
+        </label>
+      </div>
+      <div class="row disabled-row">
+        <label>Mode
+          <select disabled>
+            <option>Off (no MITM, read-only sniff)</option>
+            <option>Manual override</option>
+            <option>Rule-based (throttle, lever, etc.)</option>
+          </select>
+        </label>
+      </div>
+
+      <p class="muted small">
+        ⚠ <b>Safety</b> : Haldex est un système critique. Override mal calibré
+        peut causer perte de traction ou surchauffe du clutch pack. Toujours
+        tester en READ-ONLY d'abord, jamais override sur route publique sans validation extensive.
+      </p>
+
+      <p class="muted small">
+        📖 Détails techniques : <code>docs/future_features.md</code> — Feature 2
+      </p>
+    </div>
+  </details>
+
 </main>
 
 <footer>
