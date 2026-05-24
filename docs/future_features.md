@@ -111,19 +111,40 @@ detector. Safe to send to engine ECU on a parked car.
 
 ---
 
-## 🔮 Feature 2 — Haldex AWD pump duty cycle monitor + control
+## 🔮 Feature 2 — Haldex AWD pump duty cycle: race burnout + launch modes
 
-### What it does
+### 🏁 Use case (clarified by user)
 
-The Haldex (4Motion) AWD controller decides how much torque goes to the
-rear wheels by modulating an electro-hydraulic pump from 0% to 100% duty.
-- **0% pump** = front wheel drive only (no torque to rear)
-- **100% pump** = ~50/50 torque split (max rear engagement)
+**MOTORSPORT — CLOSED-CIRCUIT ONLY** (drag strip / track day, not public roads).
 
-BOT32 will :
-- **Monitor** the live pump % (read from the Haldex controller's broadcasts)
-- **Override** it manually via a slider in the web UI (or auto-modulate based
-  on user-defined rules: throttle position, lever S/M, etc.)
+The MK7 Alltrack's Haldex AWD system has a single electro-hydraulic pump that
+progressively engages the rear axle:
+- **0% pump** = front-wheel drive only (no torque to rear)
+- **100% pump** = ~50/50 torque split (max rear axle engagement on Haldex Gen 5)
+
+For drag racing, the driver wants 2 specific modes BOT32 can toggle:
+
+#### 🔥 BURNOUT mode (pre-stage tire warm-up)
+- Force pump to **0%** → all torque to front wheels
+- Allows spinning the front tires in place to **heat the rubber** before launch
+- (Also burns off any debris from the contact patch)
+- Typically held for 5-10 seconds before staging
+
+#### 🚀 LAUNCH mode (max-grip standing start)
+- Force pump to **100%** → 50/50 torque split engaged
+- Maximum mechanical grip from all 4 wheels at launch
+- Best 60-foot time, lower wheel spin
+
+#### 🅾 OFF mode (normal driving)
+- Passive — Haldex controller does its own thing
+- BOT32 does NOT inject Haldex frames
+- Used when not staging / between runs
+
+### What BOT32 will do
+
+1. **Monitor** the live pump % the PCM is asking for (always, regardless of mode)
+2. **Show it live** in the web UI (gauge + numeric value)
+3. **Override** it to 0% or 100% on user demand via 3 mode buttons
 
 ### Components needed
 
@@ -169,12 +190,22 @@ the data flow, THEN decide if full control (Option A or B) is worth the risk.
 | `haldex_override.h/cpp` (Option A/B only) | Intercept PCM frames, modify Haldex demand, retransmit | **High** (timing critical) |
 | `can_bridge.h/cpp` (Option A only) | Forward all frames CAN0 ↔ CAN1 with low latency | High (real-time) |
 
-#### Web UI additions
-- Live Haldex pump % display (number + bar gauge)
-- Manual override slider 0-100%
-- Mode selector: "Off (read only)", "Manual override", "Rule-based (throttle, lever, etc.)"
-- Override rate limit (don't change too fast — could damage clutch)
-- Live graph of pump % over time (last 30 sec)
+#### Web UI additions (simplified for race use)
+- Live Haldex pump % display (number + bar gauge) — shows what PCM is asking
+- **3 large mode buttons** for race control:
+  - 🅾 **OFF** (pass-through, default)
+  - 🔥 **BURNOUT** (force pump 0%)
+  - 🚀 **LAUNCH** (force pump 100%)
+- Timer display when in BURNOUT or LAUNCH (auto-revert to OFF after timeout)
+- Optional: keyboard shortcut binding (B for burnout, L for launch, Space for off)
+- Optional: live graph of pump % over time (last 30 sec) for tuning
+
+#### Safety auto-revert (HIGHLY recommended)
+- BURNOUT mode auto-reverts to OFF after **10 sec** (prevents leaving FWD-only
+  while driving away from the line)
+- LAUNCH mode auto-reverts to OFF after **15 sec** (clutch protection)
+- Maximum 30 sec total in any non-OFF mode per "session"
+- Watchdog: if web UI disconnects while in burnout/launch, auto-revert to OFF
 
 ### Reverse-engineering data we still need
 
@@ -216,18 +247,59 @@ the data flow, THEN decide if full control (Option A or B) is worth the risk.
 | Vehicle test + tuning | 3-5 h |
 | **Total** | **~25-45 h of work** |
 
-### Safety considerations — VERY IMPORTANT
-- **Haldex is a SAFETY system** — incorrect override could:
-  - Trigger AWD fault codes (annoying but recoverable)
-  - Cause unexpected traction loss on slippery surface (serious risk)
-  - Overheat the Haldex clutch pack if commanded to 100% for too long ($$$$ repair)
-- **NEVER test override at high speed first**
-- **NEVER use override on public roads until extensively validated**
-- **Always provide a hardware kill switch** (relay that bridges the bus
-  directly when activated, bypassing BOT32 entirely in case of failure)
-- **Bus timeout protection**: if BOT32 fails to forward a frame within
-  100ms, the Haldex controller will fault — code must have watchdog + auto-revert
-  to pass-through mode
+### Safety considerations — MOTORSPORT CONTEXT
+
+**Public roads = absolutely not.** This feature is for **closed-circuit drag/track
+only**. Even in a controlled environment, several risks remain:
+
+#### 🔥 Burnout mode (0% pump = FWD-only)
+- Risk: if user forgets to switch back to OFF before driving away from the line,
+  the car is FWD-only at low traction → potential oversteer in corners
+- Mitigation: **10-second auto-revert** to OFF
+- Mitigation: cluster icon / loud audio cue when active
+
+#### 🚀 Launch mode (100% pump = 50/50)
+- Risk: holding 100% pump while clutch is engaged at high RPM for >30 sec can
+  **overheat the Haldex clutch pack** ($1500+ repair on Gen 5 Haldex)
+- Risk: simultaneous engagement of front and rear at high slip can cause
+  driveline shock (CV joints, prop shaft)
+- Mitigation: **15-second auto-revert** to OFF
+- Mitigation: lockout above certain speed (e.g., disengage above 60 km/h
+  since launch mode is only useful for 0→100 acceleration)
+
+#### General
+- **Hardware kill switch mandatory** : relay that physically bridges the
+  Haldex CAN H/L back to direct connection, bypassing BOT32 entirely. Wire it
+  to a panic button on the dash so the driver can revert in 1 push.
+- **Bus timeout watchdog**: if BOT32 fails to forward a frame within 100ms,
+  the Haldex controller will fault and disable AWD. Code must have watchdog +
+  auto-revert to pass-through.
+- **Tester before track day**: extensive bench validation with simulated
+  PCM + Haldex on a 2nd ESP32 before any vehicle test.
+- **Log every mode change** for post-session debugging.
+
+### Race-day workflow (envisioned UX)
+
+```
+1. Stage at burnout box        → driver hits BURNOUT button (or steering combo)
+                                 → BOT32 forces pump 0%, timer 10s starts
+                                 → front tires spin & heat up
+                                 → after 10s, auto-revert to OFF (cluster icon flash)
+
+2. Drive forward to staging    → mode is OFF, normal AWD behavior
+                                 → cluster shows real Haldex value
+
+3. Stage at the line           → driver hits LAUNCH button (or steering combo)
+                                 → BOT32 forces pump 100%, timer 15s starts
+                                 → green light → launch with max grip
+                                 → during the run, BOT32 keeps 100% until timer expires
+                                   OR until driver hits OFF
+                                 → after 15s or speed > 60 km/h, auto-revert to OFF
+
+4. Coast through traps         → mode is OFF, normal AWD for run-out
+
+5. Return to staging           → repeat
+```
 
 ---
 

@@ -205,7 +205,7 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 Planned features not yet implemented:
 
 - 🔮 **Clear DTC via MFSW button combo** — driver presses combo at steering wheel, BOT32 sends UDS Clear DTC to all ECUs. Needs MFSW frame sniff + UDS ECU list.
-- 🔮 **Haldex AWD pump monitor + control** — live display of rear-axle torque %, manual override slider. Needs CAN MITM hardware + Haldex bus reverse-engineering.
+- 🔮 **Haldex AWD — Burnout + Launch race modes** (motorsport, closed-circuit) — 3 modes: OFF / BURNOUT (pump 0% = FWD pre-stage tire warm-up) / LAUNCH (pump 100% = 50/50 AWD lock at the line). Auto-revert timers for safety. Needs CAN MITM hardware + Haldex bus reverse-engineering.
 
 See [docs/future_features.md](docs/future_features.md) for full technical
 requirements, effort estimates, and safety considerations per feature.

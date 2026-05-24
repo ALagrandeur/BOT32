@@ -419,32 +419,77 @@
 
   <details class="card collapsible card-roadmap">
     <summary>
-      <h3 class="card-title">🔮 Haldex AWD pump monitor + control <span class="badge-soon">Coming soon</span></h3>
-      <span class="summary-hint muted small">Voir et contrôler la répartition traction avant/arrière</span>
+      <h3 class="card-title">🔮 Haldex AWD — Burnout + Launch race modes <span class="badge-soon">Coming soon</span></h3>
+      <span class="summary-hint muted small">🏁 Circuit fermé seulement — drag / track day</span>
     </summary>
     <div class="collapsible-body">
+
+      <div class="warning-box" style="background: #2a1820; border-color: #ff8c00; color: #ffcb8a; display: block;">
+        🏁 <b>MOTORSPORT — Closed-circuit only.</b> Cette feature est conçue pour drag strip / track day.
+        <b>Ne pas utiliser sur la route publique.</b> Voir <code>docs/future_features.md</code> pour les considérations safety.
+      </div>
+
       <p class="muted small">
-        Le contrôleur Haldex (4Motion) module la pompe électrohydraulique
-        de 0% (traction avant seulement) à 100% (~50/50 AWD). Cette feature
-        permet d'<b>afficher en live</b> le % envoyé par le PCM et
-        d'<b>override manuellement</b> via un slider.
+        Le Haldex (4Motion) du Alltrack module une pompe 0–100% :
+        <b>0% = FWD pur</b> (traction avant), <b>100% = ~50/50</b> (max grip AWD).
+        BOT32 va forcer ces 2 extrêmes pour 2 phases du run drag :
       </p>
 
       <div class="roadmap-status">
         <span class="status-badge status-pending">🚧 Pas encore codé</span>
-        <span class="status-badge status-warning">⚠ Nécessite hardware additionnel</span>
+        <span class="status-badge status-warning">⚠ Nécessite hardware additionnel (MITM)</span>
+      </div>
+
+      <h4 class="subtitle">🎯 3 modes de course (envisagés)</h4>
+      <div class="race-modes-preview">
+        <div class="race-mode-card race-mode-off">
+          <div class="race-mode-icon">🅾</div>
+          <div class="race-mode-label">OFF</div>
+          <div class="race-mode-desc">Pass-through. Haldex contrôle normal. Mode défaut.</div>
+        </div>
+        <div class="race-mode-card race-mode-burnout">
+          <div class="race-mode-icon">🔥</div>
+          <div class="race-mode-label">BURNOUT</div>
+          <div class="race-mode-desc">Pompe forcée à <b>0%</b> → FWD pur. Réchauffe les pneus avant à l'arrêt avant la course. Auto-revert après 10 sec.</div>
+        </div>
+        <div class="race-mode-card race-mode-launch">
+          <div class="race-mode-icon">🚀</div>
+          <div class="race-mode-label">LAUNCH</div>
+          <div class="race-mode-desc">Pompe forcée à <b>100%</b> → 50/50 AWD lock. Max grip au départ. Auto-revert après 15 sec ou >60 km/h.</div>
+        </div>
+      </div>
+
+      <h4 class="subtitle">📊 Live monitoring (toujours, même en OFF)</h4>
+      <div class="row disabled-row">
+        <label>Haldex pump % (live, depuis PCM)
+          <input type="text" value="--%" disabled>
+        </label>
+        <label>Mode actif
+          <input type="text" value="OFF" disabled>
+        </label>
+        <label>Timer auto-revert
+          <input type="text" value="--" disabled>
+        </label>
+      </div>
+
+      <h4 class="subtitle">🎮 Race control buttons (placeholder)</h4>
+      <div class="race-buttons-preview disabled-row">
+        <button class="race-btn race-btn-off" disabled>🅾 OFF (default)</button>
+        <button class="race-btn race-btn-burnout" disabled>🔥 BURNOUT (10s)</button>
+        <button class="race-btn race-btn-launch" disabled>🚀 LAUNCH (15s)</button>
       </div>
 
       <h4 class="subtitle">Hardware additionnel requis</h4>
       <p class="muted small">
-        Le bus Haldex est <b>privé</b> entre PCM et contrôleur AWD — on ne
-        peut pas juste T-tap. Pour <b>override</b> il faut un <b>man-in-the-middle</b> :
-        couper physiquement le bus et insérer BOT32 (ou un 2nd ESP32 dédié) entre les deux.
+        Le bus Haldex est <b>privé</b> entre PCM et contrôleur AWD — on ne peut
+        pas juste T-tap. Pour <b>override</b> il faut un <b>man-in-the-middle</b> :
+        couper physiquement le bus et insérer BOT32 (ou un 2nd ESP32 dédié).
       </p>
       <ul class="todo-list">
-        <li><b>Option A</b> : utiliser CAN0 + CAN1 de BOT32 actuel pour MITM (risque si BOT32 reboot)</li>
-        <li><b>Option B</b> : ajouter un 2ème ESP32+HAT dédié à Haldex MITM (~$40, plus propre)</li>
-        <li><b>Option C</b> : passive READ-ONLY (pas de MITM, juste sniff) — fiable mais pas de contrôle</li>
+        <li><b>Option A</b> : utiliser CAN0+CAN1 de BOT32 actuel en MITM (risque si BOT32 reboot)</li>
+        <li><b>Option B</b> : 2ème ESP32+HAT dédié au Haldex MITM (~$40, plus propre)</li>
+        <li><b>Option C</b> : passive READ-ONLY (sniff seulement, pas de contrôle) — recommandé pour valider la lecture en 1er</li>
+        <li>🛡 <b>Kill switch hardware</b> : relais qui bridge directement le bus Haldex en cas de panic — câblé sur un bouton dashboard</li>
       </ul>
 
       <h4 class="subtitle">Ce qu'il manque pour l'implémenter</h4>
@@ -452,40 +497,20 @@
         <li>📐 Schéma de câblage MK7 Alltrack 2017 4Motion pour localiser le bus Haldex</li>
         <li>🔍 Sniffer le bus Haldex pour identifier le CAN ID + byte position du pump duty</li>
         <li>🛡 Identifier si le frame Haldex utilise MQB CRC + counter (probable)</li>
-        <li>🧠 Coder <code>haldex_decoder</code> (sniff) + éventuellement <code>can_bridge</code> (MITM)</li>
-        <li>🎨 UI : gauge live + slider override + sélecteur de mode + graph temps réel</li>
+        <li>🧠 Coder <code>haldex_decoder</code> (sniff) + <code>can_bridge</code> (MITM si override)</li>
+        <li>⏱ Coder le timer auto-revert (10s burnout, 15s launch)</li>
+        <li>🚨 Coder le watchdog bus (auto-revert OFF si latence >100ms)</li>
       </ul>
 
       <h4 class="subtitle">Effort estimé</h4>
-      <p class="muted small">~25-45 h (selon Option A/B/C). Recommandé : commencer par READ-ONLY (Option C) pour valider la lecture, puis évaluer l'override.</p>
-
-      <h4 class="subtitle">Disabled placeholder controls</h4>
-      <div class="row disabled-row">
-        <label>Live Haldex pump %
-          <input type="text" value="--%" disabled>
-        </label>
-        <label>Manual override %
-          <input type="range" min="0" max="100" value="0" disabled class="slider">
-        </label>
-      </div>
-      <div class="row disabled-row">
-        <label>Mode
-          <select disabled>
-            <option>Off (no MITM, read-only sniff)</option>
-            <option>Manual override</option>
-            <option>Rule-based (throttle, lever, etc.)</option>
-          </select>
-        </label>
-      </div>
-
       <p class="muted small">
-        ⚠ <b>Safety</b> : Haldex est un système critique. Override mal calibré
-        peut causer perte de traction ou surchauffe du clutch pack. Toujours
-        tester en READ-ONLY d'abord, jamais override sur route publique sans validation extensive.
+        ~15-25 h pour READ-ONLY + 2 modes simples (plus simple que slider continu original).<br>
+        Étape 1 (recommandée) : READ-ONLY pour valider le bus + format des frames.<br>
+        Étape 2 : MITM + override des 2 modes.
       </p>
 
       <p class="muted small">
-        📖 Détails techniques : <code>docs/future_features.md</code> — Feature 2
+        📖 Détails techniques complets : <code>docs/future_features.md</code> — Feature 2
       </p>
     </div>
   </details>
