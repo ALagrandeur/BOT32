@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,11 +16,13 @@
 
 <main>
 
-  <!-- ============================================================
-       Connection card
-       ============================================================ -->
+  <!-- ================================================================
+       SECTION 1 — CONNEXION
+       Toujours visible. Le 1er truc à régler.
+       ================================================================ -->
+  <h2 class="section-header">🔌 Connexion</h2>
+
   <section class="card">
-    <h2>🔌 Serial connection</h2>
     <div class="row">
       <label>Port
         <select id="sel-port"></select>
@@ -32,11 +34,14 @@
     <p class="muted small" id="boot-info">—</p>
   </section>
 
-  <!-- ============================================================
-       Live status (NO MODE field per user request)
-       ============================================================ -->
+  <!-- ================================================================
+       SECTION 2 — DONNÉES LIVE
+       Live status toujours visible. Frame monitor rétractable.
+       ================================================================ -->
+  <h2 class="section-header">📊 Données live</h2>
+
   <section class="card card-status">
-    <h2>📊 Live status</h2>
+    <h3 class="card-title">État live</h3>
     <div class="grid grid-4">
       <div>
         <span class="lbl">Lever</span>
@@ -59,7 +64,7 @@
       </div>
     </div>
 
-    <h3 class="subtitle">Bus stats</h3>
+    <h4 class="subtitle">Bus stats</h4>
     <div class="grid-2">
       <div class="bus-block">
         <h4>🚌 CAN cluster (MCP2515 #0)</h4>
@@ -78,262 +83,282 @@
     </div>
   </section>
 
-  <!-- ============================================================
-       CAN addresses — Cluster bus
-       ============================================================ -->
-  <section class="card card-can-cluster">
-    <h2>🆔 CAN addresses — Cluster bus</h2>
-    <p class="muted small">Modifiable IDs used on the cluster CAN bus (CAN0 = MCP2515 #0).</p>
-    <div class="row">
-      <label>Motor_09 (TX coolant override + sniff)<br>
-        <input type="text" id="set-cluster_motor09_id" class="hex-input" placeholder="0x647">
-        <span class="muted small">default <code>0x647</code> — Motor_09 frame on MK7 cluster</span>
-      </label>
-    </div>
-    <div class="row">
-      <label>WBA_03 (RX lever position)<br>
-        <input type="text" id="set-cluster_wba03_id" class="hex-input" placeholder="0x394">
-        <span class="muted small">default <code>0x394</code> — gateway → cluster lever frame</span>
-      </label>
-    </div>
-  </section>
-
-  <!-- ============================================================
-       CAN addresses — OBD2 bus
-       ============================================================ -->
-  <section class="card card-can-obd2">
-    <h2>🔍 CAN addresses — OBD2 bus</h2>
-    <p class="muted small">Modifiable IDs used on the OBD-II port CAN bus (CAN1 = MCP2515 #1).
-      We TX a UDS query and wait for the engine ECU response.</p>
-
-    <h3 class="subtitle">📤 TX — UDS request to engine ECU</h3>
-    <div class="row">
-      <label>Request CAN ID<br>
-        <input type="text" id="set-obd2_req_id" class="hex-input" placeholder="0x7E0">
-        <span class="muted small">default <code>0x7E0</code> — tester address (us → engine ECU)</span>
-      </label>
-    </div>
-    <div class="frame-preview">
-      <span class="lbl">Frame sent every <span id="obd2-poll-display">200</span> ms:</span>
-      <code><span id="obd2-req-display">7E0</span>#03.22.<span id="obd2-did-display">39.C0</span>.00.00.00.00</code>
-      <p class="muted small">
-        <code>0x03</code> = ISO-TP length, <code>0x22</code> = ReadDataByIdentifier SID,
-        <code id="obd2-did-display2">39 C0</code> = DID (Saugrohrdruck / MAP)
-      </p>
-    </div>
-
-    <h3 class="subtitle">📥 RX — Expected UDS response</h3>
-    <div class="row">
-      <label>Response CAN ID<br>
-        <input type="text" id="set-obd2_resp_id" class="hex-input" placeholder="0x7E8">
-        <span class="muted small">default <code>0x7E8</code> — engine ECU response (engine ECU → us)</span>
-      </label>
-      <label>DID (Data Identifier)<br>
-        <input type="text" id="set-obd2_did_map" class="hex-input" placeholder="0x39C0">
-        <span class="muted small">default <code>0x39C0</code> — MAP intake pressure (mbar)</span>
-      </label>
-    </div>
-    <div class="frame-preview">
-      <span class="lbl">Expected response format:</span>
-      <code><span id="obd2-resp-display">7E8</span>#LEN.62.<span id="obd2-did-display3">39.C0</span>.MAP_HI.MAP_LO.…</code>
-      <p class="muted small">
-        <code>0x62</code> = 0x22 + 0x40 (positive response SID),
-        then DID echo, then 16-bit MAP value big-endian (mbar)
-      </p>
-    </div>
-  </section>
-
-  <!-- ============================================================
-       Boost mapping
-       ============================================================ -->
-  <section class="card card-mapping">
-    <h2>🎯 MAP → boost gauge mapping</h2>
-    <div class="row">
-      <label>MAP min (mbar) — idle<br>
-        <input type="number" id="set-map_min_mbar" min="0" max="4000" step="10">
-        <span class="muted small">→ displays as ~50 °C (cold needle)</span>
-      </label>
-      <label>MAP max (mbar) — full boost<br>
-        <input type="number" id="set-map_max_mbar" min="0" max="4000" step="10">
-        <span class="muted small">→ displays as ~130 °C (red zone)</span>
-      </label>
-    </div>
-    <div class="row">
-      <label>Scale (fine-tune)<br>
-        <input type="number" id="set-scale" min="0.1" max="3.0" step="0.05">
-      </label>
-      <label>Offset (°C)<br>
-        <input type="number" id="set-offset_c" min="-50" max="50" step="1">
-      </label>
-    </div>
-  </section>
-
-  <!-- ============================================================
-       Behavior — rates + TX gate
-       ============================================================ -->
-  <section class="card card-behavior">
-    <h2>⚙️ Behavior</h2>
-    <div class="row">
-      <label>OBD2 poll rate (Hz)<br>
-        <input type="number" id="set-obd2_poll_hz" min="1" max="20" step="1">
-      </label>
-      <label>Motor_09 TX rate (Hz)<br>
-        <input type="number" id="set-tx_rate_hz" min="5" max="50" step="1">
-      </label>
-    </div>
-
-    <h3 class="subtitle">When to TX Motor_09 to cluster ?</h3>
-    <div class="row">
-      <label class="checkbox">
-        <input type="checkbox" id="set-tx_enabled">
-        <span>🟢 <b>TX enabled</b> (master switch — uncheck for total radio silence)</span>
-      </label>
-    </div>
-    <div class="row">
-      <label class="checkbox">
-        <input type="checkbox" id="set-force_tx_always">
-        <span>🔧 <b>Force TX in ALL modes</b> (diagnostic) — bypass lever check, TX even in P/R/D/Boot.<br>
-              <span class="muted small">Useful for bench testing without moving lever. Off in normal use.</span></span>
-      </label>
-    </div>
-    <p class="muted small">
-      In normal operation (force OFF), BOT32 only TXs when lever is in <b>S/M/N</b>.
-      In <b>P/R/D</b>, BOT32 stays silent and the cluster shows real engine coolant.
-    </p>
-  </section>
-
-  <!-- ============================================================
-       Safety — Airbag block toggle
-       ============================================================ -->
-  <section class="card card-safety">
-    <h2>🛡 Safety</h2>
-    <div class="row">
-      <label class="checkbox">
-        <input type="checkbox" id="set-block_airbag">
-        <span>🛡 <b>Block Airbag IDs</b> (<code>0x040</code> Airbag_01, <code>0x572</code> Airbag_02)<br>
-              <span class="muted small">When ON: BOT32 hardware-refuses to TX these IDs no matter what.
-              When OFF: removes that safety net — only disable if you know what you're doing.</span></span>
-      </label>
-    </div>
-    <div id="airbag-warning" class="warning-box" style="display:none">
-      ⚠ <b>WARNING</b>: Airbag block is OFF. BOT32 could now transmit on airbag IDs if any
-      code path requests it. This is intentionally allowed for advanced diagnostic but
-      <b>NEVER use on a vehicle with a real airbag controller</b>.
-    </div>
-  </section>
-
-  <!-- ============================================================
-       Bench test mode — standalone cluster test, NO vehicle
-       ============================================================ -->
-  <section class="card card-bench">
-    <h2>🧪 Bench test mode</h2>
-    <p class="muted small">
-      Test ESP32 ↔ cluster communication on the bench (NO vehicle required).
-      Emits the full sister-project bundle (Wake + Engine context + RPM + Coolant)
-      so a standalone cluster wakes up and reacts to the sliders below.
-      <br><b>Disable before re-installing on the vehicle</b> — bundle would
-      conflict with the real gateway.
-    </p>
-
-    <div class="row">
-      <label class="checkbox">
-        <input type="checkbox" id="set-bench_test_enabled">
-        <span>🧪 <b>Enable bench test mode</b> (preempts normal vehicle logic)</span>
-      </label>
-    </div>
-
-    <div class="row">
-      <label>TX on which bus?<br>
-        <select id="set-bench_test_bus">
-          <option value="0">CAN0 (cluster bus — bornier H/L/G du HAT côté cluster)</option>
-          <option value="1">CAN1 (OBD2 bus — bornier H/L/G du HAT côté OBD2)</option>
-        </select>
-        <span class="muted small">Permet de tester chaque bus à tour de rôle en déplaçant le cluster physiquement.</span>
-      </label>
-    </div>
-
-    <h3 class="subtitle">🎚 Live sliders</h3>
-
-    <div class="slider-row">
-      <label>RPM tachometer <span class="slider-value" id="bench-rpm-display">1500</span> RPM</label>
-      <input type="range" id="set-bench_rpm" min="0" max="8000" step="50" value="1500" class="slider">
-      <div class="slider-axis">
-        <span>0</span><span>2000</span><span>4000</span><span>6000</span><span>8000</span>
+  <details class="card collapsible">
+    <summary>
+      <h3 class="card-title">📡 Frame monitor</h3>
+      <span class="summary-hint muted small">RX/TX live des deux bus CAN</span>
+    </summary>
+    <div class="collapsible-body">
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="frames-enabled">
+          <span>Subscribe to live frames</span>
+        </label>
+        <button id="btn-clear-frames" class="secondary">Clear</button>
+        <label>Filter bus
+          <select id="frames-filter-bus">
+            <option value="">all</option>
+            <option value="cluster">cluster</option>
+            <option value="obd2">obd2</option>
+          </select>
+        </label>
       </div>
+      <table class="frames-table">
+        <thead>
+          <tr><th>ts</th><th>bus</th><th>dir</th><th>id</th><th>len</th><th>data</th></tr>
+        </thead>
+        <tbody id="frames-tbody"></tbody>
+      </table>
     </div>
+  </details>
 
-    <div class="slider-row">
-      <label>MAP pressure (boost) <span class="slider-value" id="bench-map-display">1500</span> mbar</label>
-      <input type="range" id="set-bench_map_mbar" min="0" max="3000" step="20" value="1500" class="slider">
-      <div class="slider-axis">
-        <span>0 (vacuum)</span><span>1000</span><span>2000</span><span>3000 (full boost)</span>
+  <!-- ================================================================
+       SECTION 3 — CONFIGURATION
+       Tous les paramètres modifiables — collapsibles par défaut.
+       ================================================================ -->
+  <h2 class="section-header">⚙️ Configuration</h2>
+
+  <details class="card card-mapping collapsible">
+    <summary>
+      <h3 class="card-title">🎯 MAP → Gauge mapping</h3>
+      <span class="summary-hint muted small">Pression OBD2 → position aiguille coolant</span>
+    </summary>
+    <div class="collapsible-body">
+      <div class="row">
+        <label>MAP min (mbar) — idle<br>
+          <input type="number" id="set-map_min_mbar" min="0" max="4000" step="10">
+          <span class="muted small">→ displays as ~50 °C (cold needle)</span>
+        </label>
+        <label>MAP max (mbar) — full boost<br>
+          <input type="number" id="set-map_max_mbar" min="0" max="4000" step="10">
+          <span class="muted small">→ displays as ~130 °C (red zone)</span>
+        </label>
+      </div>
+      <div class="row">
+        <label>Scale (fine-tune)<br>
+          <input type="number" id="set-scale" min="0.1" max="3.0" step="0.05">
+        </label>
+        <label>Offset (°C)<br>
+          <input type="number" id="set-offset_c" min="-50" max="50" step="1">
+        </label>
       </div>
       <p class="muted small">
-        MAP value drives the coolant gauge via your MAP→temp mapping above.
-        Move this slider and watch the cluster needle move in real time.
+        Mapping 50/50 visuel : MAP à 50% → aiguille juste avant la dead zone (saut instantané sur 111 °C).
       </p>
     </div>
+  </details>
 
-    <h3 class="subtitle">📡 Frames emitted (when bench is ON)</h3>
-    <div class="frame-list">
-      <div class="frame-item"><code>0x3C0</code> Klemmen_Status_01 wake @ 10 Hz <span class="muted">(MQB CRC)</span></div>
-      <div class="frame-item"><code>0x641</code> Motor_Code_01 alive @ 20 Hz <span class="muted">(MQB CRC)</span></div>
-      <div class="frame-item"><code>0x107</code> Motor_04 RPM @ 20 Hz <span class="muted">(no CRC, sliders bytes 3-4)</span></div>
-      <div class="frame-item"><code>0x647</code> Motor_09 coolant @ 20 Hz <span class="muted">(no CRC, sliders byte 0)</span></div>
-      <div class="frame-item"><code>0x106</code> ESP_05 @ 10 Hz <span class="muted">(no CRC)</span></div>
-      <div class="frame-item"><code>0x116</code> ESP_10 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
-      <div class="frame-item"><code>0x65D</code> ESP_20 @ 10 Hz <span class="muted">(no CRC)</span></div>
-      <div class="frame-item"><code>0x31E</code> TSK_07 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
-      <div class="frame-item"><code>0x32A</code> LH_EPS_01 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
-      <div class="frame-item frame-item-airbag" id="bench-airbag-line">
-        <code>0x040</code> Airbag_01 @ 10 Hz <span class="muted">(only emitted if "Block Airbag IDs" is OFF in Safety)</span>
+  <details class="card card-can-comm collapsible">
+    <summary>
+      <h3 class="card-title">🆔 Communication CAN (TX + RX)</h3>
+      <span class="summary-hint muted small">IDs des bus cluster + OBD2, fréquences, gate TX</span>
+    </summary>
+    <div class="collapsible-body">
+
+      <!-- Sub-section 1: Cluster bus IDs (RX lever + TX coolant) -->
+      <h4 class="subtitle">🚌 CAN0 — Cluster bus</h4>
+      <div class="sub-card">
+        <div class="row">
+          <label>Motor_09 (TX coolant override + sniff real)<br>
+            <input type="text" id="set-cluster_motor09_id" class="hex-input" placeholder="0x647">
+            <span class="muted small">default <code>0x647</code></span>
+          </label>
+          <label>WBA_03 (RX lever position)<br>
+            <input type="text" id="set-cluster_wba03_id" class="hex-input" placeholder="0x394">
+            <span class="muted small">default <code>0x394</code></span>
+          </label>
+        </div>
       </div>
-    </div>
-  </section>
 
-  <!-- ============================================================
-       Factory reset
-       ============================================================ -->
-  <section class="card">
-    <div class="actions">
-      <button id="btn-factory-reset" class="danger">↺ Factory reset (all settings → defaults)</button>
-    </div>
-  </section>
+      <!-- Sub-section 2: OBD2 bus IDs (TX query + RX response) -->
+      <h4 class="subtitle">🔍 CAN1 — OBD2 bus (UDS query)</h4>
+      <div class="sub-card">
+        <p class="muted small">📤 TX — UDS request to engine ECU</p>
+        <div class="row">
+          <label>Request CAN ID<br>
+            <input type="text" id="set-obd2_req_id" class="hex-input" placeholder="0x7E0">
+            <span class="muted small">default <code>0x7E0</code></span>
+          </label>
+        </div>
+        <div class="frame-preview">
+          <span class="lbl">Frame sent every <span id="obd2-poll-display">200</span> ms:</span>
+          <code><span id="obd2-req-display">7E0</span>#03.22.<span id="obd2-did-display">39.C0</span>.00.00.00.00</code>
+        </div>
 
-  <!-- ============================================================
-       Frame monitor
-       ============================================================ -->
-  <section class="card">
-    <h2>📡 CAN frame monitor</h2>
-    <div class="row">
-      <label class="checkbox">
-        <input type="checkbox" id="frames-enabled">
-        <span>Subscribe to live frames</span>
-      </label>
-      <button id="btn-clear-frames" class="secondary">Clear</button>
-      <label>Filter bus
-        <select id="frames-filter-bus">
-          <option value="">all</option>
-          <option value="cluster">cluster</option>
-          <option value="obd2">obd2</option>
-        </select>
-      </label>
-    </div>
-    <table class="frames-table">
-      <thead>
-        <tr><th>ts</th><th>bus</th><th>dir</th><th>id</th><th>len</th><th>data</th></tr>
-      </thead>
-      <tbody id="frames-tbody"></tbody>
-    </table>
-  </section>
+        <p class="muted small" style="margin-top: 12px;">📥 RX — Expected UDS response</p>
+        <div class="row">
+          <label>Response CAN ID<br>
+            <input type="text" id="set-obd2_resp_id" class="hex-input" placeholder="0x7E8">
+            <span class="muted small">default <code>0x7E8</code></span>
+          </label>
+          <label>DID (Data Identifier)<br>
+            <input type="text" id="set-obd2_did_map" class="hex-input" placeholder="0x39C0">
+            <span class="muted small">default <code>0x39C0</code> (MAP)</span>
+          </label>
+        </div>
+        <div class="frame-preview">
+          <span class="lbl">Expected response format:</span>
+          <code><span id="obd2-resp-display">7E8</span>#LEN.62.<span id="obd2-did-display3">39.C0</span>.MAP_HI.MAP_LO.…</code>
+          <p class="muted small">
+            <code>0x62</code> = SID 0x22 + 0x40, then DID echo, then 16-bit MAP big-endian (mbar)
+          </p>
+        </div>
+      </div>
 
-  <!-- ============================================================
-       Debug log
-       ============================================================ -->
-  <section class="card">
-    <h2>📋 ESP32 log</h2>
-    <pre id="log" class="log"></pre>
-  </section>
+      <!-- Sub-section 3: Rates -->
+      <h4 class="subtitle">⏱ Fréquences</h4>
+      <div class="sub-card">
+        <div class="row">
+          <label>OBD2 poll rate (Hz)<br>
+            <input type="number" id="set-obd2_poll_hz" min="1" max="20" step="1">
+            <span class="muted small">UDS query rate (CAN1)</span>
+          </label>
+          <label>Motor_09 TX rate (Hz)<br>
+            <input type="number" id="set-tx_rate_hz" min="5" max="50" step="1">
+            <span class="muted small">Cluster override rate (CAN0)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Sub-section 4: TX gate -->
+      <h4 class="subtitle">🔀 Quand transmettre Motor_09 au cluster ?</h4>
+      <div class="sub-card">
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" id="set-tx_enabled">
+            <span>🟢 <b>TX enabled</b> (master switch — uncheck = silence total)</span>
+          </label>
+        </div>
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" id="set-force_tx_always">
+            <span>🔧 <b>Force TX in ALL modes</b> (diagnostic)<br>
+                  <span class="muted small">Bypass lever check : TX même en P/R/D. Active aussi le polling OBD2 hors BOOST.</span></span>
+          </label>
+        </div>
+        <p class="muted small">
+          Normal (force OFF) : TX uniquement quand levier en <b>S/M/N</b>. En <b>P/R/D</b> → silence, cluster affiche vraie temp.
+        </p>
+      </div>
+
+    </div>
+  </details>
+
+  <details class="card card-bench collapsible">
+    <summary>
+      <h3 class="card-title">🧪 Bench test mode</h3>
+      <span class="summary-hint muted small">Test cluster sans véhicule : Wake + Engine + RPM + Coolant</span>
+    </summary>
+    <div class="collapsible-body">
+      <p class="muted small">
+        Test ESP32 ↔ cluster sur le bench (sans véhicule). Émet le bundle complet
+        (Wake + Engine context + RPM + Coolant) sur le bus choisi.
+        <br><b>Désactiver avant installation véhicule</b> — bundle entrerait en conflit avec la gateway.
+      </p>
+
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="set-bench_test_enabled">
+          <span>🧪 <b>Enable bench test mode</b> (preempts normal vehicle logic)</span>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>TX on which bus?<br>
+          <select id="set-bench_test_bus">
+            <option value="0">CAN0 (cluster bus — bornier H/L/G CAN0)</option>
+            <option value="1">CAN1 (OBD2 bus — bornier H/L/G CAN1)</option>
+          </select>
+          <span class="muted small">Permet de tester chaque bus à tour de rôle.</span>
+        </label>
+      </div>
+
+      <h4 class="subtitle">🎚 Live sliders</h4>
+
+      <div class="slider-row">
+        <label>RPM tachometer <span class="slider-value" id="bench-rpm-display">1500</span> RPM</label>
+        <input type="range" id="set-bench_rpm" min="0" max="8000" step="50" value="1500" class="slider">
+        <div class="slider-axis">
+          <span>0</span><span>2000</span><span>4000</span><span>6000</span><span>8000</span>
+        </div>
+      </div>
+
+      <div class="slider-row">
+        <label>MAP pressure (boost) <span class="slider-value" id="bench-map-display">1500</span> mbar</label>
+        <input type="range" id="set-bench_map_mbar" min="0" max="3000" step="20" value="1500" class="slider">
+        <div class="slider-axis">
+          <span>0 (vacuum)</span><span>1000</span><span>2000</span><span>3000 (full boost)</span>
+        </div>
+        <p class="muted small">
+          MAP drive le coolant gauge via ton MAP→temp mapping.
+        </p>
+      </div>
+
+      <details class="nested-details">
+        <summary class="muted small">📡 Détails des trames émises (cliquer pour voir)</summary>
+        <div class="frame-list">
+          <div class="frame-item"><code>0x3C0</code> Klemmen_Status_01 wake @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+          <div class="frame-item"><code>0x641</code> Motor_Code_01 alive @ 20 Hz <span class="muted">(MQB CRC)</span></div>
+          <div class="frame-item"><code>0x107</code> Motor_04 RPM @ 20 Hz <span class="muted">(no CRC, sliders bytes 3-4)</span></div>
+          <div class="frame-item"><code>0x647</code> Motor_09 coolant @ 20 Hz <span class="muted">(no CRC, sliders byte 0)</span></div>
+          <div class="frame-item"><code>0x106</code> ESP_05 @ 10 Hz <span class="muted">(no CRC)</span></div>
+          <div class="frame-item"><code>0x116</code> ESP_10 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+          <div class="frame-item"><code>0x65D</code> ESP_20 @ 10 Hz <span class="muted">(no CRC)</span></div>
+          <div class="frame-item"><code>0x31E</code> TSK_07 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+          <div class="frame-item"><code>0x32A</code> LH_EPS_01 @ 10 Hz <span class="muted">(MQB CRC)</span></div>
+          <div class="frame-item frame-item-airbag" id="bench-airbag-line">
+            <code>0x040</code> Airbag_01 @ 10 Hz <span class="muted">(seulement si Block Airbag IDs est OFF)</span>
+          </div>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details class="card card-safety collapsible">
+    <summary>
+      <h3 class="card-title">🛡 Sécurité & Maintenance</h3>
+      <span class="summary-hint muted small">Airbag block, factory reset</span>
+    </summary>
+    <div class="collapsible-body">
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="set-block_airbag">
+          <span>🛡 <b>Block Airbag IDs</b> (<code>0x040</code> Airbag_01, <code>0x572</code> Airbag_02)<br>
+                <span class="muted small">When ON: BOT32 hardware-refuses to TX these IDs no matter what.</span></span>
+        </label>
+      </div>
+      <div id="airbag-warning" class="warning-box" style="display:none">
+        ⚠ <b>WARNING</b>: Airbag block is OFF. BOT32 could now transmit on airbag IDs if any
+        code path requests it. <b>NEVER use on a vehicle with a real airbag controller</b>.
+      </div>
+
+      <hr class="divider">
+
+      <h4 class="subtitle">Maintenance</h4>
+      <div class="actions">
+        <button id="btn-factory-reset" class="danger">↺ Factory reset (all settings → defaults)</button>
+      </div>
+      <p class="muted small">
+        Remet tous les paramètres à leurs valeurs par défaut (MAP min/max, IDs CAN, rates, etc.).
+        Ne touche pas au firmware lui-même.
+      </p>
+    </div>
+  </details>
+
+  <!-- ================================================================
+       SECTION 4 — DIAGNOSTICS / LOGS
+       ================================================================ -->
+  <h2 class="section-header">🩺 Diagnostics</h2>
+
+  <details class="card collapsible">
+    <summary>
+      <h3 class="card-title">📋 ESP32 log</h3>
+      <span class="summary-hint muted small">Sorties Serial brutes du firmware</span>
+    </summary>
+    <div class="collapsible-body">
+      <pre id="log" class="log"></pre>
+    </div>
+  </details>
 
 </main>
 

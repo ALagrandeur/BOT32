@@ -162,3 +162,108 @@ code { background: #0a0d12; padding: 2px 6px; border-radius: 3px;
 
 footer { display: flex; justify-content: space-between; padding: 10px 20px;
          border-top: 1px solid var(--border); margin-top: 20px; font-size: 12px; }
+
+/* =========================================================
+   SECTION HEADERS — visual grouping of cards
+   ========================================================= */
+.section-header {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin: 24px 4px 10px 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.section-header:first-of-type { margin-top: 0; }
+
+/* Card title (used inside .card to replace old h2 inside cards) */
+.card-title {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* =========================================================
+   COLLAPSIBLE CARDS (using <details>/<summary>)
+   ========================================================= */
+details.collapsible {
+  padding: 0;
+}
+details.collapsible > summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+  border-radius: 10px;
+  transition: background 0.1s;
+}
+details.collapsible > summary:hover {
+  background: rgba(76, 154, 255, 0.04);
+}
+details.collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+details.collapsible > summary::after {
+  content: '▶';
+  margin-left: auto;
+  transition: transform 0.2s;
+  color: var(--muted);
+  font-size: 11px;
+}
+details.collapsible[open] > summary::after {
+  transform: rotate(90deg);
+}
+details.collapsible > summary .summary-hint {
+  font-weight: 400;
+}
+details.collapsible[open] > summary {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+  border-radius: 10px 10px 0 0;
+}
+.collapsible-body {
+  padding: 14px;
+}
+
+/* Nested details (for the bench frame list) */
+.nested-details {
+  margin-top: 12px;
+  background: #131820;
+  border-radius: 6px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+}
+.nested-details > summary {
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+.nested-details > summary::-webkit-details-marker {
+  color: var(--muted);
+}
+
+/* Sub-cards inside a collapsible section (visual grouping of related sub-settings) */
+.sub-card {
+  background: #131820;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 6px 0 16px 0;
+  border-left: 2px solid var(--border);
+}
+.sub-card:last-child { margin-bottom: 0; }
+
+/* Horizontal divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+/* card-can-comm border color (new card replacing 2 separate cards) */
+.card-can-comm { border-left: 4px solid #b288ff; }
