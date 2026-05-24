@@ -18,6 +18,24 @@ body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
 header { display: flex; align-items: center; justify-content: space-between;
          padding: 12px 20px; border-bottom: 1px solid var(--border); }
 header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+.header-right { display: flex; gap: 12px; align-items: center; }
+
+.btn-push {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-push:hover { background: #6cb5ff; }
+.btn-push:active { transform: scale(0.97); }
+.btn-push.success { background: var(--temp); color: #002918; }
+.btn-push.error { background: var(--danger); }
+.btn-push:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .pill { padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: 12px; }
 .pill-ok      { background: var(--temp); color: #002918; }

@@ -227,6 +227,49 @@ $("btn-factory-reset").addEventListener("click", () => {
   socket.emit("cmd", { cmd: "factory_reset" });
 });
 
+// ===========================================================
+//  Push ALL settings to ESP32 in one batch (header button)
+//  Useful as a "force sync" — settings are auto-pushed on blur/change
+//  normally, but this button guarantees the ESP32 has exactly what's
+//  shown on screen right now.
+// ===========================================================
+$("btn-push-all").addEventListener("click", () => {
+  const btn = $("btn-push-all");
+  // Disable briefly to avoid double-clicks
+  btn.disabled = true;
+
+  let count = 0, skipped = 0;
+  for (const k of SETTING_KEYS) {
+    const el = $("set-" + k);
+    if (!el) { skipped++; continue; }
+
+    let value;
+    if (el.type === "checkbox") {
+      value = el.checked;
+    } else if (isHexInput(el)) {
+      value = parseHexOrInt(el.value);
+      if (isNaN(value)) { skipped++; continue; }
+    } else {
+      const num = +el.value;
+      value = (el.value !== "" && !isNaN(num)) ? num : el.value;
+    }
+    socket.emit("cmd", { cmd: "set", key: k, value: value });
+    count++;
+  }
+
+  // Visual feedback
+  const orig = btn.innerHTML;
+  btn.innerHTML = `✓ Sent ${count} settings`;
+  btn.classList.add("success");
+  setTimeout(() => {
+    btn.innerHTML = orig;
+    btn.classList.remove("success");
+    btn.disabled = false;
+  }, 1800);
+
+  console.log(`[push-all] sent ${count} settings, skipped ${skipped}`);
+});
+
 socket.on("settings", (s) => {
   applySettings(s);
 });
