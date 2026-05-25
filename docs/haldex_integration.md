@@ -115,6 +115,99 @@ If your MITM module uses a different layout, edit
 
 ---
 
+## 📶 Alternative transport — ESP-NOW (wireless)
+
+Since v1.4.0, BOT32 also supports **ESP-NOW** as a transport for the
+Haldex link. This is useful when the MITM ESP32 is installed physically
+separated from BOT32 (e.g., near the rear axle / Haldex unit) and has
+no chassis CAN connection — only its 2 CAN modules dedicated to the
+private Haldex bus MITM.
+
+Selected via `haldex_transport = 1` in the BOT32 UI.
+
+### ESP-NOW wire protocol (BOT32-specific, freshly designed)
+
+All packets share a 2-byte magic header to filter out unrelated ESP-NOW
+traffic, then a 1-byte type, then a type-specific payload.
+
+```
+   Magic: 0xBA 0xB0        ("babo" — BOT32 marker, MITM must match exactly)
+   Type:  1 byte
+   Payload: variable per type
+```
+
+#### Packet type 0x01 — STATE (MITM → BOT32), 10 bytes total
+
+```
+  Offset  Field
+  ──────────────────────────────────────────
+   0      0xBA            (magic byte 0)
+   1      0xB0            (magic byte 1)
+   2      0x01            (type = STATE)
+   3      current_mode    (0..5)
+   4      pump_pct        (0..100, Haldex pump engagement)
+   5      target_pct      (0..100, lock target)
+   6      kmh             (vehicle speed, single byte, low-res)
+   7      pedal_pct       (0..100, throttle pedal)
+   8-9    reserved (set to 0, may be used in future versions)
+```
+
+The MITM ESP32 should send this packet periodically (suggested rate
+5–10 Hz) so BOT32's UI shows live data.
+
+#### Packet type 0x02 — SET_MODE (BOT32 → MITM), 4 bytes total
+
+```
+  Offset  Field
+  ──────────────────────────────────────────
+   0      0xBA            (magic byte 0)
+   1      0xB0            (magic byte 1)
+   2      0x02            (type = SET_MODE)
+   3      mode            (0..5, requested mode)
+```
+
+Sent by BOT32 when the user clicks a mode button in the web UI. The
+MITM ESP32 should apply the new mode immediately and ideally reflect
+it in the next STATE broadcast so the user sees confirmation.
+
+### Pairing (MAC addresses)
+
+BOT32 displays its own ESP32 MAC in the web UI under the ESP-NOW
+sub-card (read-only). Copy this MAC into your MITM firmware so the
+MITM can recognize BOT32 as a peer.
+
+Optionally, set `haldex_espnow_peer_mac` in the UI to the MITM ESP32's
+MAC so BOT32 only accepts STATE packets from that specific device.
+If left empty, BOT32 uses **broadcast** (`FF:FF:FF:FF:FF:FF`) which is
+fine if there are no other ESP-NOW devices nearby with the same magic
+header (very unlikely).
+
+### Minimal ESP-NOW receive handler for the MITM side (reference)
+
+If you're writing your MITM firmware from scratch (or adapting OpenHaldex
+to your own ESP32 hardware), here's the minimal logic to implement on
+the MITM side. The exact code is up to you — this is the protocol spec:
+
+```
+1. WiFi.mode(WIFI_STA)
+2. esp_now_init()
+3. Register BOT32's MAC as peer (or use broadcast)
+4. esp_now_register_recv_cb(on_rx)
+
+on_rx(mac, data, len):
+   if len < 4: return
+   if data[0] != 0xBA or data[1] != 0xB0: return
+   if data[2] == 0x02 and len >= 4:
+       new_mode = data[3]
+       apply_mode(new_mode)   // your existing mode-change logic
+
+every 200 ms:
+   pkt = [0xBA, 0xB0, 0x01, current_mode, pump_pct, target_pct, kmh, pedal_pct, 0, 0]
+   esp_now_send(BOT32_MAC, pkt, 10)
+```
+
+---
+
 ## 🛠 Setting up the external MITM module
 
 You have two clean options. Both keep BOT32 (this repo) clean of any

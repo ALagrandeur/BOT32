@@ -10,6 +10,7 @@
  * https://github.com/Forbes-Automotive/OpenHaldex-C6
  */
 #include "haldex_link.h"
+#include "haldex_espnow.h"
 #include "settings.h"
 #include "config.h"
 #include "serial_proto.h"
@@ -76,9 +77,15 @@ void haldex_link_init() {
   g_state.current_mode        = 0;
   g_state.pedal_pct           = 0;
 
-  // Register listener on BOTH channels; the callback filters by user setting
-  can_register_listener(CAN_CLUSTER, on_haldex_can_rx);
-  can_register_listener(CAN_OBD2,    on_haldex_can_rx);
+  const Settings& s = settings_get();
+  if (s.haldex_transport == 1) {
+    // ESP-NOW transport — wireless link to the MITM ESP32
+    haldex_espnow_init();
+  } else {
+    // CAN transport — listener on both buses, filtered inside callback
+    can_register_listener(CAN_CLUSTER, on_haldex_can_rx);
+    can_register_listener(CAN_OBD2,    on_haldex_can_rx);
+  }
 }
 
 bool haldex_link_set_mode(uint8_t mode) {
@@ -86,22 +93,41 @@ bool haldex_link_set_mode(uint8_t mode) {
   if (!s.haldex_enabled) return false;
   if (mode > 5) return false;   // sanity bound
 
-  CanChannel ch = (s.haldex_bus == 1) ? CAN_OBD2 : CAN_CLUSTER;
-  CanFrame f;
-  f.id  = s.haldex_cmd_id;
-  f.len = 8;
-  f.data[0] = mode;
-  for (uint8_t i = 1; i < 8; i++) f.data[i] = 0;
-
-  bool ok = can_send(ch, f);
-  if (ok) {
-    serial_proto_report_tx(ch, f);
-    Serial.print("[haldex] sent set_mode=");
-    Serial.println(mode);
+  bool ok;
+  if (s.haldex_transport == 1) {
+    // ESP-NOW transport
+    ok = haldex_espnow_send_mode(mode);
+    if (ok) {
+      Serial.print("[haldex/espnow] sent set_mode=");
+      Serial.println(mode);
+    } else {
+      Serial.println("[haldex/espnow] set_mode TX failed");
+    }
   } else {
-    Serial.println("[haldex] set_mode TX failed");
+    // CAN transport
+    CanChannel ch = (s.haldex_bus == 1) ? CAN_OBD2 : CAN_CLUSTER;
+    CanFrame f;
+    f.id  = s.haldex_cmd_id;
+    f.len = 8;
+    f.data[0] = mode;
+    for (uint8_t i = 1; i < 8; i++) f.data[i] = 0;
+    ok = can_send(ch, f);
+    if (ok) {
+      serial_proto_report_tx(ch, f);
+      Serial.print("[haldex/can] sent set_mode=");
+      Serial.println(mode);
+    } else {
+      Serial.println("[haldex/can] set_mode TX failed");
+    }
   }
   return ok;
+}
+
+// Update state from an alternative transport (called by haldex_espnow.cpp
+// when a STATE packet arrives over ESP-NOW). Also usable by future
+// transports (UART, etc.) without changing call sites.
+void haldex_link_update_state(const HaldexState& new_state) {
+  g_state = new_state;
 }
 
 HaldexState haldex_link_get_state() {

@@ -89,4 +89,9 @@ uint32_t haldex_link_get_age_ms();
 // Human-readable name for a mode number (for UI / serial logs).
 const char* haldex_mode_name(uint8_t mode);
 
+// Push a new state from an alternative transport (e.g., the ESP-NOW
+// handler in haldex_espnow.cpp). Used internally to unify state delivery
+// regardless of which transport delivered the frame.
+void haldex_link_update_state(const HaldexState& new_state);
+
 #endif // BOT32_HALDEX_LINK_H

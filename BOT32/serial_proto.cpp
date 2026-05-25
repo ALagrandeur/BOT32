@@ -11,6 +11,7 @@
 #include "lever_decoder.h"
 #include "coolant.h"
 #include "haldex_link.h"
+#include "haldex_espnow.h"
 #include <ArduinoJson.h>
 
 #define BUILD_VERSION  "0.1"
@@ -65,6 +66,9 @@ static void emit_settings() {
   doc["haldex_bus"]         = s.haldex_bus;
   doc["haldex_state_id"]    = s.haldex_state_id;
   doc["haldex_cmd_id"]      = s.haldex_cmd_id;
+  doc["haldex_transport"]   = s.haldex_transport;
+  doc["haldex_espnow_peer_mac"] = s.haldex_espnow_peer_mac;
+  doc["bot32_mac"]          = haldex_espnow_get_my_mac();   // for user pairing
   serializeJson(doc, Serial);
   Serial.println();
 }
@@ -248,10 +252,12 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(doc["value"]          | 0);
     else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(doc["value"]     | 0);
     else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(doc["value"]     | 0);
-    else if (strcmp(key, "haldex_enabled")     == 0) ok = settings_set_haldex_enabled(doc["value"]     | false);
-    else if (strcmp(key, "haldex_bus")         == 0) ok = settings_set_haldex_bus(doc["value"]         | 1);
-    else if (strcmp(key, "haldex_state_id")    == 0) ok = settings_set_haldex_state_id(doc["value"]    | 0x6B0);
-    else if (strcmp(key, "haldex_cmd_id")      == 0) ok = settings_set_haldex_cmd_id(doc["value"]      | 0x6B1);
+    else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(doc["value"]     | false);
+    else if (strcmp(key, "haldex_bus")            == 0) ok = settings_set_haldex_bus(doc["value"]         | 1);
+    else if (strcmp(key, "haldex_state_id")       == 0) ok = settings_set_haldex_state_id(doc["value"]    | 0x6B0);
+    else if (strcmp(key, "haldex_cmd_id")         == 0) ok = settings_set_haldex_cmd_id(doc["value"]      | 0x6B1);
+    else if (strcmp(key, "haldex_transport")      == 0) ok = settings_set_haldex_transport(doc["value"]   | 0);
+    else if (strcmp(key, "haldex_espnow_peer_mac") == 0) ok = settings_set_haldex_espnow_peer_mac(doc["value"] | "");
     else { emit_ack("set", false, "unknown key"); return; }
     emit_ack("set", ok);
     if (ok) emit_settings();

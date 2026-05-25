@@ -339,23 +339,60 @@
           <span>🏁 <b>Enable Haldex link</b> (active la communication avec le module MITM)</span>
         </label>
       </div>
+
       <div class="row">
-        <label>Bus CAN (où est branché le MITM)<br>
-          <select id="set-haldex_bus">
-            <option value="0">CAN0 (cluster bus)</option>
-            <option value="1">CAN1 (OBD2 / chassis bus) — défaut</option>
+        <label>Transport (comment BOT32 dialogue avec le MITM ESP32)<br>
+          <select id="set-haldex_transport">
+            <option value="0">CAN (les 2 sur le même bus CAN — défaut)</option>
+            <option value="1">ESP-NOW (sans fil, peer-to-peer)</option>
           </select>
+          <span class="muted small">Reboot ESP32 requis après changement de transport.</span>
         </label>
       </div>
-      <div class="row">
-        <label>State broadcast CAN ID<br>
-          <input type="text" id="set-haldex_state_id" class="hex-input" placeholder="0x6B0">
-          <span class="muted small">ID que le MITM émet périodiquement (défaut <code>0x6B0</code>)</span>
-        </label>
-        <label>Command CAN ID<br>
-          <input type="text" id="set-haldex_cmd_id" class="hex-input" placeholder="0x6B1">
-          <span class="muted small">ID utilisé par BOT32 pour envoyer "set mode" (défaut <code>0x6B1</code>)</span>
-        </label>
+
+      <!-- CAN-specific fields (visible when transport=0) -->
+      <div class="sub-card transport-can-fields">
+        <h5 class="subtitle" style="margin-top:0">📡 Paramètres CAN (transport = CAN)</h5>
+        <div class="row">
+          <label>Bus CAN (où est branché le MITM)<br>
+            <select id="set-haldex_bus">
+              <option value="0">CAN0 (cluster bus)</option>
+              <option value="1">CAN1 (OBD2 / chassis bus) — défaut</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label>State broadcast CAN ID<br>
+            <input type="text" id="set-haldex_state_id" class="hex-input" placeholder="0x6B0">
+            <span class="muted small">ID que le MITM émet périodiquement (défaut <code>0x6B0</code>)</span>
+          </label>
+          <label>Command CAN ID<br>
+            <input type="text" id="set-haldex_cmd_id" class="hex-input" placeholder="0x6B1">
+            <span class="muted small">ID utilisé par BOT32 pour envoyer "set mode" (défaut <code>0x6B1</code>)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ESP-NOW-specific fields (visible when transport=1) -->
+      <div class="sub-card transport-espnow-fields" style="display:none">
+        <h5 class="subtitle" style="margin-top:0">📶 Paramètres ESP-NOW (transport = ESP-NOW)</h5>
+        <div class="row">
+          <label>BOT32 MAC address (à copier dans le firmware du MITM ESP32)<br>
+            <input type="text" id="haldex-my-mac" readonly value="—">
+            <span class="muted small">L'autre ESP32 doit autoriser ce MAC comme peer ESP-NOW.</span>
+          </label>
+        </div>
+        <div class="row">
+          <label>Peer MAC du MITM ESP32 (optionnel)<br>
+            <input type="text" id="set-haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF (broadcast)">
+            <span class="muted small">Format <code>AA:BB:CC:DD:EE:FF</code>. Vide = broadcast (accepte n'importe quel peer ESP-NOW avec le magic header BOT32). Pour production, mets le MAC précis du MITM.</span>
+          </label>
+        </div>
+        <p class="muted small">
+          ⚠ Le MITM ESP32 doit implémenter le protocole ESP-NOW BOT32 décrit dans
+          <code>docs/haldex_integration.md</code> (header magic <code>0xBA 0xB0</code>,
+          packet types 0x01=STATE / 0x02=SET_MODE).
+        </p>
       </div>
 
       <h4 class="subtitle">📊 État live du module Haldex</h4>

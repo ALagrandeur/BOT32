@@ -46,13 +46,23 @@ struct Settings {
   uint16_t bench_map_mbar;       // 0..3000 mbar (Motor_09 byte 0 via coolant mapping)
   uint8_t  bench_test_bus;       // 0 = TX on CAN_CLUSTER, 1 = TX on CAN_OBD2
 
-  // Haldex link — talks to an external Haldex MITM device over CAN.
+  // Haldex link — talks to an external Haldex MITM device.
   // BOT32 acts as a client (reads state broadcasts, sends mode commands).
-  // The actual Haldex bus MITM runs on separate hardware (e.g., OpenHaldex-C6).
+  // The actual Haldex bus MITM runs on separate hardware (e.g., OpenHaldex-C6
+  // OR a user-built ESP32 + 2 CAN modules setup).
   bool     haldex_enabled;       // master toggle, default false
-  uint8_t  haldex_bus;           // 0 = CAN_CLUSTER, 1 = CAN_OBD2 (default 1)
-  uint16_t haldex_state_id;      // state broadcast CAN ID (default 0x6B0)
-  uint16_t haldex_cmd_id;        // mode command CAN ID (default 0x6B1)
+  uint8_t  haldex_bus;           // 0 = CAN_CLUSTER, 1 = CAN_OBD2 (used if haldex_transport=0)
+  uint16_t haldex_state_id;      // state broadcast CAN ID (used if transport=0)
+  uint16_t haldex_cmd_id;        // mode command CAN ID (used if transport=0)
+
+  // Transport selection: 0 = CAN (both devices share a CAN bus, OpenHaldex
+  // style), 1 = ESP-NOW (wireless peer-to-peer between BOT32 and the MITM
+  // ESP32, useful when the MITM has no chassis CAN connection).
+  uint8_t  haldex_transport;     // 0 = CAN, 1 = ESP-NOW (default 0)
+  // Peer MAC for ESP-NOW. Format "AA:BB:CC:DD:EE:FF". Empty string => use
+  // broadcast (FF:FF:FF:FF:FF:FF). Recommended: set to the MITM ESP32 MAC
+  // for production to avoid receiving from other ESP-NOW devices nearby.
+  char     haldex_espnow_peer_mac[18];
 
   uint8_t  version;              // settings struct version (for migration)
 };
@@ -87,6 +97,8 @@ bool settings_set_haldex_enabled(bool v);
 bool settings_set_haldex_bus(uint8_t v);
 bool settings_set_haldex_state_id(uint16_t v);
 bool settings_set_haldex_cmd_id(uint16_t v);
+bool settings_set_haldex_transport(uint8_t v);
+bool settings_set_haldex_espnow_peer_mac(const char* v);
 
 // Reset to defaults (factory reset).
 void settings_reset_to_defaults();

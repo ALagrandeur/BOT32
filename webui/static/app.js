@@ -84,6 +84,7 @@ const SETTING_KEYS = [
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
   // Haldex link
   "haldex_enabled", "haldex_bus", "haldex_state_id", "haldex_cmd_id",
+  "haldex_transport", "haldex_espnow_peer_mac",
 ];
 
 function applySettings(s) {
@@ -274,7 +275,27 @@ $("btn-push-all").addEventListener("click", () => {
 
 socket.on("settings", (s) => {
   applySettings(s);
+  // Haldex: show/hide CAN vs ESP-NOW sub-cards based on transport
+  updateHaldexTransportUI(s.haldex_transport || 0);
+  // Display BOT32 MAC (read-only, for the user to copy into the MITM ESP32 firmware)
+  const macEl = document.getElementById("haldex-my-mac");
+  if (macEl && s.bot32_mac) macEl.value = s.bot32_mac;
 });
+
+function updateHaldexTransportUI(transport) {
+  const canFields = document.querySelector(".transport-can-fields");
+  const espnowFields = document.querySelector(".transport-espnow-fields");
+  if (canFields)    canFields.style.display    = (transport == 1) ? "none" : "";
+  if (espnowFields) espnowFields.style.display = (transport == 1) ? "" : "none";
+}
+
+// Also react when user changes the transport dropdown directly
+const transportSel = document.getElementById("set-haldex_transport");
+if (transportSel) {
+  transportSel.addEventListener("change", (e) => {
+    updateHaldexTransportUI(+e.target.value);
+  });
+}
 
 // ===========================================================
 //  Live status (NO mode display per user request)

@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 4   // bumped: added haldex_* fields (v1.3 Haldex link)
+#define SETTINGS_VERSION 5   // bumped: added haldex_transport + haldex_espnow_peer_mac (v1.4)
 
 static Settings make_defaults() {
   Settings s;
@@ -36,6 +36,8 @@ static Settings make_defaults() {
   s.haldex_bus         = 1;      // default: CAN_OBD2 (chassis CAN)
   s.haldex_state_id    = 0x6B0;  // default: documented broadcast ID
   s.haldex_cmd_id      = 0x6B1;  // default: command ID (user adjusts to match)
+  s.haldex_transport   = 0;      // default: CAN (0). User selects 1 for ESP-NOW.
+  s.haldex_espnow_peer_mac[0] = 0;  // default empty => use broadcast
   s.version           = SETTINGS_VERSION;
   return s;
 }
@@ -75,6 +77,13 @@ void settings_init() {
   current.haldex_bus         = prefs.getUChar("hdx_bus", 1);
   current.haldex_state_id    = prefs.getUShort("hdx_sid", 0x6B0);
   current.haldex_cmd_id      = prefs.getUShort("hdx_cid", 0x6B1);
+  current.haldex_transport   = prefs.getUChar("hdx_tr", 0);
+  {
+    String mac = prefs.getString("hdx_mac", "");
+    strncpy(current.haldex_espnow_peer_mac, mac.c_str(),
+            sizeof(current.haldex_espnow_peer_mac) - 1);
+    current.haldex_espnow_peer_mac[sizeof(current.haldex_espnow_peer_mac) - 1] = 0;
+  }
   current.version           = SETTINGS_VERSION;
   Serial.println("[NVS] Settings loaded from flash");
 }
@@ -181,6 +190,17 @@ bool settings_set_haldex_cmd_id(uint16_t v) {
   current.haldex_cmd_id = v;
   return save_ushort("hdx_cid", v);
 }
+bool settings_set_haldex_transport(uint8_t v) {
+  current.haldex_transport = (v > 1) ? 0 : v;
+  return prefs.putUChar("hdx_tr", current.haldex_transport) > 0;
+}
+bool settings_set_haldex_espnow_peer_mac(const char* v) {
+  if (!v) return false;
+  strncpy(current.haldex_espnow_peer_mac, v,
+          sizeof(current.haldex_espnow_peer_mac) - 1);
+  current.haldex_espnow_peer_mac[sizeof(current.haldex_espnow_peer_mac) - 1] = 0;
+  return prefs.putString("hdx_mac", current.haldex_espnow_peer_mac) > 0;
+}
 
 void settings_reset_to_defaults() {
   current = make_defaults();
@@ -207,6 +227,8 @@ void settings_reset_to_defaults() {
   prefs.putUChar("hdx_bus", current.haldex_bus);
   prefs.putUShort("hdx_sid", current.haldex_state_id);
   prefs.putUShort("hdx_cid", current.haldex_cmd_id);
+  prefs.putUChar("hdx_tr", current.haldex_transport);
+  prefs.putString("hdx_mac", current.haldex_espnow_peer_mac);
   prefs.putUChar("version", current.version);
   Serial.println("[NVS] Settings reset to defaults");
 }
