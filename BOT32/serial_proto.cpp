@@ -14,7 +14,7 @@
 #include "haldex_espnow.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "0.1"
+#define BUILD_VERSION  "1.5.2"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
