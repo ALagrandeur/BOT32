@@ -219,7 +219,7 @@ Si tu as un autre device CAN capable de générer du traffic à 500 kbps :
 ### ☐ 7.5 Cléf ON moteur OFF
 - ESP32 boot
 - Web UI (si laptop branché) : tu dois voir bus stats RX qui montent (cluster broadcaste WBA_03, gateway broadcaste Wake + Engine_Code + ESP/TSK + Airbag etc.)
-- Mode passe à SILENT (lever en P) ou BOOST si déjà en S/M/N
+- Mode passe à SILENT (lever en P/R/N/D) ou BOOST si déjà en S/M
 
 ### ☐ 7.6 Test BOOST sans démarrer
 - Met le levier en S

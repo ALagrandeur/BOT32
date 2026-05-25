@@ -21,7 +21,7 @@ struct Settings {
   uint16_t obd2_poll_hz;     // default 5
 
   // Cluster TX rate
-  uint16_t tx_rate_hz;       // default 20 (Motor_09)
+  uint16_t tx_rate_hz;       // default 30 Hz (v1.5.2+) (Motor_09)
 
   // Cluster CAN IDs (in case different cluster variant)
   uint16_t cluster_motor09_id;  // default 0x647

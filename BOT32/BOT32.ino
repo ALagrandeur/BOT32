@@ -18,7 +18,7 @@
  * State machine:
  *   BOOT       (5s listen-only at startup)
  *   SILENT     (lever P/R/D: no TX, cluster shows real coolant)
- *   BOOST      (lever S/M/N: poll MAP via OBD2, TX Motor_09 override)
+ *   BOOST      (lever S/M: poll MAP via OBD2, TX Motor_09 override)
  *   SAFE_FAULT (TX disabled by user or fatal error: no TX)
  *
  * Libraries required (install via Arduino IDE Library Manager):

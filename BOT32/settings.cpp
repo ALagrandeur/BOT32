@@ -24,7 +24,7 @@ static Settings make_defaults() {
   s.cluster_wba03_id   = CAN_ID_WBA_03;
   s.tx_enabled        = true;
   s.listen_only_boot  = true;
-  s.force_tx_always   = false;   // default: only TX in BOOST mode (S/M/N lever)
+  s.force_tx_always   = false;   // default: only TX in BOOST mode (S/M lever)
   s.block_airbag      = true;    // default: airbag IDs blocked (SAFETY)
   s.bench_test_enabled = false;  // default: bench mode OFF
   s.bench_rpm          = 1500;

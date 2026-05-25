@@ -46,15 +46,6 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define COOLANT_TEMP_MAX_C      130.0f
 
 // =============================================================
-//  Cluster dead zone (gauge needle damping)
-//    For any real coolant in [80, 110]C, cluster holds needle at center.
-//    Mapping must SKIP this zone to ensure visible needle movement.
-// =============================================================
-#define CLUSTER_DEAD_ZONE_LOW_C   80.0f
-#define CLUSTER_DEAD_ZONE_HIGH_C  110.0f
-#define DEAD_ZONE_SAFE_MARGIN_C   1.0f
-
-// =============================================================
 //  MAP -> boost mapping defaults (v2.0 — vehicle-validated on Alltrack 2017 EA888)
 //      MAP at idle (vacuum)    ~250 mbar      -> 50 C (cold needle)
 //      MAP at full boost       ~2068 mbar     -> 130 C (red zone)

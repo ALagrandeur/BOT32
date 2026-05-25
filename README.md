@@ -7,13 +7,13 @@ Logic ported from [mk7-cluster-bench-controller](https://github.com/ALagrandeur/
 
 ## What it does
 
-When the gear lever is in **S/M/N**, BOT32:
+When the gear lever is in **S/M**, BOT32:
 1. Polls intake manifold absolute pressure (MAP) via OBD-II UDS query DID `0x39C0` @ 5 Hz
-2. Converts MAP value to a fake coolant byte (with cluster dead zone skip)
-3. Broadcasts the fake `Motor_09 (0x647)` on the cluster CAN @ 20 Hz
+2. Converts MAP value to a coolant byte (linear mapping, 250→2068 mbar = 50→130°C)
+3. Broadcasts the override `Motor_09 (0x647)` on the cluster CAN @ 30 Hz
 4. Cluster shows the boost pressure on the analog coolant temperature needle
 
-In **P/R/D**, BOT32 stays silent and the cluster displays real engine coolant.
+In **P/R/N/D**, BOT32 stays silent and the cluster displays real engine coolant.
 
 ## Architecture
 
@@ -49,8 +49,8 @@ In **P/R/D**, BOT32 stays silent and the cluster displays real engine coolant.
 | Lever | Mode | Behavior |
 |---|---|---|
 | Boot (5s) | BOOT | Listen-only, no TX |
-| P, R, D | SILENT | No TX. Cluster shows real engine coolant. |
-| S, M, N | BOOST | Poll MAP, TX Motor_09 override. |
+| P, R, N, D | SILENT | No TX. Cluster shows real engine coolant. |
+| S, M | BOOST | Poll MAP, TX Motor_09 override. |
 | TX disabled by user | SAFE_FAULT | No TX. Failsafe. |
 
 ## Hardware
