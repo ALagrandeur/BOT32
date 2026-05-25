@@ -205,20 +205,47 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 Planned features not yet implemented:
 
 - 🔮 **Clear DTC via MFSW button combo** — driver presses combo at steering wheel, BOT32 sends UDS Clear DTC to all ECUs. Needs MFSW frame sniff + UDS ECU list.
-- 🔮 **Haldex AWD — Burnout + Launch race modes** (motorsport, closed-circuit) — 3 modes: OFF / BURNOUT (pump 0% = FWD pre-stage tire warm-up) / LAUNCH (pump 100% = 50/50 AWD lock at the line). Auto-revert timers for safety. Needs CAN MITM hardware + Haldex bus reverse-engineering.
 
-See [docs/future_features.md](docs/future_features.md) for full technical
-requirements, effort estimates, and safety considerations per feature.
+Implemented since v1.3:
 
-## License
+- 🏁 **Haldex AWD link** (race modes) — BOT32 acts as a client to an external
+  Haldex MITM module on the chassis CAN bus. Provides web UI buttons for
+  Stock / FWD (burnout) / 5050 (launch) / 6040 / 7525 / Expert modes,
+  plus live state monitoring (pump %, target %, vehicle speed, pedal). The
+  actual Haldex bus MITM happens on separate hardware — see
+  [docs/haldex_integration.md](docs/haldex_integration.md).
 
-MIT — see [LICENSE](LICENSE).
+See [docs/future_features.md](docs/future_features.md) for the remaining
+planned features.
 
-## Credits
+## Acknowledgments
 
+The Haldex AWD integration in BOT32 is designed to interoperate with
+[**OpenHaldex-C6** by **Forbes Automotive**](https://github.com/Forbes-Automotive/OpenHaldex-C6),
+a separate source-available project that handles the Haldex bus
+man-in-the-middle on its own dedicated hardware.
+
+BOT32 implements **only the client side** of the publicly documented
+CAN broadcast/command protocol — using freshly-written code (MIT) that
+references protocol facts (CAN IDs, mode numbering) but does **not** include
+any source code, PCB designs, or compiled binaries from OpenHaldex-C6.
+
+Users who want the actual Haldex MITM functionality should:
+- Use the official OpenHaldex-C6 hardware, or
+- Fork the OpenHaldex-C6 firmware to their own ESP32 hardware (permitted by
+  Forbes Automotive's FASL v1.0 license for personal/non-commercial use).
+
+**Huge thanks to Forbes Automotive** for the open reverse-engineering work
+on the VW MQB Haldex platform that makes this integration possible.
+
+Other credits:
 - [commaai/opendbc](https://github.com/commaai/opendbc) — VW MQB CAN message definitions
 - [commaai/openpilot](https://github.com/commaai/openpilot) — MQB CRC8H2F algorithm
 - [r00li/CarCluster](https://github.com/r00li/CarCluster) — Motor_09 magic bytes
 - ESP32 [TWAI driver](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html) (Espressif)
 - [ACAN2515](https://github.com/pierremolinaro/acan2515) by Pierre Molinaro
 - [ArduinoJson](https://arduinojson.org/) by Benoit Blanchon
+
+## License
+
+MIT — see [LICENSE](LICENSE).

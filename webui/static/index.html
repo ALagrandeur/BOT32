@@ -319,6 +319,121 @@
     </div>
   </details>
 
+  <details class="card card-haldex collapsible">
+    <summary>
+      <h3 class="card-title">🏁 Haldex AWD link (race modes)</h3>
+      <span class="summary-hint muted small">Drag/track : OFF / FWD burnout / 50-50 launch — via MITM externe</span>
+    </summary>
+    <div class="collapsible-body">
+
+      <div class="warning-box" style="background: #2a1820; border-color: #ff8c00; color: #ffcb8a; display: block;">
+        🏁 <b>MOTORSPORT — Circuit fermé seulement.</b> BOT32 envoie des commandes
+        à un module Haldex MITM externe (ESP32 séparé) qui module la pompe Haldex.
+        <b>Ne pas utiliser sur la route publique.</b>
+      </div>
+
+      <h4 class="subtitle">⚙️ Configuration</h4>
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="set-haldex_enabled">
+          <span>🏁 <b>Enable Haldex link</b> (active la communication avec le module MITM)</span>
+        </label>
+      </div>
+      <div class="row">
+        <label>Bus CAN (où est branché le MITM)<br>
+          <select id="set-haldex_bus">
+            <option value="0">CAN0 (cluster bus)</option>
+            <option value="1">CAN1 (OBD2 / chassis bus) — défaut</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>State broadcast CAN ID<br>
+          <input type="text" id="set-haldex_state_id" class="hex-input" placeholder="0x6B0">
+          <span class="muted small">ID que le MITM émet périodiquement (défaut <code>0x6B0</code>)</span>
+        </label>
+        <label>Command CAN ID<br>
+          <input type="text" id="set-haldex_cmd_id" class="hex-input" placeholder="0x6B1">
+          <span class="muted small">ID utilisé par BOT32 pour envoyer "set mode" (défaut <code>0x6B1</code>)</span>
+        </label>
+      </div>
+
+      <h4 class="subtitle">📊 État live du module Haldex</h4>
+      <div class="grid grid-3" id="haldex-live-grid">
+        <div>
+          <span class="lbl">Mode actuel</span>
+          <span id="haldex-live-mode" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Pump engagement %</span>
+          <span id="haldex-live-pump" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Lock target %</span>
+          <span id="haldex-live-target" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Vitesse (km/h)</span>
+          <span id="haldex-live-speed" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Pédale %</span>
+          <span id="haldex-live-pedal" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Connexion MITM</span>
+          <span id="haldex-live-status" class="value-big">—</span>
+          <span id="haldex-live-age" class="lbl">—</span>
+        </div>
+      </div>
+
+      <h4 class="subtitle">🎮 Mode controls (boutons live)</h4>
+      <div class="race-buttons-preview">
+        <button class="race-btn race-btn-off" data-haldex-mode="0">🅾 STOCK (OFF)</button>
+        <button class="race-btn race-btn-burnout" data-haldex-mode="1">🔥 FWD (burnout)</button>
+        <button class="race-btn race-btn-launch" data-haldex-mode="2">🚀 5050 (launch)</button>
+      </div>
+      <div class="race-buttons-preview" style="margin-top: 6px;">
+        <button class="race-btn race-btn-other" data-haldex-mode="3">60/40</button>
+        <button class="race-btn race-btn-other" data-haldex-mode="4">75/25</button>
+        <button class="race-btn race-btn-other" data-haldex-mode="5">⚙ Expert</button>
+      </div>
+      <p class="muted small" style="margin-top: 8px;" id="haldex-cmd-status">
+        Cliquer sur un mode pour envoyer la commande au module MITM.
+      </p>
+
+      <h4 class="subtitle">📋 Raw payload du dernier broadcast</h4>
+      <div class="frame-preview">
+        <code id="haldex-live-raw">—</code>
+      </div>
+
+      <details class="nested-details">
+        <summary class="muted small">📡 Architecture (cliquer pour voir)</summary>
+        <p class="muted small">
+          BOT32 est le <b>client</b>. Le <b>module MITM</b> (sur un 2ème ESP32
+          ou hardware OpenHaldex-C6 officiel) fait le travail réel d'interception
+          du bus Haldex entre PCM et contrôleur AWD. BOT32 ne fait que :
+        </p>
+        <ul class="todo-list">
+          <li>📥 Écouter le <b>state broadcast</b> sur le CAN ID configuré (défaut <code>0x6B0</code>)</li>
+          <li>📤 Envoyer une <b>command frame</b> "set mode" (mode N° en byte 0 du frame configuré, défaut <code>0x6B1</code>)</li>
+        </ul>
+        <p class="muted small">
+          📖 Setup du module MITM : voir <code>docs/haldex_integration.md</code>
+        </p>
+      </details>
+
+      <div class="attribution-box">
+        🙏 <b>Protocole + concept :</b> ce module dialogue avec un device externe
+        utilisant le protocole CAN publié par
+        <a href="https://github.com/Forbes-Automotive/OpenHaldex-C6" target="_blank" rel="noopener">
+          OpenHaldex-C6 par Forbes Automotive</a>.
+        BOT32 implémente seulement le côté client (code frais MIT) et n'inclut
+        aucun code source du projet OpenHaldex.
+      </div>
+    </div>
+  </details>
+
   <details class="card card-safety collapsible">
     <summary>
       <h3 class="card-title">🛡 Sécurité & Maintenance</h3>
@@ -422,103 +537,7 @@
     </div>
   </details>
 
-  <details class="card collapsible card-roadmap">
-    <summary>
-      <h3 class="card-title">🔮 Haldex AWD — Burnout + Launch race modes <span class="badge-soon">Coming soon</span></h3>
-      <span class="summary-hint muted small">🏁 Circuit fermé seulement — drag / track day</span>
-    </summary>
-    <div class="collapsible-body">
 
-      <div class="warning-box" style="background: #2a1820; border-color: #ff8c00; color: #ffcb8a; display: block;">
-        🏁 <b>MOTORSPORT — Closed-circuit only.</b> Cette feature est conçue pour drag strip / track day.
-        <b>Ne pas utiliser sur la route publique.</b> Voir <code>docs/future_features.md</code> pour les considérations safety.
-      </div>
-
-      <p class="muted small">
-        Le Haldex (4Motion) du Alltrack module une pompe 0–100% :
-        <b>0% = FWD pur</b> (traction avant), <b>100% = ~50/50</b> (max grip AWD).
-        BOT32 va forcer ces 2 extrêmes pour 2 phases du run drag :
-      </p>
-
-      <div class="roadmap-status">
-        <span class="status-badge status-pending">🚧 Pas encore codé</span>
-        <span class="status-badge status-warning">⚠ Nécessite hardware additionnel (MITM)</span>
-      </div>
-
-      <h4 class="subtitle">🎯 3 modes de course (envisagés)</h4>
-      <div class="race-modes-preview">
-        <div class="race-mode-card race-mode-off">
-          <div class="race-mode-icon">🅾</div>
-          <div class="race-mode-label">OFF</div>
-          <div class="race-mode-desc">Pass-through. Haldex contrôle normal. Mode défaut.</div>
-        </div>
-        <div class="race-mode-card race-mode-burnout">
-          <div class="race-mode-icon">🔥</div>
-          <div class="race-mode-label">BURNOUT</div>
-          <div class="race-mode-desc">Pompe forcée à <b>0%</b> → FWD pur. Réchauffe les pneus avant à l'arrêt avant la course. Auto-revert après 10 sec.</div>
-        </div>
-        <div class="race-mode-card race-mode-launch">
-          <div class="race-mode-icon">🚀</div>
-          <div class="race-mode-label">LAUNCH</div>
-          <div class="race-mode-desc">Pompe forcée à <b>100%</b> → 50/50 AWD lock. Max grip au départ. Auto-revert après 15 sec ou >60 km/h.</div>
-        </div>
-      </div>
-
-      <h4 class="subtitle">📊 Live monitoring (toujours, même en OFF)</h4>
-      <div class="row disabled-row">
-        <label>Haldex pump % (live, depuis PCM)
-          <input type="text" value="--%" disabled>
-        </label>
-        <label>Mode actif
-          <input type="text" value="OFF" disabled>
-        </label>
-        <label>Timer auto-revert
-          <input type="text" value="--" disabled>
-        </label>
-      </div>
-
-      <h4 class="subtitle">🎮 Race control buttons (placeholder)</h4>
-      <div class="race-buttons-preview disabled-row">
-        <button class="race-btn race-btn-off" disabled>🅾 OFF (default)</button>
-        <button class="race-btn race-btn-burnout" disabled>🔥 BURNOUT (10s)</button>
-        <button class="race-btn race-btn-launch" disabled>🚀 LAUNCH (15s)</button>
-      </div>
-
-      <h4 class="subtitle">Hardware additionnel requis</h4>
-      <p class="muted small">
-        Le bus Haldex est <b>privé</b> entre PCM et contrôleur AWD — on ne peut
-        pas juste T-tap. Pour <b>override</b> il faut un <b>man-in-the-middle</b> :
-        couper physiquement le bus et insérer BOT32 (ou un 2nd ESP32 dédié).
-      </p>
-      <ul class="todo-list">
-        <li><b>Option A</b> : utiliser CAN0+CAN1 de BOT32 actuel en MITM (risque si BOT32 reboot)</li>
-        <li><b>Option B</b> : 2ème ESP32+HAT dédié au Haldex MITM (~$40, plus propre)</li>
-        <li><b>Option C</b> : passive READ-ONLY (sniff seulement, pas de contrôle) — recommandé pour valider la lecture en 1er</li>
-        <li>🛡 <b>Kill switch hardware</b> : relais qui bridge directement le bus Haldex en cas de panic — câblé sur un bouton dashboard</li>
-      </ul>
-
-      <h4 class="subtitle">Ce qu'il manque pour l'implémenter</h4>
-      <ul class="todo-list">
-        <li>📐 Schéma de câblage MK7 Alltrack 2017 4Motion pour localiser le bus Haldex</li>
-        <li>🔍 Sniffer le bus Haldex pour identifier le CAN ID + byte position du pump duty</li>
-        <li>🛡 Identifier si le frame Haldex utilise MQB CRC + counter (probable)</li>
-        <li>🧠 Coder <code>haldex_decoder</code> (sniff) + <code>can_bridge</code> (MITM si override)</li>
-        <li>⏱ Coder le timer auto-revert (10s burnout, 15s launch)</li>
-        <li>🚨 Coder le watchdog bus (auto-revert OFF si latence >100ms)</li>
-      </ul>
-
-      <h4 class="subtitle">Effort estimé</h4>
-      <p class="muted small">
-        ~15-25 h pour READ-ONLY + 2 modes simples (plus simple que slider continu original).<br>
-        Étape 1 (recommandée) : READ-ONLY pour valider le bus + format des frames.<br>
-        Étape 2 : MITM + override des 2 modes.
-      </p>
-
-      <p class="muted small">
-        📖 Détails techniques complets : <code>docs/future_features.md</code> — Feature 2
-      </p>
-    </div>
-  </details>
 
 </main>
 

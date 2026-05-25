@@ -33,6 +33,7 @@
 #include "settings.h"
 #include "serial_proto.h"
 #include "bench_test.h"
+#include "haldex_link.h"
 
 // =============================================================
 //  State
@@ -86,6 +87,7 @@ void setup() {
     lever_init();
     coolant_sniffer_init();   // sniff real Motor_09 from cluster bus
     bench_test_init();
+    haldex_link_init();       // client for external Haldex MITM module
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));

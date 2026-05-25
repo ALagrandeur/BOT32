@@ -46,6 +46,14 @@ struct Settings {
   uint16_t bench_map_mbar;       // 0..3000 mbar (Motor_09 byte 0 via coolant mapping)
   uint8_t  bench_test_bus;       // 0 = TX on CAN_CLUSTER, 1 = TX on CAN_OBD2
 
+  // Haldex link — talks to an external Haldex MITM device over CAN.
+  // BOT32 acts as a client (reads state broadcasts, sends mode commands).
+  // The actual Haldex bus MITM runs on separate hardware (e.g., OpenHaldex-C6).
+  bool     haldex_enabled;       // master toggle, default false
+  uint8_t  haldex_bus;           // 0 = CAN_CLUSTER, 1 = CAN_OBD2 (default 1)
+  uint16_t haldex_state_id;      // state broadcast CAN ID (default 0x6B0)
+  uint16_t haldex_cmd_id;        // mode command CAN ID (default 0x6B1)
+
   uint8_t  version;              // settings struct version (for migration)
 };
 
@@ -75,6 +83,10 @@ bool settings_set_bench_test_enabled(bool v);
 bool settings_set_bench_rpm(uint16_t v);
 bool settings_set_bench_map_mbar(uint16_t v);
 bool settings_set_bench_test_bus(uint8_t v);
+bool settings_set_haldex_enabled(bool v);
+bool settings_set_haldex_bus(uint8_t v);
+bool settings_set_haldex_state_id(uint16_t v);
+bool settings_set_haldex_cmd_id(uint16_t v);
 
 // Reset to defaults (factory reset).
 void settings_reset_to_defaults();

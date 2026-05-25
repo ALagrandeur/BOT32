@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 3   // bumped when new fields added (force_tx_always, block_airbag, bench_*)
+#define SETTINGS_VERSION 4   // bumped: added haldex_* fields (v1.3 Haldex link)
 
 static Settings make_defaults() {
   Settings s;
@@ -32,6 +32,10 @@ static Settings make_defaults() {
   s.bench_rpm          = 1500;
   s.bench_map_mbar     = 1500;
   s.bench_test_bus     = 0;      // default: CAN_CLUSTER
+  s.haldex_enabled     = false;  // default: Haldex link OFF (safety)
+  s.haldex_bus         = 1;      // default: CAN_OBD2 (chassis CAN)
+  s.haldex_state_id    = 0x6B0;  // default: documented broadcast ID
+  s.haldex_cmd_id      = 0x6B1;  // default: command ID (user adjusts to match)
   s.version           = SETTINGS_VERSION;
   return s;
 }
@@ -67,6 +71,10 @@ void settings_init() {
   current.bench_rpm          = prefs.getUShort("bch_rpm", 1500);
   current.bench_map_mbar     = prefs.getUShort("bch_map", 1500);
   current.bench_test_bus     = prefs.getUChar("bch_bus", 0);
+  current.haldex_enabled     = prefs.getBool("hdx_en", false);
+  current.haldex_bus         = prefs.getUChar("hdx_bus", 1);
+  current.haldex_state_id    = prefs.getUShort("hdx_sid", 0x6B0);
+  current.haldex_cmd_id      = prefs.getUShort("hdx_cid", 0x6B1);
   current.version           = SETTINGS_VERSION;
   Serial.println("[NVS] Settings loaded from flash");
 }
@@ -157,6 +165,22 @@ bool settings_set_bench_test_bus(uint8_t v) {
   current.bench_test_bus = (v > 1) ? 0 : v;
   return prefs.putUChar("bch_bus", current.bench_test_bus) > 0;
 }
+bool settings_set_haldex_enabled(bool v) {
+  current.haldex_enabled = v;
+  return save_bool("hdx_en", v);
+}
+bool settings_set_haldex_bus(uint8_t v) {
+  current.haldex_bus = (v > 1) ? 1 : v;
+  return prefs.putUChar("hdx_bus", current.haldex_bus) > 0;
+}
+bool settings_set_haldex_state_id(uint16_t v) {
+  current.haldex_state_id = v;
+  return save_ushort("hdx_sid", v);
+}
+bool settings_set_haldex_cmd_id(uint16_t v) {
+  current.haldex_cmd_id = v;
+  return save_ushort("hdx_cid", v);
+}
 
 void settings_reset_to_defaults() {
   current = make_defaults();
@@ -179,6 +203,10 @@ void settings_reset_to_defaults() {
   prefs.putUShort("bch_rpm", current.bench_rpm);
   prefs.putUShort("bch_map", current.bench_map_mbar);
   prefs.putUChar("bch_bus", current.bench_test_bus);
+  prefs.putBool("hdx_en", current.haldex_enabled);
+  prefs.putUChar("hdx_bus", current.haldex_bus);
+  prefs.putUShort("hdx_sid", current.haldex_state_id);
+  prefs.putUShort("hdx_cid", current.haldex_cmd_id);
   prefs.putUChar("version", current.version);
   Serial.println("[NVS] Settings reset to defaults");
 }

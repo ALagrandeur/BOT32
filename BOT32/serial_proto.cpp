@@ -10,6 +10,7 @@
 #include "obd2.h"
 #include "lever_decoder.h"
 #include "coolant.h"
+#include "haldex_link.h"
 #include <ArduinoJson.h>
 
 #define BUILD_VERSION  "0.1"
@@ -60,6 +61,10 @@ static void emit_settings() {
   doc["bench_rpm"]          = s.bench_rpm;
   doc["bench_map_mbar"]     = s.bench_map_mbar;
   doc["bench_test_bus"]     = s.bench_test_bus;
+  doc["haldex_enabled"]     = s.haldex_enabled;
+  doc["haldex_bus"]         = s.haldex_bus;
+  doc["haldex_state_id"]    = s.haldex_state_id;
+  doc["haldex_cmd_id"]      = s.haldex_cmd_id;
   serializeJson(doc, Serial);
   Serial.println();
 }
@@ -96,6 +101,20 @@ static void emit_status() {
   float map = obd2_get_last_map_mbar();
   doc["map_mbar"]     = map >= 0 ? map : (float)-1;
   doc["map_age_ms"]   = obd2_get_map_age_ms();
+
+  // Haldex link state (from external MITM module, see haldex_link.cpp)
+  HaldexState hx = haldex_link_get_state();
+  JsonObject hx_obj = doc["haldex"].to<JsonObject>();
+  hx_obj["valid"]               = hx.valid;
+  hx_obj["age_ms"]              = haldex_link_get_age_ms();
+  hx_obj["current_mode"]        = hx.current_mode;
+  hx_obj["current_mode_name"]   = haldex_mode_name(hx.current_mode);
+  hx_obj["pump_engagement_pct"] = hx.pump_engagement_pct;
+  hx_obj["lock_target_pct"]     = hx.lock_target_pct;
+  hx_obj["vehicle_kmh"]         = hx.vehicle_kmh;
+  hx_obj["pedal_pct"]           = hx.pedal_pct;
+  JsonArray raw = hx_obj["raw"].to<JsonArray>();
+  for (uint8_t i = 0; i < hx.len; i++) raw.add(hx.raw[i]);
 
   CanStats sc = can_get_stats(CAN_CLUSTER);
   CanStats so = can_get_stats(CAN_OBD2);
@@ -198,6 +217,15 @@ static void handle_cmd(const char* line) {
     return;
   }
 
+  // Direct action to set the Haldex mode (not a setting — it sends a CAN
+  // command frame to the external MITM module).
+  if (strcmp(cmd, "set_haldex_mode") == 0) {
+    uint8_t mode = doc["mode"] | 0;
+    bool ok = haldex_link_set_mode(mode);
+    emit_ack("set_haldex_mode", ok, ok ? haldex_mode_name(mode) : "TX failed or disabled");
+    return;
+  }
+
   if (strcmp(cmd, "set") == 0) {
     const char* key = doc["key"];
     if (!key) { emit_ack("set", false, "no key"); return; }
@@ -220,6 +248,10 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(doc["value"]          | 0);
     else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(doc["value"]     | 0);
     else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(doc["value"]     | 0);
+    else if (strcmp(key, "haldex_enabled")     == 0) ok = settings_set_haldex_enabled(doc["value"]     | false);
+    else if (strcmp(key, "haldex_bus")         == 0) ok = settings_set_haldex_bus(doc["value"]         | 1);
+    else if (strcmp(key, "haldex_state_id")    == 0) ok = settings_set_haldex_state_id(doc["value"]    | 0x6B0);
+    else if (strcmp(key, "haldex_cmd_id")      == 0) ok = settings_set_haldex_cmd_id(doc["value"]      | 0x6B1);
     else { emit_ack("set", false, "unknown key"); return; }
     emit_ack("set", ok);
     if (ok) emit_settings();

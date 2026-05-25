@@ -82,6 +82,8 @@ const SETTING_KEYS = [
   "tx_enabled", "force_tx_always", "block_airbag",
   // Bench test
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
+  // Haldex link
+  "haldex_enabled", "haldex_bus", "haldex_state_id", "haldex_cmd_id",
 ];
 
 function applySettings(s) {
@@ -336,6 +338,65 @@ socket.on("status", (s) => {
     $("ob-rx").textContent      = s.obd2.rx;
     $("ob-err").textContent     = s.obd2.errors;
   }
+
+  // Haldex live state (from external MITM module via CAN broadcast)
+  updateHaldexLive(s.haldex);
+});
+
+function updateHaldexLive(hx) {
+  if (!hx) return;
+  const modeEl   = $("haldex-live-mode");
+  const pumpEl   = $("haldex-live-pump");
+  const targetEl = $("haldex-live-target");
+  const speedEl  = $("haldex-live-speed");
+  const pedalEl  = $("haldex-live-pedal");
+  const statusEl = $("haldex-live-status");
+  const ageEl    = $("haldex-live-age");
+  const rawEl    = $("haldex-live-raw");
+
+  if (!hx.valid) {
+    if (modeEl)   { modeEl.textContent = "—";   modeEl.className   = "value-big inactive"; }
+    if (pumpEl)   { pumpEl.textContent = "—";   pumpEl.className   = "value-big inactive"; }
+    if (targetEl) { targetEl.textContent = "—"; targetEl.className = "value-big inactive"; }
+    if (speedEl)  { speedEl.textContent = "—";  speedEl.className  = "value-big inactive"; }
+    if (pedalEl)  { pedalEl.textContent = "—";  pedalEl.className  = "value-big inactive"; }
+    if (statusEl) { statusEl.textContent = "—"; statusEl.className = "value-big inactive"; }
+    if (ageEl)    ageEl.textContent = "no broadcast RX";
+    if (rawEl)    rawEl.textContent = "—";
+    return;
+  }
+
+  if (modeEl)   { modeEl.textContent   = (hx.current_mode_name || "?") + " (" + hx.current_mode + ")"; modeEl.className = "value-big"; }
+  if (pumpEl)   { pumpEl.textContent   = hx.pump_engagement_pct + "%"; pumpEl.className = "value-big"; }
+  if (targetEl) { targetEl.textContent = hx.lock_target_pct + "%"; targetEl.className = "value-big"; }
+  if (speedEl)  { speedEl.textContent  = hx.vehicle_kmh; speedEl.className = "value-big"; }
+  if (pedalEl)  { pedalEl.textContent  = hx.pedal_pct + "%"; pedalEl.className = "value-big"; }
+  if (statusEl) { statusEl.textContent = "✓ alive"; statusEl.className = "value-big mode-SILENT"; }
+  if (ageEl) {
+    const sec = (hx.age_ms / 1000).toFixed(1);
+    ageEl.textContent = "il y a " + sec + "s";
+  }
+  if (rawEl && hx.raw) {
+    const hex = hx.raw.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+    rawEl.textContent = hex;
+  }
+}
+
+// Haldex mode buttons — send set_haldex_mode command via socketio
+document.querySelectorAll('[data-haldex-mode]').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const mode = parseInt(e.currentTarget.dataset.haldexMode, 10);
+    if (isNaN(mode)) return;
+    socket.emit("cmd", { cmd: "set_haldex_mode", mode: mode });
+    // Visual feedback
+    const status = $("haldex-cmd-status");
+    if (status) {
+      const labels = ["STOCK", "FWD (burnout)", "5050 (launch)", "60/40", "75/25", "Expert"];
+      status.textContent = "▶ Sent: " + labels[mode] + " (mode " + mode + ")";
+      status.style.color = "var(--accent)";
+      setTimeout(() => { status.style.color = ""; }, 2000);
+    }
+  });
 });
 
 socket.on("boot", (b) => {

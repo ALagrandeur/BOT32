@@ -286,6 +286,29 @@ details.collapsible[open] > summary {
 /* card-can-comm border color (new card replacing 2 separate cards) */
 .card-can-comm { border-left: 4px solid #b288ff; }
 
+/* Haldex AWD link card (functional, in Configuration section) */
+.card-haldex { border-left: 4px solid #ff8c00; background: #1a1820; }
+
+/* Race-btn-other for secondary modes (60/40, 75/25, Expert) */
+.race-btn-other { background: #2a313d; color: var(--text); }
+
+/* Attribution box for 3rd-party project credits */
+.attribution-box {
+  background: #1a1f29;
+  border-left: 3px solid #6a4eff;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.attribution-box a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.attribution-box a:hover { text-decoration: underline; }
+
 /* =========================================================
    ROADMAP / FUTURE FEATURES — placeholders for not-yet-coded
    ========================================================= */
