@@ -28,6 +28,14 @@
 #include "settings.h"
 #include <WiFi.h>
 #include <esp_now.h>
+#include <esp_idf_version.h>
+
+// Arduino-ESP32 Core 3.x (ESP-IDF 5.x) changed the ESP-NOW callback signatures.
+//   Core 2.x recv: void(const uint8_t* mac, const uint8_t* data, int len)
+//   Core 3.x recv: void(const esp_now_recv_info_t* info, const uint8_t* data, int len)
+//   Core 2.x sent: void(const uint8_t* mac, esp_now_send_status_t status)
+//   Core 3.x sent: void(const wifi_tx_info_t* tx_info, esp_now_send_status_t status)
+#define ESPNOW_NEW_API (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0))
 
 // =============================================================
 //  Protocol constants
@@ -67,9 +75,9 @@ static void mac_to_string(const uint8_t* mac, char* out, size_t cap) {
 }
 
 // =============================================================
-//  ESP-NOW callbacks
+//  ESP-NOW callbacks — implementation is signature-independent
 // =============================================================
-static void on_data_recv_cb(const uint8_t* mac, const uint8_t* data, int len) {
+static void on_data_recv_impl(const uint8_t* data, int len) {
   // Filter: magic header must match
   if (len < 3) return;
   if (data[0] != MAGIC_0 || data[1] != MAGIC_1) return;
@@ -94,10 +102,24 @@ static void on_data_recv_cb(const uint8_t* mac, const uint8_t* data, int len) {
   // Future packet types handled here
 }
 
+// Bridge functions matching the platform's expected signature
+#if ESPNOW_NEW_API
+static void on_data_recv_cb(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
+  (void)info;
+  on_data_recv_impl(data, len);
+}
+static void on_data_sent_cb(const wifi_tx_info_t* tx_info, esp_now_send_status_t status) {
+  (void)tx_info; (void)status;
+}
+#else
+static void on_data_recv_cb(const uint8_t* mac, const uint8_t* data, int len) {
+  (void)mac;
+  on_data_recv_impl(data, len);
+}
 static void on_data_sent_cb(const uint8_t* mac, esp_now_send_status_t status) {
-  // Could log; for now silent
   (void)mac; (void)status;
 }
+#endif
 
 // =============================================================
 //  Public API
