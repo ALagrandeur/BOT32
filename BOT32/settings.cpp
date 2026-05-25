@@ -9,14 +9,13 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 6   // v1.5.2: recalibrated MAP defaults (0-2000) + TX rate 30Hz
+#define SETTINGS_VERSION 7   // v1.6.0: removed scale/offset, added use_dead_zone_mapping, new defaults 250/2068
 
 static Settings make_defaults() {
   Settings s;
   s.map_min_mbar      = MAP_MIN_MBAR_DEFAULT;
   s.map_max_mbar      = MAP_MAX_MBAR_DEFAULT;
-  s.scale             = 1.0f;
-  s.offset_c          = 0.0f;
+  s.use_dead_zone_mapping = false;   // linear by default (bench-validated)
   s.obd2_req_id       = CAN_ID_OBD2_REQ;
   s.obd2_resp_id      = CAN_ID_OBD2_RESP;
   s.obd2_did_map      = UDS_DID_MAP;
@@ -56,8 +55,7 @@ void settings_init() {
   }
   current.map_min_mbar      = prefs.getFloat("map_min", MAP_MIN_MBAR_DEFAULT);
   current.map_max_mbar      = prefs.getFloat("map_max", MAP_MAX_MBAR_DEFAULT);
-  current.scale             = prefs.getFloat("scale", 1.0f);
-  current.offset_c          = prefs.getFloat("offset_c", 0.0f);
+  current.use_dead_zone_mapping = prefs.getBool("dz_map", false);
   current.obd2_req_id       = prefs.getUShort("obd_req", CAN_ID_OBD2_REQ);
   current.obd2_resp_id      = prefs.getUShort("obd_resp", CAN_ID_OBD2_RESP);
   current.obd2_did_map      = prefs.getUShort("obd_did", UDS_DID_MAP);
@@ -110,13 +108,9 @@ bool settings_set_map_max_mbar(float v) {
   current.map_max_mbar = v;
   return save_float("map_max", v);
 }
-bool settings_set_scale(float v) {
-  current.scale = v;
-  return save_float("scale", v);
-}
-bool settings_set_offset_c(float v) {
-  current.offset_c = v;
-  return save_float("offset_c", v);
+bool settings_set_use_dead_zone_mapping(bool v) {
+  current.use_dead_zone_mapping = v;
+  return save_bool("dz_map", v);
 }
 bool settings_set_obd2_did_map(uint16_t v) {
   current.obd2_did_map = v;
@@ -206,8 +200,7 @@ void settings_reset_to_defaults() {
   current = make_defaults();
   prefs.putFloat("map_min", current.map_min_mbar);
   prefs.putFloat("map_max", current.map_max_mbar);
-  prefs.putFloat("scale", current.scale);
-  prefs.putFloat("offset_c", current.offset_c);
+  prefs.putBool("dz_map", current.use_dead_zone_mapping);
   prefs.putUShort("obd_req", current.obd2_req_id);
   prefs.putUShort("obd_resp", current.obd2_resp_id);
   prefs.putUShort("obd_did", current.obd2_did_map);

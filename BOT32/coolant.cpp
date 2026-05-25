@@ -21,8 +21,7 @@ uint8_t coolant_map_mbar_to_byte(
   float map_mbar,
   float map_min_mbar,
   float map_max_mbar,
-  float scale,
-  float offset_c
+  bool  use_dead_zone
 ) {
   // 1. Clamp MAP, compute normalized ratio [0, 1]
   float ratio;
@@ -34,35 +33,33 @@ uint8_t coolant_map_mbar_to_byte(
     if (ratio > 1.0f) ratio = 1.0f;
   }
 
-  // 2. 50/50 visual split around the cluster dead zone [80, 110] C.
-  //    User feedback (v1.1): previous mapping had len_bottom (29C) vs
-  //    len_top (19C) which made the needle non-proportional to MAP.
-  //    New mapping puts the dead-zone jump exactly at ratio = 0.5 so
-  //    that the needle is visually proportional to MAP percentage.
-  //
-  //      ratio = 0.00  ->  50C   (cold needle, bottom of gauge)
-  //      ratio = 0.25  -> ~64C   (1/4 of bottom half)
-  //      ratio = 0.50  ->  79C   (just before dead zone, end of bottom half)
-  //                       JUMP — dead zone is skipped instantly
-  //      ratio = 0.50  -> 111C   (just after dead zone, start of top half)
-  //      ratio = 0.75  -> ~120C  (mid-top half)
-  //      ratio = 1.00  -> 130C   (red zone, top of gauge)
-  float safe_low  = CLUSTER_DEAD_ZONE_LOW_C  - DEAD_ZONE_SAFE_MARGIN_C;  // 79
-  float safe_high = CLUSTER_DEAD_ZONE_HIGH_C + DEAD_ZONE_SAFE_MARGIN_C;  // 111
-
   float temp_c;
-  if (ratio < 0.5f) {
-    // Bottom half of MAP -> bottom half of gauge: COOLANT_TEMP_MIN_C .. safe_low
-    float bottom_range = safe_low - COOLANT_TEMP_MIN_C;  // 79 - 50 = 29
-    temp_c = COOLANT_TEMP_MIN_C + (ratio * 2.0f) * bottom_range;
+
+  if (use_dead_zone) {
+    // 50/50 visual split that skips the cluster dead zone [80, 110] C.
+    //   ratio = 0.00  ->  50C   (cold needle)
+    //   ratio = 0.50- ->  79C   (just before dead zone)
+    //                    JUMP
+    //   ratio = 0.50+ -> 111C   (just after dead zone)
+    //   ratio = 1.00  -> 130C   (red zone)
+    float safe_low  = CLUSTER_DEAD_ZONE_LOW_C  - DEAD_ZONE_SAFE_MARGIN_C;  // 79
+    float safe_high = CLUSTER_DEAD_ZONE_HIGH_C + DEAD_ZONE_SAFE_MARGIN_C;  // 111
+
+    if (ratio < 0.5f) {
+      float bottom_range = safe_low - COOLANT_TEMP_MIN_C;  // 79 - 50 = 29
+      temp_c = COOLANT_TEMP_MIN_C + (ratio * 2.0f) * bottom_range;
+    } else {
+      float top_range = COOLANT_TEMP_MAX_C - safe_high;    // 130 - 111 = 19
+      temp_c = safe_high + ((ratio - 0.5f) * 2.0f) * top_range;
+    }
   } else {
-    // Top half of MAP -> top half of gauge: safe_high .. COOLANT_TEMP_MAX_C
-    float top_range = COOLANT_TEMP_MAX_C - safe_high;    // 130 - 111 = 19
-    temp_c = safe_high + ((ratio - 0.5f) * 2.0f) * top_range;
+    // LINEAR mapping (v1.6.0 default — bench tests show cluster is linear)
+    //   ratio = 0.00  ->  50C   (cold needle)
+    //   ratio = 0.50  ->  90C   (middle of gauge, smooth)
+    //   ratio = 1.00  -> 130C   (red zone)
+    temp_c = COOLANT_TEMP_MIN_C + ratio * (COOLANT_TEMP_MAX_C - COOLANT_TEMP_MIN_C);
   }
 
-  // 3. Apply scale + offset, then convert to byte
-  temp_c = temp_c * scale + offset_c;
   return coolant_temp_c_to_byte(temp_c);
 }
 

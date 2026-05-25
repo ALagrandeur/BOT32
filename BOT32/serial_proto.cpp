@@ -14,7 +14,7 @@
 #include "haldex_espnow.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "1.5.2"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "1.6.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -45,8 +45,7 @@ static void emit_settings() {
   doc["evt"]               = "settings";
   doc["map_min_mbar"]      = s.map_min_mbar;
   doc["map_max_mbar"]      = s.map_max_mbar;
-  doc["scale"]             = s.scale;
-  doc["offset_c"]          = s.offset_c;
+  doc["use_dead_zone_mapping"] = s.use_dead_zone_mapping;
   doc["obd2_req_id"]       = s.obd2_req_id;
   doc["obd2_resp_id"]      = s.obd2_resp_id;
   doc["obd2_did_map"]      = s.obd2_did_map;
@@ -234,10 +233,9 @@ static void handle_cmd(const char* line) {
     const char* key = doc["key"];
     if (!key) { emit_ack("set", false, "no key"); return; }
     bool ok = false;
-    if      (strcmp(key, "map_min_mbar")       == 0) ok = settings_set_map_min_mbar(doc["value"]       | 0.0f);
-    else if (strcmp(key, "map_max_mbar")       == 0) ok = settings_set_map_max_mbar(doc["value"]       | 0.0f);
-    else if (strcmp(key, "scale")              == 0) ok = settings_set_scale(doc["value"]              | 1.0f);
-    else if (strcmp(key, "offset_c")           == 0) ok = settings_set_offset_c(doc["value"]           | 0.0f);
+    if      (strcmp(key, "map_min_mbar")          == 0) ok = settings_set_map_min_mbar(doc["value"]    | 0.0f);
+    else if (strcmp(key, "map_max_mbar")          == 0) ok = settings_set_map_max_mbar(doc["value"]    | 0.0f);
+    else if (strcmp(key, "use_dead_zone_mapping") == 0) ok = settings_set_use_dead_zone_mapping(doc["value"] | false);
     else if (strcmp(key, "obd2_did_map")       == 0) ok = settings_set_obd2_did_map(doc["value"]       | 0);
     else if (strcmp(key, "obd2_req_id")        == 0) ok = settings_set_obd2_req_id(doc["value"]        | 0);
     else if (strcmp(key, "obd2_resp_id")       == 0) ok = settings_set_obd2_resp_id(doc["value"]       | 0);

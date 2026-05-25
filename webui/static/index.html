@@ -132,24 +132,25 @@
       <div class="row">
         <label>MAP min (mbar) — idle<br>
           <input type="number" id="set-map_min_mbar" min="0" max="4000" step="10">
-          <span class="muted small">→ displays as ~50 °C (cold needle)</span>
+          <span class="muted small">→ displays as 50 °C (cold needle). Défaut : <code>250</code></span>
         </label>
         <label>MAP max (mbar) — full boost<br>
           <input type="number" id="set-map_max_mbar" min="0" max="4000" step="10">
-          <span class="muted small">→ displays as ~130 °C (red zone)</span>
+          <span class="muted small">→ displays as 130 °C (red zone). Défaut : <code>2068</code></span>
         </label>
       </div>
       <div class="row">
-        <label>Scale (fine-tune)<br>
-          <input type="number" id="set-scale" min="0.1" max="3.0" step="0.05">
-        </label>
-        <label>Offset (°C)<br>
-          <input type="number" id="set-offset_c" min="-50" max="50" step="1">
+        <label class="checkbox">
+          <input type="checkbox" id="set-use_dead_zone_mapping">
+          <span>🎚 <b>Middle dead zone mapping</b><br>
+                <span class="muted small">
+                  OFF (défaut) : mapping <b>linéaire</b> — aiguille proportionnelle au MAP sur toute la plage.<br>
+                  ON : mapping 50/50 qui <b>saute la dead zone [80,110]°C</b> — utile uniquement si tu observes
+                  un damping de l'aiguille au centre du cadran sur ton install.
+                </span>
+          </span>
         </label>
       </div>
-      <p class="muted small">
-        Mapping 50/50 visuel : MAP à 50% → aiguille juste avant la dead zone (saut instantané sur 111 °C).
-      </p>
     </div>
   </details>
 

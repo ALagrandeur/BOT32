@@ -74,8 +74,8 @@ const SETTING_KEYS = [
   // CAN IDs (hex inputs)
   "cluster_motor09_id", "cluster_wba03_id",
   "obd2_req_id", "obd2_resp_id", "obd2_did_map",
-  // Mapping
-  "map_min_mbar", "map_max_mbar", "scale", "offset_c",
+  // Mapping (v1.6.0: removed scale/offset_c; added use_dead_zone_mapping toggle)
+  "map_min_mbar", "map_max_mbar", "use_dead_zone_mapping",
   // Rates
   "obd2_poll_hz", "tx_rate_hz",
   // Behavior flags

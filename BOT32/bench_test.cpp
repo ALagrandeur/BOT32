@@ -97,7 +97,7 @@ bool bench_test_tick() {
     uint8_t byte0 = coolant_map_mbar_to_byte(
       (float)s.bench_map_mbar,
       s.map_min_mbar, s.map_max_mbar,
-      s.scale, s.offset_c
+      s.use_dead_zone_mapping
     );
     uint8_t payload[8];
     coolant_build_motor_09(byte0, payload);

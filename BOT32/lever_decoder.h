@@ -15,7 +15,7 @@
  *   byte 3 low nibble (1..6)  ->  engaged gear digit (only in D/S/M)
  *   For example: lever=S, byte3=3 -> "S3"
  *
- * BOOST mode = lever in {S, M, N}
+ * BOOST mode = lever in {S, M} (v1.6.0: N moved to silent like P/R/D)
  */
 #ifndef BOT32_LEVER_DECODER_H
 #define BOT32_LEVER_DECODER_H
@@ -32,7 +32,7 @@ char lever_get();
 // Get current engaged gear digit (1..6) if applicable (D/S/M), else 0.
 uint8_t lever_get_gear();
 
-// True if lever is in BOOST mode trigger position (S/M/N).
+// True if lever is in BOOST mode trigger position (S/M only).
 bool lever_is_boost_mode();
 
 // Age in ms since last WBA_03 frame received.

@@ -55,7 +55,8 @@ uint8_t lever_get_gear() {
 
 bool lever_is_boost_mode() {
   char l = lever_get();
-  return (l == 'S' || l == 'M' || l == 'N');
+  // v1.6.0: N removed — only S/M trigger BOOST (P/R/N/D = silent)
+  return (l == 'S' || l == 'M');
 }
 
 uint32_t lever_get_age_ms() {
