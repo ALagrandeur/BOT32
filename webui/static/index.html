@@ -139,18 +139,9 @@
           <span class="muted small">→ displays as 130 °C (red zone). Défaut : <code>2068</code></span>
         </label>
       </div>
-      <div class="row">
-        <label class="checkbox">
-          <input type="checkbox" id="set-use_dead_zone_mapping">
-          <span>🎚 <b>Middle dead zone mapping</b><br>
-                <span class="muted small">
-                  OFF (défaut) : mapping <b>linéaire</b> — aiguille proportionnelle au MAP sur toute la plage.<br>
-                  ON : mapping 50/50 qui <b>saute la dead zone [80,110]°C</b> — utile uniquement si tu observes
-                  un damping de l'aiguille au centre du cadran sur ton install.
-                </span>
-          </span>
-        </label>
-      </div>
+      <p class="muted small">
+        Mapping linéaire : aiguille proportionnelle au MAP sur toute la plage (v2.0 vehicle-validated).
+      </p>
     </div>
   </details>
 
@@ -243,7 +234,7 @@
           </label>
         </div>
         <p class="muted small">
-          Normal (force OFF) : TX uniquement quand levier en <b>S/M/N</b>. En <b>P/R/D</b> → silence, cluster affiche vraie temp.
+          Normal (force OFF) : TX uniquement quand levier en <b>S/M</b>. En <b>P/R/N/D</b> → silence, cluster affiche vraie temp.
         </p>
       </div>
 

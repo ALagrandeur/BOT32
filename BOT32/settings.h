@@ -10,10 +10,9 @@
 #include <Arduino.h>
 
 struct Settings {
-  // MAP -> coolant byte mapping
-  float    map_min_mbar;     // MAP at idle -> displays as low needle (50 C)
-  float    map_max_mbar;     // MAP at full boost -> displays as high needle (130 C)
-  bool     use_dead_zone_mapping;  // v1.6.0: false = linear (default), true = 50/50 dead-zone-aware
+  // MAP -> coolant byte mapping (linear, v2.0)
+  float    map_min_mbar;     // MAP at idle -> displays as 50 C (cold needle)
+  float    map_max_mbar;     // MAP at full boost -> displays as 130 C (red zone)
 
   // OBD2 polling
   uint16_t obd2_req_id;      // default 0x7E0
@@ -76,7 +75,6 @@ const Settings& settings_get();
 // Use these from serial_proto when a config update arrives from PC.
 bool settings_set_map_min_mbar(float v);
 bool settings_set_map_max_mbar(float v);
-bool settings_set_use_dead_zone_mapping(bool v);
 bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
 bool settings_set_tx_rate_hz(uint16_t v);

@@ -6,14 +6,9 @@
  *   0x80 (128) = 50.0 C
  *   0xED (237) = 130.0 C
  *
- * Two mapping modes (v1.6.0):
- *   - LINEAR (default): smooth proportional response across the full
- *     temperature range. Bench tests show this is the cluster's native
- *     behavior — the "dead zone" damping is done elsewhere (probably PCM)
- *     and only kicks in with real ECU traffic on the bus.
- *   - DEAD-ZONE-AWARE (optional toggle): 50/50 split that SKIPS the
- *     [80, 110]C zone. Use if you observe needle damping in your specific
- *     install / cluster variant.
+ * Mapping = LINEAR proportional across the full temperature range.
+ * (v1.6.0 had an optional dead-zone-aware mode; vehicle testing in v2.0
+ * confirmed linear is the right model — option removed.)
  */
 #ifndef BOT32_COOLANT_H
 #define BOT32_COOLANT_H
@@ -27,20 +22,17 @@ float coolant_byte_to_temp_c(uint8_t b);
 // Convert temperature (Celsius) to byte 0
 uint8_t coolant_temp_c_to_byte(float temp_c);
 
-// Map MAP pressure (mbar) to coolant byte.
+// Map MAP pressure (mbar) to coolant byte (linear).
 //
 // - map_mbar: current MAP value (mbar absolute)
 // - map_min_mbar: MAP at idle (-> displays as 50 C, low needle)
 // - map_max_mbar: MAP at full boost (-> displays as 130 C, red zone)
-// - use_dead_zone: if true, applies 50/50 mapping that skips [80,110]C zone;
-//                  if false (default), linear mapping across full range.
 //
 // Returns: byte 0 to write into Motor_09 payload.
 uint8_t coolant_map_mbar_to_byte(
   float map_mbar,
   float map_min_mbar,
-  float map_max_mbar,
-  bool  use_dead_zone = false
+  float map_max_mbar
 );
 
 // Build a complete Motor_09 payload (8 bytes) into `out`.

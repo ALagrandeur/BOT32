@@ -74,8 +74,8 @@ const SETTING_KEYS = [
   // CAN IDs (hex inputs)
   "cluster_motor09_id", "cluster_wba03_id",
   "obd2_req_id", "obd2_resp_id", "obd2_did_map",
-  // Mapping (v1.6.0: removed scale/offset_c; added use_dead_zone_mapping toggle)
-  "map_min_mbar", "map_max_mbar", "use_dead_zone_mapping",
+  // Mapping (v2.0: linear only — dead-zone toggle removed)
+  "map_min_mbar", "map_max_mbar",
   // Rates
   "obd2_poll_hz", "tx_rate_hz",
   // Behavior flags
@@ -314,19 +314,21 @@ socket.on("status", (s) => {
     $("live-map-age").textContent = "no data";
   }
 
-  // Coolant override (what WE are sending to cluster) — show only if active
+  // Coolant override — ALWAYS show the live computed value (v2.0).
+  // Color/label changes based on whether we're actually TXing right now.
   const coolEl = $("live-coolant");
   const coolNote = $("live-coolant-note");
-  if (s.motor09_tx_active && s.coolant_byte !== undefined) {
+  if (s.coolant_byte !== undefined) {
     const b = s.coolant_byte;
     const temp = (b * 0.7339 - 43.94).toFixed(1);
     coolEl.textContent = `${temp}°C`;
-    coolEl.className = "value-big";
-    coolNote.textContent = `byte 0x${b.toString(16).toUpperCase().padStart(2,"0")}`;
+    coolEl.className = s.motor09_tx_active ? "value-big" : "value-big inactive";
+    const hex = `byte 0x${b.toString(16).toUpperCase().padStart(2,"0")}`;
+    coolNote.textContent = s.motor09_tx_active ? hex : `${hex} (preview — TX inactif)`;
   } else {
     coolEl.textContent = "—";
     coolEl.className = "value-big inactive";
-    coolNote.textContent = "TX inactif";
+    coolNote.textContent = "—";
   }
 
   // Real coolant sniffed from cluster Motor_09 bus (CAN0)

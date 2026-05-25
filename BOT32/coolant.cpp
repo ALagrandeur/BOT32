@@ -20,10 +20,9 @@ uint8_t coolant_temp_c_to_byte(float temp_c) {
 uint8_t coolant_map_mbar_to_byte(
   float map_mbar,
   float map_min_mbar,
-  float map_max_mbar,
-  bool  use_dead_zone
+  float map_max_mbar
 ) {
-  // 1. Clamp MAP, compute normalized ratio [0, 1]
+  // Clamp MAP, compute normalized ratio [0, 1]
   float ratio;
   if (map_max_mbar == map_min_mbar) {
     ratio = 0.5f;
@@ -33,32 +32,12 @@ uint8_t coolant_map_mbar_to_byte(
     if (ratio > 1.0f) ratio = 1.0f;
   }
 
-  float temp_c;
-
-  if (use_dead_zone) {
-    // 50/50 visual split that skips the cluster dead zone [80, 110] C.
-    //   ratio = 0.00  ->  50C   (cold needle)
-    //   ratio = 0.50- ->  79C   (just before dead zone)
-    //                    JUMP
-    //   ratio = 0.50+ -> 111C   (just after dead zone)
-    //   ratio = 1.00  -> 130C   (red zone)
-    float safe_low  = CLUSTER_DEAD_ZONE_LOW_C  - DEAD_ZONE_SAFE_MARGIN_C;  // 79
-    float safe_high = CLUSTER_DEAD_ZONE_HIGH_C + DEAD_ZONE_SAFE_MARGIN_C;  // 111
-
-    if (ratio < 0.5f) {
-      float bottom_range = safe_low - COOLANT_TEMP_MIN_C;  // 79 - 50 = 29
-      temp_c = COOLANT_TEMP_MIN_C + (ratio * 2.0f) * bottom_range;
-    } else {
-      float top_range = COOLANT_TEMP_MAX_C - safe_high;    // 130 - 111 = 19
-      temp_c = safe_high + ((ratio - 0.5f) * 2.0f) * top_range;
-    }
-  } else {
-    // LINEAR mapping (v1.6.0 default — bench tests show cluster is linear)
-    //   ratio = 0.00  ->  50C   (cold needle)
-    //   ratio = 0.50  ->  90C   (middle of gauge, smooth)
-    //   ratio = 1.00  -> 130C   (red zone)
-    temp_c = COOLANT_TEMP_MIN_C + ratio * (COOLANT_TEMP_MAX_C - COOLANT_TEMP_MIN_C);
-  }
+  // LINEAR mapping (v2.0 — vehicle-validated, dead-zone option removed)
+  //   ratio = 0.00  ->  50C   (cold needle)
+  //   ratio = 0.50  ->  90C   (middle of gauge, smooth)
+  //   ratio = 1.00  -> 130C   (red zone)
+  float temp_c = COOLANT_TEMP_MIN_C
+               + ratio * (COOLANT_TEMP_MAX_C - COOLANT_TEMP_MIN_C);
 
   return coolant_temp_c_to_byte(temp_c);
 }

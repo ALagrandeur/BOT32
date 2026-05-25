@@ -55,12 +55,10 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define DEAD_ZONE_SAFE_MARGIN_C   1.0f
 
 // =============================================================
-//  MAP -> boost mapping defaults (v1.6.0 — user-calibrated on real vehicle)
-//    Alltrack 2017 EA888:
+//  MAP -> boost mapping defaults (v2.0 — vehicle-validated on Alltrack 2017 EA888)
 //      MAP at idle (vacuum)    ~250 mbar      -> 50 C (cold needle)
 //      MAP at full boost       ~2068 mbar     -> 130 C (red zone)
-//    Default mapping = LINEAR (no dead-zone skip).
-//    Optional dead-zone mode available via settings (use_dead_zone_mapping).
+//    Mapping = LINEAR (vehicle test confirmed; dead-zone-aware mode removed).
 // =============================================================
 #define MAP_MIN_MBAR_DEFAULT    250.0f   // -> displays as 50 C (cold needle)
 #define MAP_MAX_MBAR_DEFAULT   2068.0f   // -> displays as 130 C (red zone, full boost)

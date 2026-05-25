@@ -96,8 +96,7 @@ bool bench_test_tick() {
   if (now - last_coolant_ms >= 50) {
     uint8_t byte0 = coolant_map_mbar_to_byte(
       (float)s.bench_map_mbar,
-      s.map_min_mbar, s.map_max_mbar,
-      s.use_dead_zone_mapping
+      s.map_min_mbar, s.map_max_mbar
     );
     uint8_t payload[8];
     coolant_build_motor_09(byte0, payload);

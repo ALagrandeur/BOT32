@@ -1,5 +1,5 @@
 /*
- * Version: v1.6.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v1.6.0
+ * Version: v2.0.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.0.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -122,7 +122,7 @@ static void tx_motor_09_if_due(uint32_t now) {
     map = s.map_min_mbar;
   }
   uint8_t byte0 = coolant_map_mbar_to_byte(
-    map, s.map_min_mbar, s.map_max_mbar, s.use_dead_zone_mapping
+    map, s.map_min_mbar, s.map_max_mbar
   );
   lastCoolantByte = byte0;
   serial_proto_set_coolant_byte(byte0);

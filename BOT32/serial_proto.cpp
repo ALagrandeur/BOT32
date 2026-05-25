@@ -12,9 +12,10 @@
 #include "coolant.h"
 #include "haldex_link.h"
 #include "haldex_espnow.h"
+#include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "1.6.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.0.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -45,7 +46,6 @@ static void emit_settings() {
   doc["evt"]               = "settings";
   doc["map_min_mbar"]      = s.map_min_mbar;
   doc["map_max_mbar"]      = s.map_max_mbar;
-  doc["use_dead_zone_mapping"] = s.use_dead_zone_mapping;
   doc["obd2_req_id"]       = s.obd2_req_id;
   doc["obd2_resp_id"]      = s.obd2_resp_id;
   doc["obd2_did_map"]      = s.obd2_did_map;
@@ -77,11 +77,25 @@ static void emit_status() {
   doc["evt"] = "status";
   doc["uptime_ms"]    = millis();
   doc["mode"]         = current_mode_name;
-  doc["coolant_byte"] = current_coolant_byte;
-  // Compute whether Motor_09 is actively being transmitted to cluster.
-  // The UI uses this to decide whether to show 'Coolant override' value
-  // or '—' (we're not TXing, last value is stale/initial).
+
+  // ALWAYS compute the live coolant byte that BOT32 WOULD send right now,
+  // regardless of whether we're actually TXing. This makes the UI useful
+  // for monitoring/calibration even in SILENT mode (P/R/N/D).
   const Settings& s_status = settings_get();
+  float live_map;
+  if (s_status.bench_test_enabled) {
+    live_map = (float)s_status.bench_map_mbar;     // bench slider drives it
+  } else {
+    live_map = obd2_get_last_map_mbar();           // real OBD2 MAP
+    if (live_map < 0.0f) live_map = s_status.map_min_mbar;  // stale fallback
+  }
+  uint8_t live_coolant_byte = coolant_map_mbar_to_byte(
+    live_map, s_status.map_min_mbar, s_status.map_max_mbar
+  );
+  doc["coolant_byte"] = live_coolant_byte;
+
+  // Whether Motor_09 is ACTUALLY being transmitted right now (UI displays
+  // this as a status indicator alongside the always-visible coolant value).
   bool motor09_tx_active = false;
   if (s_status.tx_enabled) {
     if (s_status.bench_test_enabled) {
@@ -235,7 +249,6 @@ static void handle_cmd(const char* line) {
     bool ok = false;
     if      (strcmp(key, "map_min_mbar")          == 0) ok = settings_set_map_min_mbar(doc["value"]    | 0.0f);
     else if (strcmp(key, "map_max_mbar")          == 0) ok = settings_set_map_max_mbar(doc["value"]    | 0.0f);
-    else if (strcmp(key, "use_dead_zone_mapping") == 0) ok = settings_set_use_dead_zone_mapping(doc["value"] | false);
     else if (strcmp(key, "obd2_did_map")       == 0) ok = settings_set_obd2_did_map(doc["value"]       | 0);
     else if (strcmp(key, "obd2_req_id")        == 0) ok = settings_set_obd2_req_id(doc["value"]        | 0);
     else if (strcmp(key, "obd2_resp_id")       == 0) ok = settings_set_obd2_resp_id(doc["value"]       | 0);
