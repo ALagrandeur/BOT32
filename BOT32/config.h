@@ -55,19 +55,25 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define DEAD_ZONE_SAFE_MARGIN_C   1.0f
 
 // =============================================================
-//  MAP -> boost mapping defaults (calibrate empirically)
-//    Alltrack 2017 EA888 typical:
-//      MAP at idle  ~300-400 mbar
-//      MAP at boost ~2000-2500 mbar
+//  MAP -> boost mapping defaults (calibrated on v1.5.1 vehicle test)
+//    Alltrack 2017 EA888 — empirically tuned:
+//      MAP at idle (vacuum)    ~300-400 mbar  -> low/cold needle
+//      MAP at atmosphere       ~1000 mbar     -> JUMP through dead zone (mid)
+//      MAP at full boost       ~2000 mbar     -> red zone (130 C)
+//
+//    Defaults chosen so that:
+//      ratio = 0.5 at MAP = 1000 mbar
+//      => the dead-zone jump happens exactly at the vacuum->boost transition
+//      => light boost is immediately visible as the needle crosses to upper half
 // =============================================================
-#define MAP_MIN_MBAR_DEFAULT   300.0f   // -> displays as ~50 C (cold needle)
-#define MAP_MAX_MBAR_DEFAULT   2500.0f  // -> displays as ~130 C (red zone)
+#define MAP_MIN_MBAR_DEFAULT     0.0f   // -> displays as 50 C (cold needle)
+#define MAP_MAX_MBAR_DEFAULT   2000.0f  // -> displays as 130 C (red zone, full boost)
 
 // =============================================================
 //  Rates
 // =============================================================
 #define OBD2_POLL_INTERVAL_MS   200    // 5 Hz UDS query for MAP
-#define MOTOR_09_TX_INTERVAL_MS 50     // 20 Hz override (matches real ECU rate)
+#define MOTOR_09_TX_INTERVAL_MS 33     // 30 Hz override (v1.5.2 — was 20Hz, smoother needle)
 #define MAP_STALE_TIMEOUT_MS    1500   // if no MAP for 1.5s -> fall back to min
 
 // =============================================================

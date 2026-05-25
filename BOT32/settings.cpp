@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 5   // bumped: added haldex_transport + haldex_espnow_peer_mac (v1.4)
+#define SETTINGS_VERSION 6   // v1.5.2: recalibrated MAP defaults (0-2000) + TX rate 30Hz
 
 static Settings make_defaults() {
   Settings s;
