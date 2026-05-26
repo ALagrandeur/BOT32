@@ -34,7 +34,11 @@ struct Settings {
   uint8_t  display_trigger_rest_value;        // default 0x00 (TC enabled)
   uint8_t  display_trigger_pressed_value;     // default 0x03 (TC button held)
   uint8_t  display_value_source;              // 0=ethanol %, 1=haldex blockage %
-  uint8_t  display_override_byte1_high;       // WBA_03 byte[1] high nibble (default 0x40=D)
+  uint8_t  display_override_byte1_high;       // WBA_03 byte[1] high nibble (default 0x00 = blank, try other codes)
+  // v2.3.0: encoding mode for byte[3] — lets user experiment with what the
+  // cluster displays. The user's goal is showing the raw % (1%, 2%, ..., 100%)
+  // without the P/R/N/D/S/M letters (which are confusing with real gears).
+  uint8_t  display_byte3_value_mode;          // 0=raw full byte (default), 1=÷7 legacy, 2=tens digit, 3=units digit
 
   // Cluster TX rate
   uint16_t tx_rate_hz;       // default 30 Hz (v1.5.2+) (Motor_09)
@@ -111,6 +115,7 @@ bool settings_set_display_trigger_rest_value(uint8_t v);
 bool settings_set_display_trigger_pressed_value(uint8_t v);
 bool settings_set_display_value_source(uint8_t v);
 bool settings_set_display_override_byte1_high(uint8_t v);
+bool settings_set_display_byte3_value_mode(uint8_t v);
 bool settings_set_tx_rate_hz(uint16_t v);
 bool settings_set_tx_enabled(bool v);
 bool settings_set_force_tx_always(bool v);

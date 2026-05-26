@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 11  // v2.2.1: added bench_display_value_pct + bench_force_override
+#define SETTINGS_VERSION 12  // v2.3.0: raw ethanol display + display_byte3_value_mode
 
 static Settings make_defaults() {
   Settings s;
@@ -28,7 +28,8 @@ static Settings make_defaults() {
   s.display_trigger_rest_value       = 0x00;    // TC ON (normal)
   s.display_trigger_pressed_value    = 0x03;    // TC button held (OFF)
   s.display_value_source             = 0;       // 0 = ethanol % (default)
-  s.display_override_byte1_high      = 0x40;    // "D" (Drive) by default
+  s.display_override_byte1_high      = 0x00;    // v2.3.0: blank (avoid P/R/N/D/S/M confusion)
+  s.display_byte3_value_mode         = 0;       // v2.3.0: raw full-byte (1:1 mapping)
   s.tx_rate_hz        = 1000 / MOTOR_09_TX_INTERVAL_MS;
   s.cluster_motor09_id = CAN_ID_MOTOR_09;
   s.cluster_wba03_id   = CAN_ID_WBA_03;
@@ -78,7 +79,8 @@ void settings_init() {
   current.display_trigger_rest_value    = prefs.getUChar("co_trv", 0x00);
   current.display_trigger_pressed_value = prefs.getUChar("co_tpv", 0x03);
   current.display_value_source          = prefs.getUChar("co_src", 0);
-  current.display_override_byte1_high   = prefs.getUChar("co_b1h", 0x40);
+  current.display_override_byte1_high   = prefs.getUChar("co_b1h", 0x00);  // v2.3.0 default: blank
+  current.display_byte3_value_mode      = prefs.getUChar("co_b3m", 0);     // v2.3.0 default: raw
   current.tx_rate_hz        = prefs.getUShort("tx_hz", 1000 / MOTOR_09_TX_INTERVAL_MS);
   current.cluster_motor09_id = prefs.getUShort("cl_m09", CAN_ID_MOTOR_09);
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
@@ -174,6 +176,11 @@ bool settings_set_display_value_source(uint8_t v) {
 bool settings_set_display_override_byte1_high(uint8_t v) {
   current.display_override_byte1_high = v & 0xF0;
   return prefs.putUChar("co_b1h", current.display_override_byte1_high) > 0;
+}
+bool settings_set_display_byte3_value_mode(uint8_t v) {
+  if (v > 3) v = 0;
+  current.display_byte3_value_mode = v;
+  return prefs.putUChar("co_b3m", v) > 0;
 }
 bool settings_set_tx_rate_hz(uint16_t v) {
   current.tx_rate_hz = v;
@@ -277,6 +284,7 @@ void settings_reset_to_defaults() {
   prefs.putUChar("co_tpv", current.display_trigger_pressed_value);
   prefs.putUChar("co_src", current.display_value_source);
   prefs.putUChar("co_b1h", current.display_override_byte1_high);
+  prefs.putUChar("co_b3m", current.display_byte3_value_mode);
   prefs.putUShort("tx_hz", current.tx_rate_hz);
   prefs.putUShort("cl_m09", current.cluster_motor09_id);
   prefs.putUShort("cl_wba", current.cluster_wba03_id);

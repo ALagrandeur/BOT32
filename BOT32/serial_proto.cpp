@@ -16,7 +16,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.2.1"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.3.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -60,6 +60,7 @@ static void emit_settings() {
   doc["display_trigger_pressed_value"] = s.display_trigger_pressed_value;
   doc["display_value_source"]          = s.display_value_source;
   doc["display_override_byte1_high"]   = s.display_override_byte1_high;
+  doc["display_byte3_value_mode"]      = s.display_byte3_value_mode;
   doc["tx_rate_hz"]        = s.tx_rate_hz;
   doc["cluster_motor09_id"] = s.cluster_motor09_id;
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
@@ -307,7 +308,8 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "display_trigger_rest_value")    == 0) ok = settings_set_display_trigger_rest_value(doc["value"]    | 0);
     else if (strcmp(key, "display_trigger_pressed_value") == 0) ok = settings_set_display_trigger_pressed_value(doc["value"] | 3);
     else if (strcmp(key, "display_value_source")          == 0) ok = settings_set_display_value_source(doc["value"]          | 0);
-    else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(doc["value"]   | 0x40);
+    else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(doc["value"]   | 0x00);
+    else if (strcmp(key, "display_byte3_value_mode")      == 0) ok = settings_set_display_byte3_value_mode(doc["value"]      | 0);
     else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
     else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
     else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);

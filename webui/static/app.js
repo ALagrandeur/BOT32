@@ -85,6 +85,7 @@ const SETTING_KEYS = [
   "display_trigger_can_id", "display_trigger_byte_idx",
   "display_trigger_rest_value", "display_trigger_pressed_value",
   "display_value_source", "display_override_byte1_high",
+  "display_byte3_value_mode",  // v2.3.0: raw / ÷7 / tens / units
   // Behavior flags
   "tx_enabled", "force_tx_always", "block_airbag",
   // Bench test

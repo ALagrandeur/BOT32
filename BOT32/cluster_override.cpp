@@ -78,15 +78,32 @@ void cluster_override_tick(uint32_t now, bool safe_to_tx) {
   g_last_value_pct = val_pct;
   if (val_pct < 0.0f) return;
 
-  // Encode the % into byte[3] low nibble (capped 0..14, value resolution = 7%)
-  //   0..7%   -> 0
-  //   8..14%  -> 1
-  //   ...
-  //   98..100% -> 14
-  // The MQB convention reserves 0x0F (15) for "no gear" so we cap at 14.
-  uint8_t digit = (uint8_t)(val_pct / 7.0f);
-  if (digit > 14) digit = 14;
-  g_last_encoded_byte = digit;
+  // v2.3.0: encode byte[3] based on configurable mode so the user can
+  // experiment with how the cluster displays the % value.
+  uint8_t v = (uint8_t)val_pct;  // cap to 0-255 implicitly; ethanol is 0-100
+  if (v > 100) v = 100;
+  uint8_t encoded;
+  switch (s.display_byte3_value_mode) {
+    case 0: default:
+      // RAW: pass the full value byte directly (e.g. 11% -> 0x0B in byte[3])
+      // Cluster might show the full number, partial nibble, or special code.
+      encoded = v;
+      break;
+    case 1:
+      // LEGACY ÷7: value / 7 capped at 14 (v2.2 behavior, low nibble only)
+      encoded = (v / 7);
+      if (encoded > 14) encoded = 14;
+      break;
+    case 2:
+      // TENS DIGIT: v / 10 in low nibble (0..10), shows the "tens" of the %
+      encoded = (v / 10) & 0x0F;
+      break;
+    case 3:
+      // UNITS DIGIT: v % 10 in low nibble (0..9), shows the "units" of the %
+      encoded = (v % 10) & 0x0F;
+      break;
+  }
+  g_last_encoded_byte = encoded;
 
   // Build the modified WBA_03 frame.
   // The cluster reads:

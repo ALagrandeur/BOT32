@@ -590,9 +590,28 @@
 
       <h4 class="subtitle">🎚 Override WBA_03 byte[1] high nibble (lettre affichée)</h4>
       <div class="row">
-        <label>Code lettre (high nibble seulement)<br>
+        <label>Code lettre (high nibble — éviter P/R/N/D/S/M)<br>
           <input type="number" id="set-display_override_byte1_high" min="0" max="255">
-          <span class="muted small">défaut <code>64</code> (0x40 = D). Essayer 16=P, 32=R, 48=N, 80=S, 96=M.</span>
+          <span class="muted small">
+            <b>défaut v2.3.0 : 0</b> (0x00 = essai "blanc"). Si tu vois rien, essaie : 112=0x70, 128=0x80, 144=0x90, 160=0xA0, 176=0xB0, 192=0xC0, 208=0xD0, 224=0xE0, 240=0xF0.<br>
+            ⚠ <b>Évite</b> 16=P, 32=R, 48=N, 64=D, 80=S, 96=M (trop mélangeants avec vraies vitesses).
+          </span>
+        </label>
+      </div>
+
+      <h4 class="subtitle">🔢 Encodage de la valeur dans byte[3] (v2.3.0)</h4>
+      <div class="row">
+        <label>Mode d'encodage<br>
+          <select id="set-display_byte3_value_mode">
+            <option value="0">0 — Raw (valeur brute 0-100 dans byte[3] complet) — défaut</option>
+            <option value="1">1 — Legacy ÷7 (0-14, low nibble, résolution 7%)</option>
+            <option value="2">2 — Chiffre des dizaines (0-9, low nibble)</option>
+            <option value="3">3 — Chiffre des unités (0-9, low nibble)</option>
+          </select>
+          <span class="muted small">
+            <b>Mode 0 (défaut v2.3.0)</b> : envoie la valeur brute. Pour ethanol 11%, envoie 0x0B dans byte[3]. Cluster peut afficher "11" ou un chiffre selon comment il interprète le byte.<br>
+            <b>Mode 2/3</b> : si le cluster n'affiche qu'un chiffre, tu peux cycler entre tens (50%→5) et units (50%→0) en alternant.
+          </span>
         </label>
       </div>
 
@@ -619,14 +638,14 @@
         </p>
         <ul class="todo-list">
           <li><code>byte[0]</code> = MQB CRC (calculé automatiquement)</li>
-          <li><code>byte[1]</code> high nibble = ton override (e.g. 0x40 = D)</li>
+          <li><code>byte[1]</code> high nibble = ton override (défaut v2.3.0 : <code>0x00</code> blank)</li>
           <li><code>byte[1]</code> low nibble = rolling counter MQB</li>
-          <li><code>byte[3]</code> low nibble = <b>value_pct / 7</b>, capé à 14 (résolution ~7%, range affichage 0..98%)</li>
+          <li><code>byte[3]</code> = encodé selon mode choisi (raw, ÷7, tens, units)</li>
           <li>Reste des bytes = 0x00</li>
         </ul>
         <p class="muted small">
-          Encodage capé à 14 car 0x0F (15) est réservé MQB "no gear".
-          Pour une meilleure résolution il faudra investiguer d'autres codes byte expérimentalement.
+          <b>v2.3.0</b> : objectif = afficher la valeur 1:1 (ethanol 11% → "11" ou "E11" sur cluster).
+          Itère sur byte[1] high nibble (essaie 0x00, 0x70, 0x80, 0xE0, 0xF0...) + mode d'encodage byte[3] (raw vs nibble) jusqu'à trouver la combo qui affiche un nombre clair sans lettre P/R/N/D/S/M.
         </p>
       </details>
     </div>
