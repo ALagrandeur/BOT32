@@ -1,0 +1,152 @@
+VERSION "BOT32 v2.0 — VW MQB Powertrain HS-CAN partial DBC for SavvyCAN"
+
+NS_ :
+    NS_DESC_
+    CM_
+    BA_DEF_
+    BA_
+    VAL_
+    CAT_DEF_
+    CAT_
+    FILTER
+    BA_DEF_DEF_
+    EV_DATA_
+    ENVVAR_DATA_
+    SGTYPE_
+    SGTYPE_REF_
+    VAL_TABLE_
+    SIG_GROUP_
+    SIG_VALTYPE_
+    SIGTYPE_VALTYPE_
+    BO_TX_BU_
+    BA_DEF_REL_
+    BA_REL_
+    BA_DEF_DEF_REL_
+    BU_SG_REL_
+    BU_EV_REL_
+    BU_BO_REL_
+
+BS_:
+
+BU_: PCM DSG ESP HDX EPS EPB CLUSTER GATEWAY
+
+BO_ 134 LWI_01: 8 EPS
+ SG_ LWI_Counter : 8|4@1+ (1,0) [0|15] "" PCM
+ SG_ LWI_SteeringAngle : 16|15@1+ (0.04395,0) [-720|720] "deg" PCM
+ SG_ LWI_VZ_LWI : 31|1@1+ (1,0) [0|1] "" PCM
+ SG_ LWI_LenkradwGeschw : 32|15@1+ (0.04395,0) [0|720] "deg/s" PCM
+ SG_ LWI_VZ_LWGeschw : 47|1@1+ (1,0) [0|1] "" PCM
+
+BO_ 138 ESP_14: 8 ESP
+ SG_ ESP_14_Checksum : 0|8@1+ (1,0) [0|255] "" HDX
+ SG_ ESP_14_Counter : 8|4@1+ (1,0) [0|15] "" HDX
+ SG_ ESP_14_BR_Vorg_Quer_Max : 40|8@1+ (1,0) [0|254] "" HDX
+ SG_ ESP_14_BR_Vorg_Allrad_Max : 56|8@1+ (1,0) [0|254] "" HDX
+
+BO_ 167 MOTOR_11: 8 PCM
+ SG_ MOTOR_11_Checksum : 0|8@1+ (1,0) [0|255] "" HDX
+ SG_ MOTOR_11_Counter : 8|4@1+ (1,0) [0|15] "" HDX
+ SG_ MOTOR_11_Mom_Soll_Roh : 16|8@1+ (1,0) [0|250] "%" HDX
+ SG_ MOTOR_11_Mom_Ist : 24|8@1+ (1,0) [0|250] "%" HDX
+ SG_ MOTOR_11_Mom_Soll_Filt : 40|8@1+ (1,0) [0|250] "%" HDX
+ SG_ MOTOR_11_Mom_Soll_01 : 48|8@1+ (1,0) [0|250] "%" HDX
+ SG_ MOTOR_11_Mom_Soll_02 : 56|8@1+ (1,0) [0|250] "%" HDX
+
+BO_ 168 MOTOR_12: 8 PCM
+ SG_ MOTOR_12_Checksum : 0|8@1+ (1,0) [0|255] "" HDX
+ SG_ MOTOR_12_Counter : 8|4@1+ (1,0) [0|15] "" HDX
+ SG_ MOTOR_12_SpeedQual : 40|8@1+ (1,0) [0|255] "" HDX
+ SG_ MOTOR_12_RPMQual : 48|8@1+ (1,0) [0|255] "" HDX
+ SG_ MOTOR_12_EngineSpeed : 56|8@1+ (1,0) [0|255] "" HDX
+
+BO_ 178 ESP_19: 8 ESP
+ SG_ ESP_19_WheelSpeed_HL : 0|16@1+ (0.0075,0) [0|360] "km/h" HDX
+ SG_ ESP_19_WheelSpeed_HR : 16|16@1+ (0.0075,0) [0|360] "km/h" HDX
+ SG_ ESP_19_WheelSpeed_VL : 32|16@1+ (0.0075,0) [0|360] "km/h" HDX
+ SG_ ESP_19_WheelSpeed_VR : 48|16@1+ (0.0075,0) [0|360] "km/h" HDX
+
+BO_ 257 ESP_02: 8 ESP
+ SG_ ESP_02_YawRate : 0|16@1- (0.01,0) [-327.68|327.67] "deg/s" PCM
+
+BO_ 260 EPB_01: 8 EPB
+ SG_ EPB_01_Status : 0|8@1+ (1,0) [0|255] "" PCM
+
+BO_ 262 ESP_05: 8 ESP
+ SG_ ESP_05_LongAccel : 0|16@1- (0.01,0) [-327.68|327.67] "m/s2" PCM
+
+BO_ 263 MOTOR_04: 8 PCM
+ SG_ MOTOR_04_EngineRPM : 24|16@1+ (0.25,0) [0|16383.75] "rpm" CLUSTER
+
+BO_ 278 ESP_10: 8 ESP
+ SG_ ESP_10_Checksum : 0|8@1+ (1,0) [0|255] "" PCM
+ SG_ ESP_10_Counter : 8|4@1+ (1,0) [0|15] "" PCM
+
+BO_ 280 HALDEX_GEN5_STATUS: 8 HDX
+ SG_ HDX_Counter : 8|4@1+ (1,0) [0|15] "" PCM
+ SG_ HDX_PumpEngagement_raw : 16|8@1+ (1,0) [0|250] "" PCM
+ SG_ HDX_PumpEngagement_pct : 16|8@1+ (0.4,0) [0|100] "%" PCM
+ SG_ HDX_State_ClutchReport1 : 24|1@1+ (1,0) [0|1] "" PCM
+ SG_ HDX_State_TempProtection : 25|1@1+ (1,0) [0|1] "" PCM
+ SG_ HDX_State_ClutchReport2 : 26|1@1+ (1,0) [0|1] "" PCM
+ SG_ HDX_State_CouplingOpen : 27|1@1+ (1,0) [0|1] "" PCM
+ SG_ HDX_State_SpeedLimit : 30|1@1+ (1,0) [0|1] "" PCM
+
+BO_ 289 MOTOR_20: 8 PCM
+ SG_ MOTOR_20_Checksum : 0|8@1+ (1,0) [0|255] "" CLUSTER
+ SG_ MOTOR_20_Counter : 8|4@1+ (1,0) [0|15] "" CLUSTER
+
+BO_ 309 ESP_18: 8 ESP
+ SG_ ESP_18_Fixed : 8|8@1+ (1,0) [0|255] "" PCM
+
+BO_ 396 ESP_29: 8 ESP
+
+BO_ 794 WBA_03: 8 GATEWAY
+ SG_ WBA_03_LeverPosition : 12|4@1+ (1,0) [0|15] "" CLUSTER
+ SG_ WBA_03_GearEngaged : 24|4@1+ (1,0) [0|15] "" CLUSTER
+
+BO_ 906 KOMBI_01: 8 CLUSTER
+
+BO_ 901 CHARISMA_01: 8 PCM
+
+BO_ 958 MOTOR_14: 8 PCM
+
+BO_ 968 GETRIEBE_14: 8 DSG
+
+BO_ 987 GATEWAY_72: 8 GATEWAY
+
+BO_ 960 KLEMMEN_STATUS_01: 4 GATEWAY
+ SG_ KS_Checksum : 0|8@1+ (1,0) [0|255] "" PCM
+ SG_ KS_Counter : 8|4@1+ (1,0) [0|15] "" PCM
+ SG_ KS_KL15 : 16|1@1+ (1,0) [0|1] "" PCM
+ SG_ KS_KLS : 17|1@1+ (1,0) [0|1] "" PCM
+ SG_ KS_KL50 : 18|1@1+ (1,0) [0|1] "" PCM
+
+BO_ 1355 Parkhilfe_04: 8 GATEWAY
+
+BO_ 1413 SYSTEMINFO_01: 8 GATEWAY
+
+BO_ 1470 ESP_23: 8 ESP
+
+BO_ 1600 MOTOR_07: 8 PCM
+
+BO_ 1601 MOTOR_CODE_01: 8 PCM
+ SG_ MOTOR_CODE_Checksum : 0|8@1+ (1,0) [0|255] "" CLUSTER
+ SG_ MOTOR_CODE_Counter : 8|4@1+ (1,0) [0|15] "" CLUSTER
+
+BO_ 1629 ESP_20: 8 ESP
+
+BO_ 1714 DIAGNOSE_01: 8 GATEWAY
+
+BO_ 1719 KOMBI_02: 8 CLUSTER
+
+CM_ BO_ 280 "HALDEX GEN 5 STATUS BROADCAST — pump engagement in byte 2 (raw 0-250 = 0-100%), state bitfield in byte 3.";
+CM_ BO_ 138 "ESP_14 — byte 7 BR_Vorg_Allrad_Max is the most critical demand signal sent to Haldex.";
+CM_ BO_ 167 "MOTOR_11 — bytes 6 & 7 carry torque demand modulated for Haldex.";
+CM_ BO_ 178 "ESP_19 — 4 wheel speeds (HL/HR/VL/VR), scaling 0.0075 km/h per LSB (verify on bench).";
+CM_ BO_ 263 "MOTOR_04 — engine RPM in bytes 3-4 (LE, scaling 0.25 rpm per LSB).";
+CM_ BO_ 794 "WBA_03 — gear lever in byte 1 high nibble (0x10=P, 0x20=R, 0x30=N, 0x40=D, 0x50=S, 0x60=M), engaged gear in byte 3 low nibble.";
+CM_ SG_ 794 WBA_03_LeverPosition "1=P, 2=R, 3=N, 4=D, 5=S, 6=M";
+CM_ SG_ 280 HDX_State_TempProtection "WARNING flag — pump overtemp protection active. If 1, Haldex is in thermal limp.";
+CM_ SG_ 280 HDX_State_CouplingOpen "If 1, the AWD coupling is fully disengaged (FWD only).";
+
+VAL_ 794 WBA_03_LeverPosition 1 "P (Park)" 2 "R (Reverse)" 3 "N (Neutral)" 4 "D (Drive)" 5 "S (Sport)" 6 "M (Manual)";
