@@ -78,14 +78,16 @@ const SETTING_KEYS = [
   "map_min_mbar", "map_max_mbar",
   // Rates
   "obd2_poll_hz", "tx_rate_hz",
-  // v2.1: optional UDS extra polls
-  "poll_ethanol", "poll_haldex_blockage",
+  // v2.4.0: poll_ethanol + poll_haldex_blockage removed from UI (always ON).
   // v2.2: cluster display override
   "cluster_override_enabled",
   "display_trigger_can_id", "display_trigger_byte_idx",
   "display_trigger_rest_value", "display_trigger_pressed_value",
   "display_value_source", "display_override_byte1_high",
   "display_byte3_value_mode",  // v2.3.0: raw / ÷7 / tens / units
+  // v2.4.0: clear-engine-fault auto-trigger config (roadmap)
+  "cef_trigger_can_id", "cef_trigger_byte_idx",
+  "cef_trigger_rest_value", "cef_trigger_pressed_value",
   // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
   "tx_enabled", "force_tx_always",
   // Bench test
@@ -550,7 +552,15 @@ document.querySelectorAll('[data-haldex-mode]').forEach(btn => {
 });
 
 socket.on("boot", (b) => {
-  $("boot-info").textContent = `Booted v${b.version} (${b.build})`;
+  // v2.4.0: boot info moved to header pill (the in-page boot-info element is hidden)
+  const bootInfo = $("boot-info");
+  if (bootInfo) bootInfo.textContent = `Booted v${b.version} (${b.build})`;
+  const headerVer = $("header-version");
+  if (headerVer) {
+    headerVer.textContent = `fw: v${b.version}`;
+    headerVer.title = `Firmware ESP32 : v${b.version} build ${b.build}`;
+    headerVer.className = "pill pill-ok";
+  }
 });
 
 // ===========================================================

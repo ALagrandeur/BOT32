@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 12  // v2.3.0: raw ethanol display + display_byte3_value_mode
+#define SETTINGS_VERSION 13  // v2.4.0: polls ON by default + cef_trigger_* fields + obd2_poll_hz default 15
 
 static Settings make_defaults() {
   Settings s;
@@ -18,9 +18,11 @@ static Settings make_defaults() {
   s.obd2_req_id       = CAN_ID_OBD2_REQ;
   s.obd2_resp_id      = CAN_ID_OBD2_RESP;
   s.obd2_did_map      = UDS_DID_MAP;
-  s.obd2_poll_hz      = 1000 / OBD2_POLL_INTERVAL_MS;
-  s.poll_ethanol            = false;
-  s.poll_haldex_blockage    = false;
+  // v2.4.0: bumped from 5 -> 15 to keep MAP responsive when MAP + ethanol +
+  // haldex are polled round-robin (each gets ~5Hz at 15Hz total).
+  s.obd2_poll_hz      = 15;
+  s.poll_ethanol            = true;   // v2.4.0: ON by default (no UI toggle)
+  s.poll_haldex_blockage    = true;   // v2.4.0: ON by default (no UI toggle)
   // v2.2: cluster override defaults (using TC button as default trigger)
   s.cluster_override_enabled         = false;
   s.display_trigger_can_id           = 0x0FD;   // TC button (ESP_21)
@@ -30,6 +32,11 @@ static Settings make_defaults() {
   s.display_value_source             = 0;       // 0 = ethanol % (default)
   s.display_override_byte1_high      = 0x00;    // v2.3.0: blank (avoid P/R/N/D/S/M confusion)
   s.display_byte3_value_mode         = 0;       // v2.3.0: raw full-byte (1:1 mapping)
+  // v2.4.0: clear-engine-fault auto-trigger config (roadmap — not yet active)
+  s.cef_trigger_can_id        = 0x0FD;
+  s.cef_trigger_byte_idx      = 6;
+  s.cef_trigger_rest_value    = 0x00;
+  s.cef_trigger_pressed_value = 0x03;
   s.tx_rate_hz        = 1000 / MOTOR_09_TX_INTERVAL_MS;
   s.cluster_motor09_id = CAN_ID_MOTOR_09;
   s.cluster_wba03_id   = CAN_ID_WBA_03;
@@ -70,9 +77,9 @@ void settings_init() {
   current.obd2_req_id       = prefs.getUShort("obd_req", CAN_ID_OBD2_REQ);
   current.obd2_resp_id      = prefs.getUShort("obd_resp", CAN_ID_OBD2_RESP);
   current.obd2_did_map      = prefs.getUShort("obd_did", UDS_DID_MAP);
-  current.obd2_poll_hz      = prefs.getUShort("obd_hz", 1000 / OBD2_POLL_INTERVAL_MS);
-  current.poll_ethanol          = prefs.getBool("p_etoh", false);
-  current.poll_haldex_blockage  = prefs.getBool("p_hdxb", false);
+  current.obd2_poll_hz      = prefs.getUShort("obd_hz", 15);          // v2.4.0 default
+  current.poll_ethanol          = prefs.getBool("p_etoh", true);       // v2.4.0 default ON
+  current.poll_haldex_blockage  = prefs.getBool("p_hdxb", true);       // v2.4.0 default ON
   current.cluster_override_enabled      = prefs.getBool("co_en", false);
   current.display_trigger_can_id        = prefs.getUShort("co_tid", 0x0FD);
   current.display_trigger_byte_idx      = prefs.getUChar("co_tbi", 6);
@@ -81,6 +88,11 @@ void settings_init() {
   current.display_value_source          = prefs.getUChar("co_src", 0);
   current.display_override_byte1_high   = prefs.getUChar("co_b1h", 0x00);  // v2.3.0 default: blank
   current.display_byte3_value_mode      = prefs.getUChar("co_b3m", 0);     // v2.3.0 default: raw
+  // v2.4.0: clear-engine-fault auto-trigger config (roadmap)
+  current.cef_trigger_can_id        = prefs.getUShort("cef_id", 0x0FD);
+  current.cef_trigger_byte_idx      = prefs.getUChar("cef_bi", 6);
+  current.cef_trigger_rest_value    = prefs.getUChar("cef_rv", 0x00);
+  current.cef_trigger_pressed_value = prefs.getUChar("cef_pv", 0x03);
   current.tx_rate_hz        = prefs.getUShort("tx_hz", 1000 / MOTOR_09_TX_INTERVAL_MS);
   current.cluster_motor09_id = prefs.getUShort("cl_m09", CAN_ID_MOTOR_09);
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
@@ -193,6 +205,23 @@ bool settings_set_display_byte3_value_mode(uint8_t v) {
   current.display_byte3_value_mode = v;
   return prefs.putUChar("co_b3m", v) > 0;
 }
+bool settings_set_cef_trigger_can_id(uint16_t v) {
+  current.cef_trigger_can_id = v;
+  return prefs.putUShort("cef_id", v) > 0;
+}
+bool settings_set_cef_trigger_byte_idx(uint8_t v) {
+  if (v > 7) v = 7;
+  current.cef_trigger_byte_idx = v;
+  return prefs.putUChar("cef_bi", v) > 0;
+}
+bool settings_set_cef_trigger_rest_value(uint8_t v) {
+  current.cef_trigger_rest_value = v;
+  return prefs.putUChar("cef_rv", v) > 0;
+}
+bool settings_set_cef_trigger_pressed_value(uint8_t v) {
+  current.cef_trigger_pressed_value = v;
+  return prefs.putUChar("cef_pv", v) > 0;
+}
 bool settings_set_tx_rate_hz(uint16_t v) {
   current.tx_rate_hz = v;
   return save_ushort("tx_hz", v);
@@ -296,6 +325,10 @@ void settings_reset_to_defaults() {
   prefs.putUChar("co_src", current.display_value_source);
   prefs.putUChar("co_b1h", current.display_override_byte1_high);
   prefs.putUChar("co_b3m", current.display_byte3_value_mode);
+  prefs.putUShort("cef_id", current.cef_trigger_can_id);
+  prefs.putUChar("cef_bi", current.cef_trigger_byte_idx);
+  prefs.putUChar("cef_rv", current.cef_trigger_rest_value);
+  prefs.putUChar("cef_pv", current.cef_trigger_pressed_value);
   prefs.putUShort("tx_hz", current.tx_rate_hz);
   prefs.putUShort("cl_m09", current.cluster_motor09_id);
   prefs.putUShort("cl_wba", current.cluster_wba03_id);

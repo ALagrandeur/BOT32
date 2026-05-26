@@ -12,9 +12,14 @@
 <header>
   <h1>BOT32 <span class="muted small">in-vehicle</span></h1>
   <div class="header-right">
-    <button id="btn-clear-engine-fault" class="primary" title="Envoie OBD-II Mode 04 broadcast (0x700 → [01 04]) — efface les DTC d'émission de tous les ECU compatibles">
-      🔧 Clear Engine Fault
-    </button>
+    <span id="header-version" class="pill pill-unknown" title="Version firmware en cours sur l'ESP32 (BUILD_VERSION)">fw: —</span>
+    <label class="header-inline">
+      <span class="lbl">Port</span>
+      <select id="sel-port"></select>
+    </label>
+    <button id="btn-refresh-ports" class="secondary" title="Refresh COM ports">↻</button>
+    <button id="btn-connect">Connect</button>
+    <button id="btn-disconnect" class="secondary">Disconnect</button>
     <button id="btn-push-all" class="btn-push" title="Force-push tous les paramètres affichés vers l'ESP32 en bloc">
       📤 Push all settings
     </button>
@@ -24,26 +29,13 @@
 
 <main>
 
-  <!-- ================================================================
-       SECTION 1 — CONNEXION
-       Toujours visible. Le 1er truc à régler.
-       ================================================================ -->
-  <h2 class="section-header">🔌 Connexion</h2>
-
-  <section class="card">
-    <div class="row">
-      <label>Port
-        <select id="sel-port"></select>
-      </label>
-      <button id="btn-refresh-ports" class="secondary">↻ Refresh</button>
-      <button id="btn-connect">Connect</button>
-      <button id="btn-disconnect" class="secondary">Disconnect</button>
-    </div>
-    <p class="muted small" id="boot-info">—</p>
-  </section>
+  <!-- v2.4.0: 🔌 Connexion section moved to header. Boot info now appears
+       in the header version pill ("fw: vX.Y.Z"). -->
+  <!-- Hidden boot-info placeholder kept null-safe for any legacy JS -->
+  <p id="boot-info" style="display:none">—</p>
 
   <!-- ================================================================
-       SECTION 2 — DONNÉES LIVE
+       SECTION — DONNÉES LIVE
        Live status toujours visible. Frame monitor rétractable.
        ================================================================ -->
   <h2 class="section-header">📊 Données live</h2>
@@ -73,20 +65,12 @@
       <div>
         <span class="lbl">⛽ Ethanol content</span>
         <span id="live-ethanol" class="value-big">—</span>
-        <span id="live-ethanol-age" class="lbl">—</span>
-        <label class="checkbox" style="margin-top:6px;">
-          <input type="checkbox" id="set-poll_ethanol">
-          <span class="muted small">enable polling (DID 0xF452)</span>
-        </label>
+        <span id="live-ethanol-age" class="lbl">DID 0xF452 (always on)</span>
       </div>
       <div>
         <span class="lbl">🏁 Haldex pump engagement</span>
         <span id="live-haldex-blockage" class="value-big">—</span>
-        <span id="live-haldex-blockage-age" class="lbl">—</span>
-        <label class="checkbox" style="margin-top:6px;">
-          <input type="checkbox" id="set-poll_haldex_blockage">
-          <span class="muted small">enable polling (DID 0x2BF3, ECU 0x70F)</span>
-        </label>
+        <span id="live-haldex-blockage-age" class="lbl">DID 0x2BF3 ECU 0x70F (always on)</span>
       </div>
     </div>
 
@@ -713,7 +697,63 @@
     </div>
   </details>
 
+  <!-- v2.4.0: Clear Engine Fault — moved here from header.
+       Manual button works today; auto-trigger via vehicle button is roadmap. -->
+  <details class="card collapsible card-roadmap">
+    <summary>
+      <h3 class="card-title">🔧 Clear Engine Fault <span class="badge-soon">Manual works · Auto-trigger roadmap</span></h3>
+      <span class="summary-hint muted small">OBD-II Mode 04 broadcast — efface les DTC d'émission</span>
+    </summary>
+    <div class="collapsible-body">
+      <p class="muted small">
+        Envoie une trame OBD-II Mode 04 (broadcast 0x700 → [01 04]) qui demande
+        à tous les ECU compatibles OBD-II d'effacer leurs DTC d'émission.
+      </p>
 
+      <h4 class="subtitle">⚡ Action manuelle (fonctionne aujourd'hui)</h4>
+      <div class="actions">
+        <button id="btn-clear-engine-fault" class="primary">
+          🔧 Clear Engine Fault (envoyer maintenant)
+        </button>
+      </div>
+      <p class="muted small" id="diag-action-status">—</p>
+
+      <hr class="divider">
+
+      <h4 class="subtitle">🔘 Auto-trigger via bouton du véhicule (Roadmap)</h4>
+      <div class="roadmap-status">
+        <span class="status-badge status-pending">🚧 Config persistée maintenant, déclenchement firmware à venir</span>
+      </div>
+      <p class="muted small">
+        Configure ici quel bouton physique va déclencher la commande Clear Engine Fault
+        une fois que le firmware sera capable d'écouter. Les défauts pointent sur le
+        bouton TC (déjà identifié vehicle-confirmed). Autres options : Hazard <code>0x366</code>,
+        ou MFSW à capturer.
+      </p>
+      <div class="sub-card">
+        <div class="row">
+          <label>Trigger CAN ID<br>
+            <input type="text" id="set-cef_trigger_can_id" class="hex-input" placeholder="0x0FD">
+            <span class="muted small">défaut <code>0x0FD</code> (TC button)</span>
+          </label>
+          <label>Byte index (0..7)<br>
+            <input type="number" id="set-cef_trigger_byte_idx" min="0" max="7" step="1">
+            <span class="muted small">défaut <code>6</code></span>
+          </label>
+        </div>
+        <div class="row">
+          <label>Valeur "au repos"<br>
+            <input type="number" id="set-cef_trigger_rest_value" min="0" max="255">
+            <span class="muted small">défaut <code>0</code></span>
+          </label>
+          <label>Valeur "pressé"<br>
+            <input type="number" id="set-cef_trigger_pressed_value" min="0" max="255">
+            <span class="muted small">défaut <code>3</code></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </details>
 
 </main>
 
