@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 10  // v2.2: added cluster_override_* fields (7 new)
+#define SETTINGS_VERSION 11  // v2.2.1: added bench_display_value_pct + bench_force_override
 
 static Settings make_defaults() {
   Settings s;
@@ -40,6 +40,8 @@ static Settings make_defaults() {
   s.bench_rpm          = 1500;
   s.bench_map_mbar     = 1500;
   s.bench_test_bus     = 0;      // default: CAN_CLUSTER
+  s.bench_display_value_pct = 11;  // default slider value (matches user's measured ethanol)
+  s.bench_force_override    = false;
   s.haldex_enabled     = false;  // default: Haldex link OFF (safety)
   s.haldex_bus         = 1;      // default: CAN_OBD2 (chassis CAN)
   s.haldex_state_id    = 0x6B0;  // default: documented broadcast ID
@@ -88,6 +90,8 @@ void settings_init() {
   current.bench_rpm          = prefs.getUShort("bch_rpm", 1500);
   current.bench_map_mbar     = prefs.getUShort("bch_map", 1500);
   current.bench_test_bus     = prefs.getUChar("bch_bus", 0);
+  current.bench_display_value_pct = prefs.getUChar("bch_dvp", 11);
+  current.bench_force_override    = prefs.getBool("bch_fov", false);
   current.haldex_enabled     = prefs.getBool("hdx_en", false);
   current.haldex_bus         = prefs.getUChar("hdx_bus", 1);
   current.haldex_state_id    = prefs.getUShort("hdx_sid", 0x6B0);
@@ -219,6 +223,15 @@ bool settings_set_bench_test_bus(uint8_t v) {
   current.bench_test_bus = (v > 1) ? 0 : v;
   return prefs.putUChar("bch_bus", current.bench_test_bus) > 0;
 }
+bool settings_set_bench_display_value_pct(uint8_t v) {
+  if (v > 100) v = 100;
+  current.bench_display_value_pct = v;
+  return prefs.putUChar("bch_dvp", v) > 0;
+}
+bool settings_set_bench_force_override(bool v) {
+  current.bench_force_override = v;
+  return save_bool("bch_fov", v);
+}
 bool settings_set_haldex_enabled(bool v) {
   current.haldex_enabled = v;
   return save_bool("hdx_en", v);
@@ -275,6 +288,8 @@ void settings_reset_to_defaults() {
   prefs.putUShort("bch_rpm", current.bench_rpm);
   prefs.putUShort("bch_map", current.bench_map_mbar);
   prefs.putUChar("bch_bus", current.bench_test_bus);
+  prefs.putUChar("bch_dvp", current.bench_display_value_pct);
+  prefs.putBool("bch_fov", current.bench_force_override);
   prefs.putBool("hdx_en", current.haldex_enabled);
   prefs.putUChar("hdx_bus", current.haldex_bus);
   prefs.putUShort("hdx_sid", current.haldex_state_id);

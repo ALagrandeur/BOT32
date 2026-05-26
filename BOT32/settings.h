@@ -60,6 +60,15 @@ struct Settings {
   uint16_t bench_map_mbar;       // 0..3000 mbar (Motor_09 byte 0 via coolant mapping)
   uint8_t  bench_test_bus;       // 0 = TX on CAN_CLUSTER, 1 = TX on CAN_OBD2
 
+  // v2.2.1: bench-test support for cluster display override
+  // - bench_display_value_pct: slider value (0..100) used as override source
+  //   when bench mode is on (bypasses OBD2 poll which won't work on bench).
+  // - bench_force_override: when true (AND bench_test_enabled), the trigger
+  //   check in cluster_override is bypassed so you can see the cluster
+  //   display the override value without simulating the trigger frame.
+  uint8_t  bench_display_value_pct;  // 0..100
+  bool     bench_force_override;     // bypass trigger detection (bench only)
+
   // Haldex link — talks to an external Haldex MITM device.
   // BOT32 acts as a client (reads state broadcasts, sends mode commands).
   // The actual Haldex bus MITM runs on separate hardware (e.g., OpenHaldex-C6
@@ -114,6 +123,8 @@ bool settings_set_bench_test_enabled(bool v);
 bool settings_set_bench_rpm(uint16_t v);
 bool settings_set_bench_map_mbar(uint16_t v);
 bool settings_set_bench_test_bus(uint8_t v);
+bool settings_set_bench_display_value_pct(uint8_t v);
+bool settings_set_bench_force_override(bool v);
 bool settings_set_haldex_enabled(bool v);
 bool settings_set_haldex_bus(uint8_t v);
 bool settings_set_haldex_state_id(uint16_t v);

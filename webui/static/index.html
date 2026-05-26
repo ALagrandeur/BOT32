@@ -291,6 +291,38 @@
         </p>
       </div>
 
+      <hr class="divider">
+
+      <h4 class="subtitle">🎨 Test cluster display override (v2.2.1)</h4>
+      <div class="sub-card">
+        <p class="muted small">
+          Permet de tester l'affichage de la valeur (ethanol % par exemple) dans le cadran levier
+          AVANT d'aller dans le véhicule. Active <b>bench_test_enabled</b> + <b>cluster_override_enabled</b>
+          (section ci-dessous) + coche <b>Force override</b> ici.
+        </p>
+
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" id="set-bench_force_override">
+            <span>🎯 <b>Force override TX (bench)</b><br>
+                  <span class="muted small">Bypass la détection trigger — TX directement la frame WBA_03 modifiée à 40 Hz tant que coché.</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="slider-row">
+          <label>Display value <span class="slider-value" id="bench-dvp-display">11</span>%</label>
+          <input type="range" id="set-bench_display_value_pct" min="0" max="100" step="1" value="11" class="slider">
+          <div class="slider-axis">
+            <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+          </div>
+          <p class="muted small">
+            Cette valeur est encodée et envoyée à 40 Hz dans WBA_03 byte[3]. À 7% par step (résolution 0..14),
+            tu peux voir comment le cluster affiche les différents codes au fur et à mesure que tu bouges le slider.
+          </p>
+        </div>
+      </div>
+
       <details class="nested-details">
         <summary class="muted small">📡 Détails des trames émises (cliquer pour voir)</summary>
         <div class="frame-list">

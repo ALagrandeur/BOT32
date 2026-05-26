@@ -49,20 +49,34 @@ void cluster_override_init() {
 void cluster_override_tick(uint32_t now, bool safe_to_tx) {
   const Settings& s = settings_get();
   if (!s.cluster_override_enabled) return;
-  if (!g_trigger_pressed) return;
+
+  // v2.2.1: in bench mode with force_override on, bypass trigger detection
+  // (so the cluster shows the value without simulating the trigger frame).
+  bool trigger_active = g_trigger_pressed;
+  if (s.bench_test_enabled && s.bench_force_override) {
+    trigger_active = true;
+  }
+  if (!trigger_active) return;
   if (!safe_to_tx) return;
   if (now - g_last_tx_ms < OVERRIDE_TX_INTERVAL_MS) return;
   g_last_tx_ms = now;
 
-  // Resolve the value to display based on configured source
+  // Resolve the value to display.
+  // - Real vehicle: read live from OBD2 cache.
+  // - Bench mode: use the slider (bench_display_value_pct) since OBD2 won't
+  //   respond on a standalone cluster bench.
   float val_pct = -1.0f;
-  switch (s.display_value_source) {
-    case 0: val_pct = obd2_get_last_ethanol_pct();         break;
-    case 1: val_pct = obd2_get_last_haldex_blockage_pct(); break;
-    default: return;  // unknown source
+  if (s.bench_test_enabled) {
+    val_pct = (float)s.bench_display_value_pct;
+  } else {
+    switch (s.display_value_source) {
+      case 0: val_pct = obd2_get_last_ethanol_pct();         break;
+      case 1: val_pct = obd2_get_last_haldex_blockage_pct(); break;
+      default: return;
+    }
   }
   g_last_value_pct = val_pct;
-  if (val_pct < 0.0f) return;  // no fresh value to display
+  if (val_pct < 0.0f) return;
 
   // Encode the % into byte[3] low nibble (capped 0..14, value resolution = 7%)
   //   0..7%   -> 0

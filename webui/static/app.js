@@ -89,6 +89,7 @@ const SETTING_KEYS = [
   "tx_enabled", "force_tx_always", "block_airbag",
   // Bench test
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
+  "bench_display_value_pct", "bench_force_override",  // v2.2.1
   // Haldex link
   "haldex_enabled", "haldex_bus", "haldex_state_id", "haldex_cmd_id",
   "haldex_transport", "haldex_espnow_peer_mac",
@@ -109,6 +110,10 @@ function applySettings(s) {
   // Update slider displays (sliders need their displayed value updated)
   if (s.bench_rpm !== undefined) $("bench-rpm-display").textContent = s.bench_rpm;
   if (s.bench_map_mbar !== undefined) $("bench-map-display").textContent = s.bench_map_mbar;
+  if (s.bench_display_value_pct !== undefined) {
+    const dvp = $("bench-dvp-display");
+    if (dvp) dvp.textContent = s.bench_display_value_pct;
+  }
   // Highlight airbag line in bench list if block_airbag is OFF
   const airbagLine = $("bench-airbag-line");
   if (airbagLine) {
@@ -186,6 +191,10 @@ document.querySelectorAll('input[type="range"]').forEach(slider => {
     // Update visible display immediately
     if (key === "bench_rpm") $("bench-rpm-display").textContent = value;
     if (key === "bench_map_mbar") $("bench-map-display").textContent = value;
+    if (key === "bench_display_value_pct") {
+      const el = $("bench-dvp-display");
+      if (el) el.textContent = value;
+    }
     // Send to ESP32 (throttled to 10/sec)
     throttledSliderSend(key, value);
   });

@@ -16,7 +16,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.2.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.2.1"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -71,6 +71,8 @@ static void emit_settings() {
   doc["bench_rpm"]          = s.bench_rpm;
   doc["bench_map_mbar"]     = s.bench_map_mbar;
   doc["bench_test_bus"]     = s.bench_test_bus;
+  doc["bench_display_value_pct"] = s.bench_display_value_pct;
+  doc["bench_force_override"]    = s.bench_force_override;
   doc["haldex_enabled"]     = s.haldex_enabled;
   doc["haldex_bus"]         = s.haldex_bus;
   doc["haldex_state_id"]    = s.haldex_state_id;
@@ -316,6 +318,8 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(doc["value"]          | 0);
     else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(doc["value"]     | 0);
     else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(doc["value"]     | 0);
+    else if (strcmp(key, "bench_display_value_pct") == 0) ok = settings_set_bench_display_value_pct(doc["value"] | 0);
+    else if (strcmp(key, "bench_force_override")    == 0) ok = settings_set_bench_force_override(doc["value"]    | false);
     else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(doc["value"]     | false);
     else if (strcmp(key, "haldex_bus")            == 0) ok = settings_set_haldex_bus(doc["value"]         | 1);
     else if (strcmp(key, "haldex_state_id")       == 0) ok = settings_set_haldex_state_id(doc["value"]    | 0x6B0);
