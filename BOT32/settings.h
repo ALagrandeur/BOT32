@@ -59,7 +59,7 @@ struct Settings {
   // Behavior flags
   bool     tx_enabled;       // master switch: if false, NEVER TX on cluster (failsafe)
   bool     listen_only_boot; // if true, stay in listen-only for 5s at boot
-  bool     force_tx_always;  // if true, TX Motor_09 in ALL modes (P/R/D too)
+  bool     force_tx_always;  // if true, TX Motor_09 in ALL modes (P/R/N/D too)
                              // — useful for bench diagnostic; default false
   bool     block_airbag;     // if true, block all TX on airbag IDs (0x040, 0x572)
                              // — default true (SAFETY); only disable knowingly

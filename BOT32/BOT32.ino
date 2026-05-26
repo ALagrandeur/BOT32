@@ -1,5 +1,5 @@
 /*
- * Version: v2.4.1 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.4.1
+ * Version: v2.5.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.5.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -17,7 +17,7 @@
  *
  * State machine:
  *   BOOT       (5s listen-only at startup)
- *   SILENT     (lever P/R/D: no TX, cluster shows real coolant)
+ *   SILENT     (lever P/R/N/D: no TX, cluster shows real coolant)
  *   BOOST      (lever S/M: poll MAP via OBD2, TX Motor_09 override)
  *   SAFE_FAULT (TX disabled by user or fatal error: no TX)
  *
@@ -111,7 +111,7 @@ static void tx_motor_09_if_due(uint32_t now) {
   if (currentMode == MODE_BOOT)       return;
   if (currentMode == MODE_SAFE_FAULT) return;
   // Normally TX only in BOOST. If force_tx_always is set, TX in SILENT too
-  // (diagnostic mode for bench testing on P/R/D).
+  // (diagnostic mode for bench testing on P/R/N/D).
   if (currentMode != MODE_BOOST && !s.force_tx_always) return;
 
   uint32_t period_ms = 1000 / max(1, (int)s.tx_rate_hz);
