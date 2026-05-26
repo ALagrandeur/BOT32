@@ -15,10 +15,25 @@
 #define CAN_ID_MOTOR_09        0x647   // TX: coolant override (us) / sniff real
 #define CAN_ID_WBA_03          0x394   // RX: gear lever (gateway -> cluster)
 
-// OBD2 bus (CAN1)
+// OBD2 bus (CAN1) — UDS / OBD-II diagnostic addressing
+// Standard request->response pair: 0x7E0->0x7E8 (Engine), 0x7E1->0x7E9 (Trans),
+// VW extended addresses: 0x713->0x77D (Gateway), 0x70F->0x779 (Haldex), etc.
+// Functional broadcast: 0x700 (OBD-II), 0x7DF (UDS)
 #define CAN_ID_OBD2_REQ        0x7E0   // TX: UDS request to engine ECU
 #define CAN_ID_OBD2_RESP       0x7E8   // RX: UDS response from engine ECU
-#define UDS_DID_MAP            0x39C0  // ReadDataByIdentifier: Saugrohrdruck (MAP, mbar)
+#define CAN_ID_OBD2_BROADCAST  0x700   // TX: OBD-II functional broadcast (Mode 04 clear DTC)
+#define CAN_ID_HALDEX_REQ      0x70F   // TX: UDS request to Haldex ECU (vehicle-confirmed v2.1)
+#define CAN_ID_HALDEX_RESP     0x779   // RX: UDS response from Haldex ECU
+
+// UDS Data Identifiers (DIDs) — all confirmed on MK7 Alltrack 2017
+#define UDS_DID_MAP                0x39C0  // Saugrohrdruck (MAP, mbar, 16-bit) — engine ECU
+#define UDS_DID_ETHANOL            0xF452  // Ethanol content (8-bit, raw*100/255 = %) — engine ECU
+#define UDS_DID_HALDEX_BLOCKAGE    0x2BF3  // Haldex degree of blockage (16-bit) — Haldex ECU
+#define UDS_OBD2_MODE_CLEAR_DTC    0x04    // OBD-II Mode 04 (clear emissions DTCs, broadcast)
+
+// Stale timeouts for cached UDS read values
+#define ETHANOL_STALE_TIMEOUT_MS         5000
+#define HALDEX_BLOCKAGE_STALE_TIMEOUT_MS 2000
 
 // =============================================================
 //  Forbidden IDs (NEVER TX)

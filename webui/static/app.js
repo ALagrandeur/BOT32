@@ -78,6 +78,8 @@ const SETTING_KEYS = [
   "map_min_mbar", "map_max_mbar",
   // Rates
   "obd2_poll_hz", "tx_rate_hz",
+  // v2.1: optional UDS extra polls
+  "poll_ethanol", "poll_haldex_blockage",
   // Behavior flags
   "tx_enabled", "force_tx_always", "block_airbag",
   // Bench test
@@ -364,6 +366,58 @@ socket.on("status", (s) => {
 
   // Haldex live state (from external MITM module via CAN broadcast)
   updateHaldexLive(s.haldex);
+
+  // v2.1: Ethanol live %
+  const ethEl = $("live-ethanol");
+  const ethAge = $("live-ethanol-age");
+  if (ethEl) {
+    if (s.ethanol_pct !== undefined && s.ethanol_pct >= 0) {
+      ethEl.textContent = s.ethanol_pct.toFixed(1) + "%";
+      ethEl.className = "value-big";
+      if (s.ethanol_age_ms !== undefined && s.ethanol_age_ms < 30000) {
+        ethAge.textContent = "il y a " + (s.ethanol_age_ms/1000).toFixed(1) + "s";
+      } else {
+        ethAge.textContent = "stale";
+      }
+    } else {
+      ethEl.textContent = "—";
+      ethEl.className = "value-big inactive";
+      ethAge.textContent = "polling OFF ou pas de réponse";
+    }
+  }
+
+  // v2.1: Haldex blockage live %
+  const hbEl = $("live-haldex-blockage");
+  const hbAge = $("live-haldex-blockage-age");
+  if (hbEl) {
+    if (s.haldex_blockage_pct !== undefined && s.haldex_blockage_pct >= 0) {
+      const pct = s.haldex_blockage_pct;
+      const raw = s.haldex_blockage_raw !== undefined ? s.haldex_blockage_raw : 0;
+      hbEl.textContent = pct.toFixed(1) + "%";
+      hbEl.className = "value-big";
+      if (s.haldex_blockage_age_ms !== undefined && s.haldex_blockage_age_ms < 30000) {
+        hbAge.textContent = "raw=0x" + raw.toString(16).toUpperCase().padStart(4,"0") +
+                            " · il y a " + (s.haldex_blockage_age_ms/1000).toFixed(1) + "s";
+      } else {
+        hbAge.textContent = "stale";
+      }
+    } else {
+      hbEl.textContent = "—";
+      hbEl.className = "value-big inactive";
+      hbAge.textContent = "polling OFF ou pas de réponse";
+    }
+  }
+
+  // v2.1: Clear-all-DTCs progress indicator
+  if (s.clear_all_dtcs_in_progress) {
+    const status = $("diag-action-status");
+    if (status) {
+      status.textContent = "⏳ Clear All DTCs in progress: " +
+        s.clear_all_dtcs_progress + "% (current ECU " +
+        (s.clear_all_dtcs_ecu || "—") + ")";
+      status.style.color = "var(--accent)";
+    }
+  }
 });
 
 function updateHaldexLive(hx) {
@@ -403,6 +457,49 @@ function updateHaldexLive(hx) {
     const hex = hx.raw.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
     rawEl.textContent = hex;
   }
+}
+
+// v2.1: Clear Engine Fault button
+const btnClearEng = $("btn-clear-engine-fault");
+if (btnClearEng) {
+  btnClearEng.addEventListener("click", () => {
+    if (!confirm(
+      "🔧 Clear Engine Fault\n\n" +
+      "Envoyer une trame OBD-II Mode 04 (broadcast 0x700) qui demande à TOUS\n" +
+      "les ECU compatibles OBD-II d'effacer leurs DTC d'émission.\n\n" +
+      "Continuer ?"
+    )) return;
+    socket.emit("cmd", { cmd: "clear_engine_fault" });
+    const status = $("diag-action-status");
+    if (status) {
+      status.textContent = "▶ Clear Engine Fault envoyé (Mode 04 broadcast)";
+      status.style.color = "var(--accent)";
+    }
+  });
+}
+
+// v2.1: Clear ALL DTCs button (more dangerous — UDS sequence on 14+ ECUs)
+const btnClearAll = $("btn-clear-all-dtcs");
+if (btnClearAll) {
+  btnClearAll.addEventListener("click", () => {
+    if (!confirm(
+      "🧹 Clear DTC on ALL modules\n\n" +
+      "Itère sur 14+ ECU (Engine, Trans, Gateway, Haldex, etc.) et envoie\n" +
+      "pour chacun la séquence UDS:\n" +
+      "  1. Enter ExtendedDiagnosticSession\n" +
+      "  2. ClearDiagnosticInformation (tous groupes)\n" +
+      "  3. Return to DefaultSession\n\n" +
+      "Cette action efface TOUT historique de DTC sur la voiture.\n" +
+      "Continuer ?"
+    )) return;
+    if (!confirm("Confirmation finale: vraiment effacer TOUS les DTC ?")) return;
+    socket.emit("cmd", { cmd: "clear_all_dtcs" });
+    const status = $("diag-action-status");
+    if (status) {
+      status.textContent = "▶ Clear All DTCs démarré (suit progression en live)";
+      status.style.color = "var(--accent)";
+    }
+  });
 }
 
 // Haldex mode buttons — send set_haldex_mode command via socketio

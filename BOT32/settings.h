@@ -18,7 +18,11 @@ struct Settings {
   uint16_t obd2_req_id;      // default 0x7E0
   uint16_t obd2_resp_id;     // default 0x7E8
   uint16_t obd2_did_map;     // default 0x39C0 (Saugrohrdruck)
-  uint16_t obd2_poll_hz;     // default 5
+  uint16_t obd2_poll_hz;     // default 5 (per slot at this rate; round-robin if multiple polls enabled)
+
+  // v2.1: optional extra UDS polls (off by default to keep MAP at full rate)
+  bool     poll_ethanol;             // DID 0xF452 from engine ECU
+  bool     poll_haldex_blockage;     // DID 0x2BF3 from Haldex ECU (0x70F/0x779)
 
   // Cluster TX rate
   uint16_t tx_rate_hz;       // default 30 Hz (v1.5.2+) (Motor_09)
@@ -77,6 +81,8 @@ bool settings_set_map_min_mbar(float v);
 bool settings_set_map_max_mbar(float v);
 bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
+bool settings_set_poll_ethanol(bool v);
+bool settings_set_poll_haldex_blockage(bool v);
 bool settings_set_tx_rate_hz(uint16_t v);
 bool settings_set_tx_enabled(bool v);
 bool settings_set_force_tx_always(bool v);

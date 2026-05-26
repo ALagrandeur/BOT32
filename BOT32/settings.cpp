@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 8   // v2.0: removed use_dead_zone_mapping (linear confirmed in vehicle)
+#define SETTINGS_VERSION 9   // v2.1: added poll_ethanol + poll_haldex_blockage toggles
 
 static Settings make_defaults() {
   Settings s;
@@ -19,6 +19,8 @@ static Settings make_defaults() {
   s.obd2_resp_id      = CAN_ID_OBD2_RESP;
   s.obd2_did_map      = UDS_DID_MAP;
   s.obd2_poll_hz      = 1000 / OBD2_POLL_INTERVAL_MS;
+  s.poll_ethanol            = false;
+  s.poll_haldex_blockage    = false;
   s.tx_rate_hz        = 1000 / MOTOR_09_TX_INTERVAL_MS;
   s.cluster_motor09_id = CAN_ID_MOTOR_09;
   s.cluster_wba03_id   = CAN_ID_WBA_03;
@@ -58,6 +60,8 @@ void settings_init() {
   current.obd2_resp_id      = prefs.getUShort("obd_resp", CAN_ID_OBD2_RESP);
   current.obd2_did_map      = prefs.getUShort("obd_did", UDS_DID_MAP);
   current.obd2_poll_hz      = prefs.getUShort("obd_hz", 1000 / OBD2_POLL_INTERVAL_MS);
+  current.poll_ethanol          = prefs.getBool("p_etoh", false);
+  current.poll_haldex_blockage  = prefs.getBool("p_hdxb", false);
   current.tx_rate_hz        = prefs.getUShort("tx_hz", 1000 / MOTOR_09_TX_INTERVAL_MS);
   current.cluster_motor09_id = prefs.getUShort("cl_m09", CAN_ID_MOTOR_09);
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
@@ -113,6 +117,14 @@ bool settings_set_obd2_did_map(uint16_t v) {
 bool settings_set_obd2_poll_hz(uint16_t v) {
   current.obd2_poll_hz = v;
   return save_ushort("obd_hz", v);
+}
+bool settings_set_poll_ethanol(bool v) {
+  current.poll_ethanol = v;
+  return save_bool("p_etoh", v);
+}
+bool settings_set_poll_haldex_blockage(bool v) {
+  current.poll_haldex_blockage = v;
+  return save_bool("p_hdxb", v);
 }
 bool settings_set_tx_rate_hz(uint16_t v) {
   current.tx_rate_hz = v;
@@ -198,6 +210,8 @@ void settings_reset_to_defaults() {
   prefs.putUShort("obd_resp", current.obd2_resp_id);
   prefs.putUShort("obd_did", current.obd2_did_map);
   prefs.putUShort("obd_hz", current.obd2_poll_hz);
+  prefs.putBool("p_etoh", current.poll_ethanol);
+  prefs.putBool("p_hdxb", current.poll_haldex_blockage);
   prefs.putUShort("tx_hz", current.tx_rate_hz);
   prefs.putUShort("cl_m09", current.cluster_motor09_id);
   prefs.putUShort("cl_wba", current.cluster_wba03_id);

@@ -499,6 +499,92 @@
        ================================================================ -->
   <h2 class="section-header">🩺 Diagnostics</h2>
 
+  <details class="card card-diag collapsible" open>
+    <summary>
+      <h3 class="card-title">🧪 Diagnostic OBD2 (v2.1)</h3>
+      <span class="summary-hint muted small">Lecture éthanol + Haldex pump %, Clear DTC engine / all modules</span>
+    </summary>
+    <div class="collapsible-body">
+
+      <h4 class="subtitle">📊 Lectures UDS supplémentaires (optionnelles)</h4>
+      <div class="sub-card">
+        <p class="muted small">
+          Cocher pour activer le polling round-robin avec le MAP (le débit OBD2
+          configuré est partagé entre toutes les lectures actives).
+        </p>
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" id="set-poll_ethanol">
+            <span>⛽ <b>Éthanol content</b> (DID <code>0xF452</code> sur engine ECU)<br>
+                  <span class="muted small">Affiche le % d'éthanol dans le carburant. Plage typique 0-85% (E0 à E85).</span>
+            </span>
+          </label>
+        </div>
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" id="set-poll_haldex_blockage">
+            <span>🏁 <b>Haldex degree of blockage</b> (DID <code>0x2BF3</code> sur Haldex ECU <code>0x70F</code>)<br>
+                  <span class="muted small">Affiche le % d'engagement réel de la pompe Haldex AWD. 0% = FWD pur, valeurs plus élevées = couplage actif.</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <h4 class="subtitle">📈 Valeurs live</h4>
+      <div class="grid grid-2">
+        <div>
+          <span class="lbl">⛽ Ethanol content</span>
+          <span id="live-ethanol" class="value-big">—</span>
+          <span id="live-ethanol-age" class="lbl">—</span>
+        </div>
+        <div>
+          <span class="lbl">🏁 Haldex pump engagement</span>
+          <span id="live-haldex-blockage" class="value-big">—</span>
+          <span id="live-haldex-blockage-age" class="lbl">—</span>
+        </div>
+      </div>
+
+      <h4 class="subtitle">⚡ Actions one-shot</h4>
+      <p class="muted small">
+        Ces commandes ENVOIENT des trames CAN diagnostic au véhicule. À utiliser uniquement
+        si tu sais ce que tu fais — les DTC effacés peuvent contenir de l'info diagnostique utile.
+      </p>
+
+      <div class="actions">
+        <button id="btn-clear-engine-fault" class="primary">
+          🔧 Clear Engine Fault (Mode 04 broadcast)
+        </button>
+        <button id="btn-clear-all-dtcs" class="danger">
+          🧹 Clear DTC on ALL modules (14+ ECUs, UDS sequence)
+        </button>
+      </div>
+      <p class="muted small" id="diag-action-status">—</p>
+
+      <details class="nested-details">
+        <summary class="muted small">📡 Détail technique des trames envoyées (cliquer pour voir)</summary>
+        <div class="frame-list">
+          <div class="frame-item">
+            <code>Clear Engine Fault</code> → <code>0x700 → [01 04]</code> (OBD-II Mode 04 broadcast)
+          </div>
+          <div class="frame-item">
+            <code>Clear All DTCs</code> → pour chaque ECU dans {0x7E0, 0x7E1, 0x713, 0x70F, 0x70E, 0x710, 0x712, 0x714, 0x715, 0x730, 0x731, 0x732, 0x74A, 0x754} :
+            <ul class="todo-list">
+              <li><code>[02 10 03]</code> — ExtendedDiagnosticSession</li>
+              <li><code>[04 14 FF FF FF]</code> — ClearDTC (tous groupes)</li>
+              <li><code>[02 10 01]</code> — DefaultSession</li>
+            </ul>
+          </div>
+          <div class="frame-item">
+            <code>Ethanol</code> → <code>0x7E0 → [03 22 F4 52]</code> → réponse 1 byte sur <code>0x7E8</code>
+          </div>
+          <div class="frame-item">
+            <code>Haldex blockage</code> → <code>0x70F → [03 22 2B F3]</code> → réponse 2 bytes sur <code>0x779</code>
+          </div>
+        </div>
+      </details>
+    </div>
+  </details>
+
   <details class="card collapsible">
     <summary>
       <h3 class="card-title">📋 ESP32 log</h3>

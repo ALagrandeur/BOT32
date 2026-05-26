@@ -15,7 +15,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.0.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.1.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -50,6 +50,8 @@ static void emit_settings() {
   doc["obd2_resp_id"]      = s.obd2_resp_id;
   doc["obd2_did_map"]      = s.obd2_did_map;
   doc["obd2_poll_hz"]      = s.obd2_poll_hz;
+  doc["poll_ethanol"]          = s.poll_ethanol;
+  doc["poll_haldex_blockage"]  = s.poll_haldex_blockage;
   doc["tx_rate_hz"]        = s.tx_rate_hz;
   doc["cluster_motor09_id"] = s.cluster_motor09_id;
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
@@ -118,6 +120,21 @@ static void emit_status() {
   float map = obd2_get_last_map_mbar();
   doc["map_mbar"]     = map >= 0 ? map : (float)-1;
   doc["map_age_ms"]   = obd2_get_map_age_ms();
+
+  // v2.1: extra UDS values
+  float ethanol = obd2_get_last_ethanol_pct();
+  doc["ethanol_pct"]      = ethanol >= 0 ? ethanol : (float)-1;
+  doc["ethanol_age_ms"]   = obd2_get_ethanol_age_ms();
+
+  float hdx_blk = obd2_get_last_haldex_blockage_pct();
+  doc["haldex_blockage_pct"]    = hdx_blk >= 0 ? hdx_blk : (float)-1;
+  doc["haldex_blockage_raw"]    = obd2_get_last_haldex_blockage_raw();
+  doc["haldex_blockage_age_ms"] = obd2_get_haldex_blockage_age_ms();
+
+  // v2.1: clear-all-DTCs progress (only meaningful while running)
+  doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();
+  doc["clear_all_dtcs_progress"]    = obd2_clear_all_dtcs_progress_pct();
+  doc["clear_all_dtcs_ecu"]         = obd2_clear_all_dtcs_current_ecu();
 
   // Haldex link state (from external MITM module, see haldex_link.cpp)
   HaldexState hx = haldex_link_get_state();
@@ -243,6 +260,20 @@ static void handle_cmd(const char* line) {
     return;
   }
 
+  // v2.1: Clear engine fault — OBD-II Mode 04 broadcast on 0x700
+  if (strcmp(cmd, "clear_engine_fault") == 0) {
+    bool ok = obd2_clear_engine_fault();
+    emit_ack("clear_engine_fault", ok, ok ? "Mode 04 broadcast sent" : "TX failed");
+    return;
+  }
+
+  // v2.1: Clear DTC on ALL modules — non-blocking state machine
+  if (strcmp(cmd, "clear_all_dtcs") == 0) {
+    bool ok = obd2_clear_all_dtcs();
+    emit_ack("clear_all_dtcs", ok, ok ? "started" : "already running or busy");
+    return;
+  }
+
   if (strcmp(cmd, "set") == 0) {
     const char* key = doc["key"];
     if (!key) { emit_ack("set", false, "no key"); return; }
@@ -253,6 +284,8 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "obd2_req_id")        == 0) ok = settings_set_obd2_req_id(doc["value"]        | 0);
     else if (strcmp(key, "obd2_resp_id")       == 0) ok = settings_set_obd2_resp_id(doc["value"]       | 0);
     else if (strcmp(key, "obd2_poll_hz")       == 0) ok = settings_set_obd2_poll_hz(doc["value"]       | 5);
+    else if (strcmp(key, "poll_ethanol")         == 0) ok = settings_set_poll_ethanol(doc["value"]         | false);
+    else if (strcmp(key, "poll_haldex_blockage") == 0) ok = settings_set_poll_haldex_blockage(doc["value"] | false);
     else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
     else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
     else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);

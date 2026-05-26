@@ -1,5 +1,5 @@
 /*
- * Version: v2.0.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.0.0
+ * Version: v2.1.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.1.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):

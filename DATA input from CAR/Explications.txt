@@ -1,0 +1,22 @@
+Ok, j'ai plusieurs fichier de donnée a te faire analyser : 
+
+Dans les fichiers #1, la voiture fonctionne au ralenti jusqu’à temps qu’elle atteigne sa température, je ne touche à aucune des commandes. La voiture était déjà à sa température de fonctionnement, et le ralenti se place à une vitesse normale.
+
+Dans le fichier #2, je donne trois coups d’accélérateur. Le moteur accélère et revient au ralenti entre chaque coup d’accélérateur.
+
+Dans le fichier #3, je joue avec le sélecteur de vitesse en position P R. N. D. S. N. R.P. Je refait cela 2 fois avec les pieds sur la commande des freins.
+
+Dans les fichiers #4, j’appuie sur le frein, je mets en reculons, je lâche le frein et le véhicule se déplace, j’appuie sur les freins remets en position Drive et accélère legerement. Je freine j’immobilise le véhicule et remets en position P. je fais cela à deux reprises.
+
+Dans les fichiers #RUN, je vais prendre une très petite balade en voiture, je m’immobilise je recule et je reviens à la maison
+
+Dans les fichiers #6, j’active le bouton du traction Control (ON and OFF) à 4 reprises (Je crois : 0x000FD - 00 à 03 le 7iem bit)
+
+Dans les fichiers #7, j’active les feux Hazard à quatre reprises (ON and OFF) (Je crois 0x00366 - 00 à 10 3 iem bit et 20 à 3E 4iem bit)
+
+Clear engine fault : fichier ''cef''
+Clear DTC on all module : fichier ''caf''
+Valeur entre 0 et 40% : fichier ''haldex degree of blockage'' 
+Ethanol content in fuel, valeur à 11% - fichier ''ethanol''
+
+Peux tu ajouter cela au commande pour communiquer sur le CAN diagnostic (OBD2 port).
