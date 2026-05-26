@@ -1,4 +1,4 @@
-VERSION "BOT32 v2.0 — VW MQB Powertrain HS-CAN partial DBC for SavvyCAN"
+VERSION "BOT32 v2.0.1 — VW MQB Powertrain HS-CAN DBC for SavvyCAN (vehicle-validated 2026-05-26)"
 
 NS_ :
     NS_DESC_
@@ -28,7 +28,11 @@ NS_ :
 
 BS_:
 
-BU_: PCM DSG ESP HDX EPS EPB CLUSTER GATEWAY
+BU_: PCM DSG ESP HDX EPS EPB CLUSTER GATEWAY BCM AIRBAG
+
+BO_ 64 AIRBAG_01: 8 AIRBAG
+ SG_ AIRBAG_Checksum : 0|8@1+ (1,0) [0|255] "" PCM
+ SG_ AIRBAG_Counter : 8|4@1+ (1,0) [0|15] "" PCM
 
 BO_ 134 LWI_01: 8 EPS
  SG_ LWI_Counter : 8|4@1+ (1,0) [0|15] "" PCM
@@ -49,8 +53,8 @@ BO_ 167 MOTOR_11: 8 PCM
  SG_ MOTOR_11_Mom_Soll_Roh : 16|8@1+ (1,0) [0|250] "%" HDX
  SG_ MOTOR_11_Mom_Ist : 24|8@1+ (1,0) [0|250] "%" HDX
  SG_ MOTOR_11_Mom_Soll_Filt : 40|8@1+ (1,0) [0|250] "%" HDX
- SG_ MOTOR_11_Mom_Soll_01 : 48|8@1+ (1,0) [0|250] "%" HDX
- SG_ MOTOR_11_Mom_Soll_02 : 56|8@1+ (1,0) [0|250] "%" HDX
+ SG_ MOTOR_11_Mom_Soll_01 : 48|16@1+ (1,0) [0|65535] "" HDX
+ SG_ MOTOR_11_Mom_Soll_02 : 56|8@1+ (1,0) [0|255] "" HDX
 
 BO_ 168 MOTOR_12: 8 PCM
  SG_ MOTOR_12_Checksum : 0|8@1+ (1,0) [0|255] "" HDX
@@ -59,11 +63,23 @@ BO_ 168 MOTOR_12: 8 PCM
  SG_ MOTOR_12_RPMQual : 48|8@1+ (1,0) [0|255] "" HDX
  SG_ MOTOR_12_EngineSpeed : 56|8@1+ (1,0) [0|255] "" HDX
 
+BO_ 173 GETRIEBE_11: 8 DSG
+ SG_ GETRIEBE_11_Checksum : 0|8@1+ (1,0) [0|255] "" PCM
+ SG_ GETRIEBE_11_Counter : 8|4@1+ (1,0) [0|15] "" PCM
+ SG_ GETRIEBE_11_GearPosition : 56|8@1+ (1,0) [0|255] "" PCM CLUSTER
+
 BO_ 178 ESP_19: 8 ESP
- SG_ ESP_19_WheelSpeed_HL : 0|16@1+ (0.0075,0) [0|360] "km/h" HDX
- SG_ ESP_19_WheelSpeed_HR : 16|16@1+ (0.0075,0) [0|360] "km/h" HDX
- SG_ ESP_19_WheelSpeed_VL : 32|16@1+ (0.0075,0) [0|360] "km/h" HDX
- SG_ ESP_19_WheelSpeed_VR : 48|16@1+ (0.0075,0) [0|360] "km/h" HDX
+ SG_ ESP_19_WheelSpeed_HL : 0|16@1+ (0.0075,0) [0|360] "km/h" HDX PCM CLUSTER
+ SG_ ESP_19_WheelSpeed_HR : 16|16@1+ (0.0075,0) [0|360] "km/h" HDX PCM CLUSTER
+ SG_ ESP_19_WheelSpeed_VL : 32|16@1+ (0.0075,0) [0|360] "km/h" HDX PCM CLUSTER
+ SG_ ESP_19_WheelSpeed_VR : 48|16@1+ (0.0075,0) [0|360] "km/h" HDX PCM CLUSTER
+
+BO_ 253 ESP_21: 8 ESP
+ SG_ ESP_21_Checksum : 0|8@1+ (1,0) [0|255] "" PCM
+ SG_ ESP_21_Counter : 8|4@1+ (1,0) [0|15] "" PCM
+ SG_ ESP_21_TC_State : 48|8@1+ (1,0) [0|255] "" PCM CLUSTER
+ SG_ ESP_21_TC_Disabled : 48|1@1+ (1,0) [0|1] "" PCM CLUSTER
+ SG_ ESP_21_TC_Statebit1 : 49|1@1+ (1,0) [0|1] "" PCM CLUSTER
 
 BO_ 257 ESP_02: 8 ESP
  SG_ ESP_02_YawRate : 0|16@1- (0.01,0) [-327.68|327.67] "deg/s" PCM
@@ -73,6 +89,9 @@ BO_ 260 EPB_01: 8 EPB
 
 BO_ 262 ESP_05: 8 ESP
  SG_ ESP_05_LongAccel : 0|16@1- (0.01,0) [-327.68|327.67] "m/s2" PCM
+ SG_ ESP_05_BrakeState : 24|8@1+ (1,0) [0|255] "" CLUSTER PCM
+ SG_ ESP_05_BrakeActive : 26|1@1+ (1,0) [0|1] "" CLUSTER PCM
+ SG_ ESP_05_BrakePressed : 24|1@1+ (1,0) [0|1] "" CLUSTER PCM
 
 BO_ 263 MOTOR_04: 8 PCM
  SG_ MOTOR_04_EngineRPM : 24|16@1+ (0.25,0) [0|16383.75] "rpm" CLUSTER
@@ -100,6 +119,11 @@ BO_ 309 ESP_18: 8 ESP
 
 BO_ 396 ESP_29: 8 ESP
 
+BO_ 774 BLINKMODI_01: 8 BCM
+ SG_ BLM_HazardActive : 20|1@1+ (1,0) [0|1] "" CLUSTER GATEWAY
+ SG_ BLM_HazardState : 16|8@1+ (1,0) [0|255] "" CLUSTER GATEWAY
+ SG_ BLM_BlinkerPattern : 24|8@1+ (1,0) [0|255] "" CLUSTER GATEWAY
+
 BO_ 794 WBA_03: 8 GATEWAY
  SG_ WBA_03_LeverPosition : 12|4@1+ (1,0) [0|15] "" CLUSTER
  SG_ WBA_03_GearEngaged : 24|4@1+ (1,0) [0|15] "" CLUSTER
@@ -111,8 +135,10 @@ BO_ 901 CHARISMA_01: 8 PCM
 BO_ 958 MOTOR_14: 8 PCM
 
 BO_ 968 GETRIEBE_14: 8 DSG
+ SG_ GETRIEBE_14_StateBit7 : 55|1@1+ (1,0) [0|1] "" PCM
 
 BO_ 987 GATEWAY_72: 8 GATEWAY
+ SG_ GATEWAY_72_BrakeRelated : 24|8@1+ (1,0) [0|255] "" PCM
 
 BO_ 960 KLEMMEN_STATUS_01: 4 GATEWAY
  SG_ KS_Checksum : 0|8@1+ (1,0) [0|255] "" PCM
@@ -139,14 +165,22 @@ BO_ 1714 DIAGNOSE_01: 8 GATEWAY
 
 BO_ 1719 KOMBI_02: 8 CLUSTER
 
-CM_ BO_ 280 "HALDEX GEN 5 STATUS BROADCAST — pump engagement in byte 2 (raw 0-250 = 0-100%), state bitfield in byte 3.";
-CM_ BO_ 138 "ESP_14 — byte 7 BR_Vorg_Allrad_Max is the most critical demand signal sent to Haldex.";
-CM_ BO_ 167 "MOTOR_11 — bytes 6 & 7 carry torque demand modulated for Haldex.";
-CM_ BO_ 178 "ESP_19 — 4 wheel speeds (HL/HR/VL/VR), scaling 0.0075 km/h per LSB (verify on bench).";
+CM_ BO_ 280 "HALDEX GEN 5 STATUS BROADCAST — only on the PRIVATE Haldex sub-bus, NOT on public powertrain CAN (confirmed via 7-capture analysis 2026-05-26).";
+CM_ BO_ 138 "ESP_14 — Allrad demand sent to Haldex. Only on the PRIVATE Haldex sub-bus.";
+CM_ BO_ 167 "MOTOR_11 — bytes 6-7 carry the raw torque demand (16-bit). Vehicle-confirmed: idle=~0x3D97-98, light blip peak=0x3DE9, full-throttle peak=0x3E77.";
+CM_ BO_ 178 "ESP_19 — 4 wheel speeds (HL/HR/VL/VR). Scale 0.0075 km/h per LSB (verified in run.csv against ~10 km/h driving).";
+CM_ BO_ 253 "ESP_21 — byte 6 = Traction Control state. VEHICLE-CONFIRMED 2026-05-26: TC enabled = 0x00, TC disabled (button held) = 0x03.";
+CM_ BO_ 262 "ESP_05 — byte 3 = brake state. VEHICLE-CONFIRMED: 0x00 = brake released, 0x04/0x05 = brake pressed (bit 2 = brake light).";
 CM_ BO_ 263 "MOTOR_04 — engine RPM in bytes 3-4 (LE, scaling 0.25 rpm per LSB).";
-CM_ BO_ 794 "WBA_03 — gear lever in byte 1 high nibble (0x10=P, 0x20=R, 0x30=N, 0x40=D, 0x50=S, 0x60=M), engaged gear in byte 3 low nibble.";
+CM_ BO_ 774 "Blinkmodi_01 (suspected ID) — byte 2 bit 4 = Hazard active, byte 3 = blinker pattern. VEHICLE-CONFIRMED 2026-05-26: hazard OFF -> byte[2]=0x00/byte[3]=0x20, hazard ON -> byte[2]=0x10/byte[3]=0x3E.";
+CM_ BO_ 794 "WBA_03 — gear lever in byte 1 high nibble (0x10=P, 0x20=R, 0x30=N, 0x40=D, 0x50=S, 0x60=M). VEHICLE-CONFIRMED 2026-05-26 with file 3 sequence P->R->N->D->S->...->P x2 decoded perfectly.";
+CM_ BO_ 173 "GETRIEBE_11 — byte 7 carries the engaged DSG position. VEHICLE-CONFIRMED: 4 values observed (0x00/0x80/0x10/0x20) in file 4 brake+gear-change session.";
 CM_ SG_ 794 WBA_03_LeverPosition "1=P, 2=R, 3=N, 4=D, 5=S, 6=M";
 CM_ SG_ 280 HDX_State_TempProtection "WARNING flag — pump overtemp protection active. If 1, Haldex is in thermal limp.";
 CM_ SG_ 280 HDX_State_CouplingOpen "If 1, the AWD coupling is fully disengaged (FWD only).";
+CM_ SG_ 253 ESP_21_TC_Disabled "VEHICLE-CONFIRMED 2026-05-26: bit 0 of byte 6. Reads 1 when TC button is held (TC fully off), 0 in normal operation.";
+CM_ SG_ 774 BLM_HazardActive "VEHICLE-CONFIRMED 2026-05-26: bit 4 of byte 2. Reads 1 when Hazard button is on.";
 
 VAL_ 794 WBA_03_LeverPosition 1 "P (Park)" 2 "R (Reverse)" 3 "N (Neutral)" 4 "D (Drive)" 5 "S (Sport)" 6 "M (Manual)";
+VAL_ 253 ESP_21_TC_State 0 "TC enabled (normal)" 3 "TC disabled (button held)";
+VAL_ 262 ESP_05_BrakeState 0 "released" 4 "brake pressed" 5 "brake pressed (alt)";
