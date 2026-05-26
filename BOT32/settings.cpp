@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 9   // v2.1: added poll_ethanol + poll_haldex_blockage toggles
+#define SETTINGS_VERSION 10  // v2.2: added cluster_override_* fields (7 new)
 
 static Settings make_defaults() {
   Settings s;
@@ -21,6 +21,14 @@ static Settings make_defaults() {
   s.obd2_poll_hz      = 1000 / OBD2_POLL_INTERVAL_MS;
   s.poll_ethanol            = false;
   s.poll_haldex_blockage    = false;
+  // v2.2: cluster override defaults (using TC button as default trigger)
+  s.cluster_override_enabled         = false;
+  s.display_trigger_can_id           = 0x0FD;   // TC button (ESP_21)
+  s.display_trigger_byte_idx         = 6;       // TC state byte
+  s.display_trigger_rest_value       = 0x00;    // TC ON (normal)
+  s.display_trigger_pressed_value    = 0x03;    // TC button held (OFF)
+  s.display_value_source             = 0;       // 0 = ethanol % (default)
+  s.display_override_byte1_high      = 0x40;    // "D" (Drive) by default
   s.tx_rate_hz        = 1000 / MOTOR_09_TX_INTERVAL_MS;
   s.cluster_motor09_id = CAN_ID_MOTOR_09;
   s.cluster_wba03_id   = CAN_ID_WBA_03;
@@ -62,6 +70,13 @@ void settings_init() {
   current.obd2_poll_hz      = prefs.getUShort("obd_hz", 1000 / OBD2_POLL_INTERVAL_MS);
   current.poll_ethanol          = prefs.getBool("p_etoh", false);
   current.poll_haldex_blockage  = prefs.getBool("p_hdxb", false);
+  current.cluster_override_enabled      = prefs.getBool("co_en", false);
+  current.display_trigger_can_id        = prefs.getUShort("co_tid", 0x0FD);
+  current.display_trigger_byte_idx      = prefs.getUChar("co_tbi", 6);
+  current.display_trigger_rest_value    = prefs.getUChar("co_trv", 0x00);
+  current.display_trigger_pressed_value = prefs.getUChar("co_tpv", 0x03);
+  current.display_value_source          = prefs.getUChar("co_src", 0);
+  current.display_override_byte1_high   = prefs.getUChar("co_b1h", 0x40);
   current.tx_rate_hz        = prefs.getUShort("tx_hz", 1000 / MOTOR_09_TX_INTERVAL_MS);
   current.cluster_motor09_id = prefs.getUShort("cl_m09", CAN_ID_MOTOR_09);
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
@@ -125,6 +140,36 @@ bool settings_set_poll_ethanol(bool v) {
 bool settings_set_poll_haldex_blockage(bool v) {
   current.poll_haldex_blockage = v;
   return save_bool("p_hdxb", v);
+}
+bool settings_set_cluster_override_enabled(bool v) {
+  current.cluster_override_enabled = v;
+  return save_bool("co_en", v);
+}
+bool settings_set_display_trigger_can_id(uint16_t v) {
+  current.display_trigger_can_id = v;
+  return save_ushort("co_tid", v);
+}
+bool settings_set_display_trigger_byte_idx(uint8_t v) {
+  if (v > 7) v = 7;
+  current.display_trigger_byte_idx = v;
+  return prefs.putUChar("co_tbi", v) > 0;
+}
+bool settings_set_display_trigger_rest_value(uint8_t v) {
+  current.display_trigger_rest_value = v;
+  return prefs.putUChar("co_trv", v) > 0;
+}
+bool settings_set_display_trigger_pressed_value(uint8_t v) {
+  current.display_trigger_pressed_value = v;
+  return prefs.putUChar("co_tpv", v) > 0;
+}
+bool settings_set_display_value_source(uint8_t v) {
+  if (v > 1) v = 0;
+  current.display_value_source = v;
+  return prefs.putUChar("co_src", v) > 0;
+}
+bool settings_set_display_override_byte1_high(uint8_t v) {
+  current.display_override_byte1_high = v & 0xF0;
+  return prefs.putUChar("co_b1h", current.display_override_byte1_high) > 0;
 }
 bool settings_set_tx_rate_hz(uint16_t v) {
   current.tx_rate_hz = v;
@@ -212,6 +257,13 @@ void settings_reset_to_defaults() {
   prefs.putUShort("obd_hz", current.obd2_poll_hz);
   prefs.putBool("p_etoh", current.poll_ethanol);
   prefs.putBool("p_hdxb", current.poll_haldex_blockage);
+  prefs.putBool("co_en", current.cluster_override_enabled);
+  prefs.putUShort("co_tid", current.display_trigger_can_id);
+  prefs.putUChar("co_tbi", current.display_trigger_byte_idx);
+  prefs.putUChar("co_trv", current.display_trigger_rest_value);
+  prefs.putUChar("co_tpv", current.display_trigger_pressed_value);
+  prefs.putUChar("co_src", current.display_value_source);
+  prefs.putUChar("co_b1h", current.display_override_byte1_high);
   prefs.putUShort("tx_hz", current.tx_rate_hz);
   prefs.putUShort("cl_m09", current.cluster_motor09_id);
   prefs.putUShort("cl_wba", current.cluster_wba03_id);

@@ -494,6 +494,112 @@
     </div>
   </details>
 
+  <details class="card card-cluster-override collapsible">
+    <summary>
+      <h3 class="card-title">🎨 Cluster display override (v2.2)</h3>
+      <span class="summary-hint muted small">Affiche éthanol/Haldex % à la place du levier quand un bouton est pressé</span>
+    </summary>
+    <div class="collapsible-body">
+
+      <div class="warning-box" style="background: #2a1820; border-color: #ff8c00; color: #ffcb8a; display: block;">
+        ⚠ <b>Expérimental</b> — Ce système TX une trame WBA_03 modifiée à 40 Hz pour dominer
+        le broadcast gateway (20 Hz). L'affichage exact dépend de comment ton cluster
+        interprète les codes byte. À tester au bench d'abord.
+      </div>
+
+      <h4 class="subtitle">⚙️ Activation</h4>
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="set-cluster_override_enabled">
+          <span>🎨 <b>Enable cluster display override</b><br>
+                <span class="muted small">Quand actif et trigger pressé : BOT32 prend le contrôle de WBA_03 sur CAN0.</span>
+          </span>
+        </label>
+      </div>
+
+      <h4 class="subtitle">🔘 Configuration du trigger (bouton physique)</h4>
+      <div class="sub-card">
+        <p class="muted small">
+          Choisis quel bouton du véhicule active l'override. Defaults pointés sur le bouton TC (déjà vehicle-confirmed).
+          Autres options identifiées : Hazard <code>0x366</code> byte 2 valeurs <code>0x00/0x10</code>, Brake <code>0x106</code> byte 3 valeurs <code>0x00/0x04</code>.
+        </p>
+        <div class="row">
+          <label>Trigger CAN ID<br>
+            <input type="text" id="set-display_trigger_can_id" class="hex-input" placeholder="0x0FD">
+            <span class="muted small">défaut <code>0x0FD</code> (TC button = ESP_21)</span>
+          </label>
+          <label>Byte index (0..7)<br>
+            <input type="number" id="set-display_trigger_byte_idx" min="0" max="7" step="1">
+            <span class="muted small">défaut <code>6</code> (D7 = 7ième byte)</span>
+          </label>
+        </div>
+        <div class="row">
+          <label>Valeur "au repos" (hex)<br>
+            <input type="number" id="set-display_trigger_rest_value" min="0" max="255">
+            <span class="muted small">défaut <code>0</code> (TC enabled)</span>
+          </label>
+          <label>Valeur "pressé" (hex)<br>
+            <input type="number" id="set-display_trigger_pressed_value" min="0" max="255">
+            <span class="muted small">défaut <code>3</code> (TC button held)</span>
+          </label>
+        </div>
+      </div>
+
+      <h4 class="subtitle">🔢 Source de la valeur à afficher</h4>
+      <div class="row">
+        <label>Source<br>
+          <select id="set-display_value_source">
+            <option value="0">⛽ Ethanol content % (DID 0xF452)</option>
+            <option value="1">🏁 Haldex blockage % (DID 0x2BF3)</option>
+          </select>
+          <span class="muted small">Active le polling correspondant dans la section Diagnostic OBD2.</span>
+        </label>
+      </div>
+
+      <h4 class="subtitle">🎚 Override WBA_03 byte[1] high nibble (lettre affichée)</h4>
+      <div class="row">
+        <label>Code lettre (high nibble seulement)<br>
+          <input type="number" id="set-display_override_byte1_high" min="0" max="255">
+          <span class="muted small">défaut <code>64</code> (0x40 = D). Essayer 16=P, 32=R, 48=N, 80=S, 96=M.</span>
+        </label>
+      </div>
+
+      <h4 class="subtitle">📡 État live du trigger</h4>
+      <div class="grid grid-3">
+        <div>
+          <span class="lbl">Trigger</span>
+          <span id="live-override-pressed" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Valeur source (%)</span>
+          <span id="live-override-value" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Encodé byte[3]</span>
+          <span id="live-override-encoded" class="value-big">—</span>
+        </div>
+      </div>
+
+      <details class="nested-details">
+        <summary class="muted small">📡 Détail technique — encodage WBA_03 envoyé (cliquer)</summary>
+        <p class="muted small">
+          Quand trigger pressé, BOT32 TX <code>WBA_03 (0x394)</code> à 40 Hz sur CAN0 avec :
+        </p>
+        <ul class="todo-list">
+          <li><code>byte[0]</code> = MQB CRC (calculé automatiquement)</li>
+          <li><code>byte[1]</code> high nibble = ton override (e.g. 0x40 = D)</li>
+          <li><code>byte[1]</code> low nibble = rolling counter MQB</li>
+          <li><code>byte[3]</code> low nibble = <b>value_pct / 7</b>, capé à 14 (résolution ~7%, range affichage 0..98%)</li>
+          <li>Reste des bytes = 0x00</li>
+        </ul>
+        <p class="muted small">
+          Encodage capé à 14 car 0x0F (15) est réservé MQB "no gear".
+          Pour une meilleure résolution il faudra investiguer d'autres codes byte expérimentalement.
+        </p>
+      </details>
+    </div>
+  </details>
+
   <!-- ================================================================
        SECTION 4 — DIAGNOSTICS / LOGS
        ================================================================ -->

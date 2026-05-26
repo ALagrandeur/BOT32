@@ -24,6 +24,18 @@ struct Settings {
   bool     poll_ethanol;             // DID 0xF452 from engine ECU
   bool     poll_haldex_blockage;     // DID 0x2BF3 from Haldex ECU (0x70F/0x779)
 
+  // v2.2: configurable cluster display override
+  //   When a trigger CAN signal goes into "pressed" state, BOT32 starts
+  //   transmitting a modified WBA_03 at 40Hz to show a custom value (e.g.
+  //   ethanol %) in place of the gear indicator.
+  bool     cluster_override_enabled;          // master toggle, default false
+  uint16_t display_trigger_can_id;            // default 0x0FD (TC button)
+  uint8_t  display_trigger_byte_idx;          // default 6 (byte index 0..7)
+  uint8_t  display_trigger_rest_value;        // default 0x00 (TC enabled)
+  uint8_t  display_trigger_pressed_value;     // default 0x03 (TC button held)
+  uint8_t  display_value_source;              // 0=ethanol %, 1=haldex blockage %
+  uint8_t  display_override_byte1_high;       // WBA_03 byte[1] high nibble (default 0x40=D)
+
   // Cluster TX rate
   uint16_t tx_rate_hz;       // default 30 Hz (v1.5.2+) (Motor_09)
 
@@ -83,6 +95,13 @@ bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
 bool settings_set_poll_ethanol(bool v);
 bool settings_set_poll_haldex_blockage(bool v);
+bool settings_set_cluster_override_enabled(bool v);
+bool settings_set_display_trigger_can_id(uint16_t v);
+bool settings_set_display_trigger_byte_idx(uint8_t v);
+bool settings_set_display_trigger_rest_value(uint8_t v);
+bool settings_set_display_trigger_pressed_value(uint8_t v);
+bool settings_set_display_value_source(uint8_t v);
+bool settings_set_display_override_byte1_high(uint8_t v);
 bool settings_set_tx_rate_hz(uint16_t v);
 bool settings_set_tx_enabled(bool v);
 bool settings_set_force_tx_always(bool v);

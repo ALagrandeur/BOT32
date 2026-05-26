@@ -1,5 +1,5 @@
 /*
- * Version: v2.1.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.1.0
+ * Version: v2.2.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.2.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -35,6 +35,7 @@
 #include "serial_proto.h"
 #include "bench_test.h"
 #include "haldex_link.h"
+#include "cluster_override.h"
 
 // =============================================================
 //  State
@@ -89,6 +90,7 @@ void setup() {
     coolant_sniffer_init();   // sniff real Motor_09 from cluster bus
     bench_test_init();
     haldex_link_init();       // client for external Haldex MITM module
+    cluster_override_init();  // v2.2: configurable cluster display override
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));
@@ -238,6 +240,12 @@ void loop() {
 
     // 5. TX Motor_09 if in BOOST mode and due
     tx_motor_09_if_due(now);
+
+    // 5b. v2.2 — cluster display override (TX modified WBA_03 at 40Hz when trigger active)
+    bool safe_to_tx = settings_get().tx_enabled
+                      && currentMode != MODE_BOOT
+                      && currentMode != MODE_SAFE_FAULT;
+    cluster_override_tick(now, safe_to_tx);
   }
 
   // 6. Handle serial commands from PC (if USB connected)

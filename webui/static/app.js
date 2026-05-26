@@ -80,6 +80,11 @@ const SETTING_KEYS = [
   "obd2_poll_hz", "tx_rate_hz",
   // v2.1: optional UDS extra polls
   "poll_ethanol", "poll_haldex_blockage",
+  // v2.2: cluster display override
+  "cluster_override_enabled",
+  "display_trigger_can_id", "display_trigger_byte_idx",
+  "display_trigger_rest_value", "display_trigger_pressed_value",
+  "display_value_source", "display_override_byte1_high",
   // Behavior flags
   "tx_enabled", "force_tx_always", "block_airbag",
   // Bench test
@@ -416,6 +421,35 @@ socket.on("status", (s) => {
         s.clear_all_dtcs_progress + "% (current ECU " +
         (s.clear_all_dtcs_ecu || "—") + ")";
       status.style.color = "var(--accent)";
+    }
+  }
+
+  // v2.2: Cluster override live indicators
+  const overPressed = $("live-override-pressed");
+  const overValue   = $("live-override-value");
+  const overEncoded = $("live-override-encoded");
+  if (overPressed) {
+    if (s.cluster_override_pressed === true) {
+      overPressed.textContent = "✓ PRESSED";
+      overPressed.className = "value-big mode-BOOST";
+    } else if (s.cluster_override_pressed === false) {
+      overPressed.textContent = "released";
+      overPressed.className = "value-big inactive";
+    }
+  }
+  if (overValue) {
+    if (s.cluster_override_value_pct !== undefined && s.cluster_override_value_pct >= 0) {
+      overValue.textContent = s.cluster_override_value_pct.toFixed(1) + "%";
+      overValue.className = "value-big";
+    } else {
+      overValue.textContent = "—";
+      overValue.className = "value-big inactive";
+    }
+  }
+  if (overEncoded) {
+    if (s.cluster_override_encoded_byte !== undefined) {
+      const b = s.cluster_override_encoded_byte;
+      overEncoded.textContent = b + " (0x" + b.toString(16).toUpperCase().padStart(2,"0") + ")";
     }
   }
 });

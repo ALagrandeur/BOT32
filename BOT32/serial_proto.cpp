@@ -12,10 +12,11 @@
 #include "coolant.h"
 #include "haldex_link.h"
 #include "haldex_espnow.h"
+#include "cluster_override.h"
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.1.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.2.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -52,6 +53,13 @@ static void emit_settings() {
   doc["obd2_poll_hz"]      = s.obd2_poll_hz;
   doc["poll_ethanol"]          = s.poll_ethanol;
   doc["poll_haldex_blockage"]  = s.poll_haldex_blockage;
+  doc["cluster_override_enabled"]      = s.cluster_override_enabled;
+  doc["display_trigger_can_id"]        = s.display_trigger_can_id;
+  doc["display_trigger_byte_idx"]      = s.display_trigger_byte_idx;
+  doc["display_trigger_rest_value"]    = s.display_trigger_rest_value;
+  doc["display_trigger_pressed_value"] = s.display_trigger_pressed_value;
+  doc["display_value_source"]          = s.display_value_source;
+  doc["display_override_byte1_high"]   = s.display_override_byte1_high;
   doc["tx_rate_hz"]        = s.tx_rate_hz;
   doc["cluster_motor09_id"] = s.cluster_motor09_id;
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
@@ -135,6 +143,11 @@ static void emit_status() {
   doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();
   doc["clear_all_dtcs_progress"]    = obd2_clear_all_dtcs_progress_pct();
   doc["clear_all_dtcs_ecu"]         = obd2_clear_all_dtcs_current_ecu();
+
+  // v2.2: cluster override diagnostics
+  doc["cluster_override_pressed"]      = cluster_override_is_trigger_pressed();
+  doc["cluster_override_encoded_byte"] = cluster_override_get_last_encoded_byte();
+  doc["cluster_override_value_pct"]    = cluster_override_get_last_value_pct();
 
   // Haldex link state (from external MITM module, see haldex_link.cpp)
   HaldexState hx = haldex_link_get_state();
@@ -286,6 +299,13 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "obd2_poll_hz")       == 0) ok = settings_set_obd2_poll_hz(doc["value"]       | 5);
     else if (strcmp(key, "poll_ethanol")         == 0) ok = settings_set_poll_ethanol(doc["value"]         | false);
     else if (strcmp(key, "poll_haldex_blockage") == 0) ok = settings_set_poll_haldex_blockage(doc["value"] | false);
+    else if (strcmp(key, "cluster_override_enabled")      == 0) ok = settings_set_cluster_override_enabled(doc["value"]      | false);
+    else if (strcmp(key, "display_trigger_can_id")        == 0) ok = settings_set_display_trigger_can_id(doc["value"]        | 0x0FD);
+    else if (strcmp(key, "display_trigger_byte_idx")      == 0) ok = settings_set_display_trigger_byte_idx(doc["value"]      | 6);
+    else if (strcmp(key, "display_trigger_rest_value")    == 0) ok = settings_set_display_trigger_rest_value(doc["value"]    | 0);
+    else if (strcmp(key, "display_trigger_pressed_value") == 0) ok = settings_set_display_trigger_pressed_value(doc["value"] | 3);
+    else if (strcmp(key, "display_value_source")          == 0) ok = settings_set_display_value_source(doc["value"]          | 0);
+    else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(doc["value"]   | 0x40);
     else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
     else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
     else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);
