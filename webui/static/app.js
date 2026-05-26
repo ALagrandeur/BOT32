@@ -328,51 +328,45 @@ if (transportSel) {
 //  Live status (NO mode display per user request)
 // ===========================================================
 socket.on("status", (s) => {
+  // v2.4.1: the small text under each live value is now the static CAN address
+  // (rendered in HTML). The JS only updates the main value + visual color
+  // (active/stale via className).
+
   // Lever
   $("live-lever").textContent = (s.lever && s.lever !== "?")
     ? (s.gear ? `${s.lever}${s.gear}` : s.lever) : "—";
 
   // MAP (from OBD2 polling)
+  const mapEl = $("live-map");
   if (s.map_mbar >= 0) {
-    $("live-map").textContent = Math.round(s.map_mbar);
-    $("live-map-age").textContent = `${(s.map_age_ms/1000).toFixed(1)}s ago`;
+    mapEl.textContent = Math.round(s.map_mbar);
+    mapEl.className = "value-big";
   } else {
-    $("live-map").textContent = "—";
-    $("live-map-age").textContent = "no data";
+    mapEl.textContent = "—";
+    mapEl.className = "value-big inactive";
   }
 
   // Coolant override — ALWAYS show the live computed value (v2.0).
-  // Color/label changes based on whether we're actually TXing right now.
+  // Greyed when not actively TXing.
   const coolEl = $("live-coolant");
-  const coolNote = $("live-coolant-note");
   if (s.coolant_byte !== undefined) {
     const b = s.coolant_byte;
     const temp = (b * 0.7339 - 43.94).toFixed(1);
     coolEl.textContent = `${temp}°C`;
     coolEl.className = s.motor09_tx_active ? "value-big" : "value-big inactive";
-    const hex = `byte 0x${b.toString(16).toUpperCase().padStart(2,"0")}`;
-    coolNote.textContent = s.motor09_tx_active ? hex : `${hex} (preview — TX inactif)`;
   } else {
     coolEl.textContent = "—";
     coolEl.className = "value-big inactive";
-    coolNote.textContent = "—";
   }
 
   // Real coolant sniffed from cluster Motor_09 bus (CAN0)
   const realEl = $("live-real-coolant");
-  const realAge = $("live-real-coolant-age");
   if (s.real_coolant_c !== undefined && s.real_coolant_c >= 0) {
     realEl.textContent = `${s.real_coolant_c.toFixed(1)}°C`;
     realEl.className = "value-big";
-    if (s.real_coolant_age_ms !== undefined && s.real_coolant_age_ms < 60000) {
-      realAge.textContent = `il y a ${(s.real_coolant_age_ms/1000).toFixed(1)}s`;
-    } else {
-      realAge.textContent = "stale";
-    }
   } else {
     realEl.textContent = "—";
     realEl.className = "value-big inactive";
-    realAge.textContent = "no Motor_09 RX";
   }
 
   // Bus stats
@@ -392,44 +386,27 @@ socket.on("status", (s) => {
   // Haldex live state (from external MITM module via CAN broadcast)
   updateHaldexLive(s.haldex);
 
-  // v2.1: Ethanol live %
+  // v2.1: Ethanol live % (v2.4.1: small text under value is now static CAN address)
   const ethEl = $("live-ethanol");
-  const ethAge = $("live-ethanol-age");
   if (ethEl) {
     if (s.ethanol_pct !== undefined && s.ethanol_pct >= 0) {
       ethEl.textContent = s.ethanol_pct.toFixed(1) + "%";
       ethEl.className = "value-big";
-      if (s.ethanol_age_ms !== undefined && s.ethanol_age_ms < 30000) {
-        ethAge.textContent = "il y a " + (s.ethanol_age_ms/1000).toFixed(1) + "s";
-      } else {
-        ethAge.textContent = "stale";
-      }
     } else {
       ethEl.textContent = "—";
       ethEl.className = "value-big inactive";
-      ethAge.textContent = "polling OFF ou pas de réponse";
     }
   }
 
-  // v2.1: Haldex blockage live %
+  // v2.1: Haldex blockage live % (v2.4.1: small text under value is now static CAN address)
   const hbEl = $("live-haldex-blockage");
-  const hbAge = $("live-haldex-blockage-age");
   if (hbEl) {
     if (s.haldex_blockage_pct !== undefined && s.haldex_blockage_pct >= 0) {
-      const pct = s.haldex_blockage_pct;
-      const raw = s.haldex_blockage_raw !== undefined ? s.haldex_blockage_raw : 0;
-      hbEl.textContent = pct.toFixed(1) + "%";
+      hbEl.textContent = s.haldex_blockage_pct.toFixed(1) + "%";
       hbEl.className = "value-big";
-      if (s.haldex_blockage_age_ms !== undefined && s.haldex_blockage_age_ms < 30000) {
-        hbAge.textContent = "raw=0x" + raw.toString(16).toUpperCase().padStart(4,"0") +
-                            " · il y a " + (s.haldex_blockage_age_ms/1000).toFixed(1) + "s";
-      } else {
-        hbAge.textContent = "stale";
-      }
     } else {
       hbEl.textContent = "—";
       hbEl.className = "value-big inactive";
-      hbAge.textContent = "polling OFF ou pas de réponse";
     }
   }
 

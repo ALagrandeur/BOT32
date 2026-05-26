@@ -46,31 +46,32 @@
       <div>
         <span class="lbl">Lever</span>
         <span id="live-lever" class="value-big">—</span>
+        <span class="lbl"><code>0x394</code> WBA_03</span>
       </div>
       <div>
-        <span class="lbl">MAP (mbar) — from OBD2</span>
+        <span class="lbl">MAP (mbar)</span>
         <span id="live-map" class="value-big">—</span>
-        <span id="live-map-age" class="lbl">—</span>
+        <span class="lbl"><code>0x7E0</code> · DID <code>0x39C0</code></span>
       </div>
       <div>
         <span class="lbl">Coolant override (we TX)</span>
         <span id="live-coolant" class="value-big">—</span>
-        <span id="live-coolant-note" class="lbl">—</span>
+        <span class="lbl"><code>0x647</code> Motor_09 TX</span>
       </div>
       <div>
         <span class="lbl">Real coolant (cluster sniff)</span>
         <span id="live-real-coolant" class="value-big">—</span>
-        <span id="live-real-coolant-age" class="lbl">—</span>
+        <span class="lbl"><code>0x647</code> Motor_09 RX</span>
       </div>
       <div>
         <span class="lbl">⛽ Ethanol content</span>
         <span id="live-ethanol" class="value-big">—</span>
-        <span id="live-ethanol-age" class="lbl">DID 0xF452 (always on)</span>
+        <span class="lbl"><code>0x7E0</code> · DID <code>0xF452</code></span>
       </div>
       <div>
         <span class="lbl">🏁 Haldex pump engagement</span>
         <span id="live-haldex-blockage" class="value-big">—</span>
-        <span id="live-haldex-blockage-age" class="lbl">DID 0x2BF3 ECU 0x70F (always on)</span>
+        <span class="lbl"><code>0x70F</code> · DID <code>0x2BF3</code></span>
       </div>
     </div>
 
@@ -632,76 +633,11 @@
     </div>
   </details>
 
-  <!-- v2.3.3: Diagnostic OBD2 section, ESP32 log section, and Sécurité/Maintenance
-       section removed — Ethanol + Haldex live values moved to top "État live" grid;
-       Clear Engine Fault button moved to header; Clear All DTCs removed entirely;
-       Block Airbag forced ON at firmware boot (no UI toggle). -->
-
-  <!-- Hidden status placeholder kept so JS that may target diag-action-status doesn't crash -->
-  <p id="diag-action-status" style="display:none">—</p>
-
-  <!-- ================================================================
-       SECTION 5 — ROADMAP / FUTURE FEATURES
-       Placeholders pour features planifiées. Pas encore codées.
-       Voir docs/future_features.md pour les détails techniques.
-       ================================================================ -->
-  <h2 class="section-header">🔮 Roadmap — Fonctions futures</h2>
-
-  <details class="card collapsible card-roadmap">
-    <summary>
-      <h3 class="card-title">🔮 Clear DTC via combo MFSW <span class="badge-soon">Coming soon</span></h3>
-      <span class="summary-hint muted small">Effacer codes erreurs via combinaison de boutons au volant</span>
-    </summary>
-    <div class="collapsible-body">
-      <p class="muted small">
-        Le conducteur appuie sur une combinaison de boutons MFSW (volant)
-        — par exemple "OK + DOWN maintenus 3 sec" — et BOT32 envoie automatiquement
-        une commande UDS Clear DTC à tous les ECUs présents sur le bus.
-      </p>
-
-      <div class="roadmap-status">
-        <span class="status-badge status-pending">🚧 Pas encore codé</span>
-      </div>
-
-      <h4 class="subtitle">Ce qu'il manque pour l'implémenter</h4>
-      <ul class="todo-list">
-        <li>📡 Sniffer les payloads MFSW (CAN ID <code>0x5BF</code>) en vrai véhicule pour boutons OK et BACK (les autres sont déjà connus du projet frère)</li>
-        <li>🔍 Identifier les adresses UDS des ECUs présents sur ta voiture (Tester Present à <code>0x7E0</code>, <code>0x7E1</code>, <code>0x713</code>, <code>0x714</code>, etc.)</li>
-        <li>🧠 Coder les modules firmware <code>mfsw_decoder</code>, <code>combo_detector</code>, <code>dtc_clear</code></li>
-        <li>🎨 UI : configurateur de combo + bouton trigger manuel + status display</li>
-      </ul>
-
-      <h4 class="subtitle">Effort estimé</h4>
-      <p class="muted small">~10 h de travail une fois les données reverse-engineering disponibles.</p>
-
-      <h4 class="subtitle">Disabled placeholder controls</h4>
-      <div class="row disabled-row">
-        <label>Combo trigger
-          <select disabled>
-            <option>OK + DOWN (3 sec)</option>
-            <option>UP + DOWN + OK</option>
-            <option>BACK x3</option>
-          </select>
-        </label>
-        <label>Hold duration (ms)
-          <input type="number" value="3000" disabled>
-        </label>
-      </div>
-      <div class="actions disabled-row">
-        <button class="secondary" disabled>🔄 Clear DTCs now (manual)</button>
-      </div>
-
-      <p class="muted small">
-        📖 Détails techniques : <code>docs/future_features.md</code> — Feature 1
-      </p>
-    </div>
-  </details>
-
-  <!-- v2.4.0: Clear Engine Fault — moved here from header.
+  <!-- v2.4.1: Clear Engine Fault — moved INTO Configuration section (was in Roadmap).
        Manual button works today; auto-trigger via vehicle button is roadmap. -->
-  <details class="card collapsible card-roadmap">
+  <details class="card collapsible">
     <summary>
-      <h3 class="card-title">🔧 Clear Engine Fault <span class="badge-soon">Manual works · Auto-trigger roadmap</span></h3>
+      <h3 class="card-title">🔧 Clear Engine Fault</h3>
       <span class="summary-hint muted small">OBD-II Mode 04 broadcast — efface les DTC d'émission</span>
     </summary>
     <div class="collapsible-body">
@@ -720,15 +656,12 @@
 
       <hr class="divider">
 
-      <h4 class="subtitle">🔘 Auto-trigger via bouton du véhicule (Roadmap)</h4>
-      <div class="roadmap-status">
-        <span class="status-badge status-pending">🚧 Config persistée maintenant, déclenchement firmware à venir</span>
-      </div>
+      <h4 class="subtitle">🔘 Auto-trigger via bouton du véhicule (à venir)</h4>
       <p class="muted small">
         Configure ici quel bouton physique va déclencher la commande Clear Engine Fault
-        une fois que le firmware sera capable d'écouter. Les défauts pointent sur le
-        bouton TC (déjà identifié vehicle-confirmed). Autres options : Hazard <code>0x366</code>,
-        ou MFSW à capturer.
+        une fois que le firmware sera capable d'écouter. Défauts pointent sur le bouton TC
+        (vehicle-confirmed). Autres options : Hazard <code>0x366</code>, ou MFSW à capturer.
+        <br>⚠ <b>Config persistée maintenant, déclenchement firmware à venir.</b>
       </p>
       <div class="sub-card">
         <div class="row">
@@ -754,6 +687,10 @@
       </div>
     </div>
   </details>
+
+  <!-- v2.4.1: Roadmap section removed entirely (was: Clear DTC via combo MFSW
+       and Clear Engine Fault). Clear DTC MFSW is not being pursued. Clear
+       Engine Fault is now in Configuration above. -->
 
 </main>
 

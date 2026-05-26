@@ -1,5 +1,5 @@
 /*
- * Version: v2.4.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.4.0
+ * Version: v2.4.1 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.4.1
  * BOT32-Haldex — Haldex bus MITM module
  *
  * Sister sketch to BOT32 main. Runs on a 2nd ESP32 + WaveShare 2-CH CAN HAT.
