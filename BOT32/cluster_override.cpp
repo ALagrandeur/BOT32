@@ -119,7 +119,7 @@ void cluster_override_tick(uint32_t now, bool safe_to_tx) {
   f.data[0] = 0x00;                                  // CRC placeholder, filled by mqb_apply
   f.data[1] = s.display_override_byte1_high & 0xF0;  // counter goes in low nibble via mqb_apply
   f.data[2] = 0x00;
-  f.data[3] = digit;                                 // value-to-display
+  f.data[3] = encoded;                               // value-to-display (encoded per mode)
   f.data[4] = 0x00;
   f.data[5] = 0x00;
   f.data[6] = 0x00;
