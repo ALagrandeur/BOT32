@@ -86,8 +86,8 @@ const SETTING_KEYS = [
   "display_trigger_rest_value", "display_trigger_pressed_value",
   "display_value_source", "display_override_byte1_high",
   "display_byte3_value_mode",  // v2.3.0: raw / ÷7 / tens / units
-  // Behavior flags
-  "tx_enabled", "force_tx_always", "block_airbag",
+  // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
+  "tx_enabled", "force_tx_always",
   // Bench test
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
   "bench_display_value_pct", "bench_force_override",  // v2.2.1
@@ -143,7 +143,9 @@ function updateFramePreviews(s) {
 }
 
 function updateAirbagWarning(blockEnabled) {
-  $("airbag-warning").style.display = blockEnabled ? "none" : "block";
+  // v2.3.3: airbag-warning element is hidden — block_airbag is hardcoded ON
+  const el = $("airbag-warning");
+  if (el) el.style.display = blockEnabled ? "none" : "block";
 }
 
 // ===========================================================
@@ -242,10 +244,16 @@ document.addEventListener("change", (e) => {
   }
 });
 
-$("btn-factory-reset").addEventListener("click", () => {
-  if (!confirm("Reset all settings to defaults?")) return;
-  socket.emit("cmd", { cmd: "factory_reset" });
-});
+// v2.3.3: btn-factory-reset removed from UI (no longer needed since
+// SETTINGS_VERSION bumps auto-reset on flash). Handler kept null-safe in case
+// of dynamic re-add.
+const btnFactoryReset = $("btn-factory-reset");
+if (btnFactoryReset) {
+  btnFactoryReset.addEventListener("click", () => {
+    if (!confirm("Reset all settings to defaults?")) return;
+    socket.emit("cmd", { cmd: "factory_reset" });
+  });
+}
 
 // ===========================================================
 //  Push ALL settings to ESP32 in one batch (header button)
@@ -522,29 +530,7 @@ if (btnClearEng) {
   });
 }
 
-// v2.1: Clear ALL DTCs button (more dangerous — UDS sequence on 14+ ECUs)
-const btnClearAll = $("btn-clear-all-dtcs");
-if (btnClearAll) {
-  btnClearAll.addEventListener("click", () => {
-    if (!confirm(
-      "🧹 Clear DTC on ALL modules\n\n" +
-      "Itère sur 14+ ECU (Engine, Trans, Gateway, Haldex, etc.) et envoie\n" +
-      "pour chacun la séquence UDS:\n" +
-      "  1. Enter ExtendedDiagnosticSession\n" +
-      "  2. ClearDiagnosticInformation (tous groupes)\n" +
-      "  3. Return to DefaultSession\n\n" +
-      "Cette action efface TOUT historique de DTC sur la voiture.\n" +
-      "Continuer ?"
-    )) return;
-    if (!confirm("Confirmation finale: vraiment effacer TOUS les DTC ?")) return;
-    socket.emit("cmd", { cmd: "clear_all_dtcs" });
-    const status = $("diag-action-status");
-    if (status) {
-      status.textContent = "▶ Clear All DTCs démarré (suit progression en live)";
-      status.style.color = "var(--accent)";
-    }
-  });
-}
+// v2.3.3: Clear All DTCs button removed entirely from UI.
 
 // Haldex mode buttons — send set_haldex_mode command via socketio
 document.querySelectorAll('[data-haldex-mode]').forEach(btn => {
@@ -607,10 +593,13 @@ socket.on("frame", (f) => {
 });
 
 // ===========================================================
-//  Log
+//  Log — v2.3.3: ESP32 log section removed from UI.
+//  Helper kept null-safe; events still consumed silently so they don't
+//  trigger unhandled-event warnings in socket.io.
 // ===========================================================
 const logEl = $("log");
 function appendLog(line) {
+  if (!logEl) return;
   const t = new Date().toLocaleTimeString();
   logEl.textContent += `[${t}] ${line}\n`;
   logEl.scrollTop = logEl.scrollHeight;

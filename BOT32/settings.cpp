@@ -106,6 +106,17 @@ void settings_init() {
     current.haldex_espnow_peer_mac[sizeof(current.haldex_espnow_peer_mac) - 1] = 0;
   }
   current.version           = SETTINGS_VERSION;
+
+  // v2.3.3: SAFETY HARDCODE — block_airbag is forced ON at every boot
+  // regardless of NVS value or UI input. The UI no longer exposes this
+  // toggle. If you ever need to TX on 0x040/0x572 for diagnostic work,
+  // remove this override AND restore the UI checkbox.
+  if (!current.block_airbag) {
+    Serial.println("[NVS] block_airbag was OFF in NVS -> forcing ON (v2.3.3 safety)");
+    current.block_airbag = true;
+    prefs.putBool("blk_ab", true);
+  }
+
   Serial.println("[NVS] Settings loaded from flash");
 }
 
