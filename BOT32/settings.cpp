@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 13  // v2.4.0: polls ON by default + cef_trigger_* fields + obd2_poll_hz default 15
+#define SETTINGS_VERSION 14  // v2.5.1: cef_auto_enabled + cef_press_count + cef_press_window_ms + new Hazard defaults
 
 static Settings make_defaults() {
   Settings s;
@@ -32,11 +32,14 @@ static Settings make_defaults() {
   s.display_value_source             = 0;       // 0 = ethanol % (default)
   s.display_override_byte1_high      = 0x00;    // v2.3.0: blank (avoid P/R/N/D/S/M confusion)
   s.display_byte3_value_mode         = 0;       // v2.3.0: raw full-byte (1:1 mapping)
-  // v2.4.0: clear-engine-fault auto-trigger config (roadmap — not yet active)
-  s.cef_trigger_can_id        = 0x0FD;
-  s.cef_trigger_byte_idx      = 6;
-  s.cef_trigger_rest_value    = 0x00;
-  s.cef_trigger_pressed_value = 0x03;
+  // v2.5.1: clear-engine-fault auto-trigger config — Hazard button, 3x in 4s
+  s.cef_auto_enabled          = true;       // master toggle, ON by default
+  s.cef_trigger_can_id        = 0x366;      // Hazard (Blinkmodi_01)
+  s.cef_trigger_byte_idx      = 2;          // D3
+  s.cef_trigger_rest_value    = 0x00;       // Hazard OFF
+  s.cef_trigger_pressed_value = 0x10;       // Hazard ON bit
+  s.cef_press_count           = 3;          // 3 ON/OFF cycles
+  s.cef_press_window_ms       = 4000;       // within 4 seconds
   s.tx_rate_hz        = 1000 / MOTOR_09_TX_INTERVAL_MS;
   s.cluster_motor09_id = CAN_ID_MOTOR_09;
   s.cluster_wba03_id   = CAN_ID_WBA_03;
@@ -88,11 +91,14 @@ void settings_init() {
   current.display_value_source          = prefs.getUChar("co_src", 0);
   current.display_override_byte1_high   = prefs.getUChar("co_b1h", 0x00);  // v2.3.0 default: blank
   current.display_byte3_value_mode      = prefs.getUChar("co_b3m", 0);     // v2.3.0 default: raw
-  // v2.4.0: clear-engine-fault auto-trigger config (roadmap)
-  current.cef_trigger_can_id        = prefs.getUShort("cef_id", 0x0FD);
-  current.cef_trigger_byte_idx      = prefs.getUChar("cef_bi", 6);
+  // v2.5.1: clear-engine-fault auto-trigger config (roadmap detection)
+  current.cef_auto_enabled          = prefs.getBool("cef_en", true);
+  current.cef_trigger_can_id        = prefs.getUShort("cef_id", 0x366);
+  current.cef_trigger_byte_idx      = prefs.getUChar("cef_bi", 2);
   current.cef_trigger_rest_value    = prefs.getUChar("cef_rv", 0x00);
-  current.cef_trigger_pressed_value = prefs.getUChar("cef_pv", 0x03);
+  current.cef_trigger_pressed_value = prefs.getUChar("cef_pv", 0x10);
+  current.cef_press_count           = prefs.getUChar("cef_pc", 3);
+  current.cef_press_window_ms       = prefs.getUShort("cef_pw", 4000);
   current.tx_rate_hz        = prefs.getUShort("tx_hz", 1000 / MOTOR_09_TX_INTERVAL_MS);
   current.cluster_motor09_id = prefs.getUShort("cl_m09", CAN_ID_MOTOR_09);
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
@@ -205,6 +211,10 @@ bool settings_set_display_byte3_value_mode(uint8_t v) {
   current.display_byte3_value_mode = v;
   return prefs.putUChar("co_b3m", v) > 0;
 }
+bool settings_set_cef_auto_enabled(bool v) {
+  current.cef_auto_enabled = v;
+  return save_bool("cef_en", v);
+}
 bool settings_set_cef_trigger_can_id(uint16_t v) {
   current.cef_trigger_can_id = v;
   return prefs.putUShort("cef_id", v) > 0;
@@ -221,6 +231,18 @@ bool settings_set_cef_trigger_rest_value(uint8_t v) {
 bool settings_set_cef_trigger_pressed_value(uint8_t v) {
   current.cef_trigger_pressed_value = v;
   return prefs.putUChar("cef_pv", v) > 0;
+}
+bool settings_set_cef_press_count(uint8_t v) {
+  if (v < 1) v = 1;
+  if (v > 10) v = 10;
+  current.cef_press_count = v;
+  return prefs.putUChar("cef_pc", v) > 0;
+}
+bool settings_set_cef_press_window_ms(uint16_t v) {
+  if (v < 500) v = 500;
+  if (v > 30000) v = 30000;
+  current.cef_press_window_ms = v;
+  return prefs.putUShort("cef_pw", v) > 0;
 }
 bool settings_set_tx_rate_hz(uint16_t v) {
   current.tx_rate_hz = v;
@@ -325,10 +347,13 @@ void settings_reset_to_defaults() {
   prefs.putUChar("co_src", current.display_value_source);
   prefs.putUChar("co_b1h", current.display_override_byte1_high);
   prefs.putUChar("co_b3m", current.display_byte3_value_mode);
+  prefs.putBool("cef_en", current.cef_auto_enabled);
   prefs.putUShort("cef_id", current.cef_trigger_can_id);
   prefs.putUChar("cef_bi", current.cef_trigger_byte_idx);
   prefs.putUChar("cef_rv", current.cef_trigger_rest_value);
   prefs.putUChar("cef_pv", current.cef_trigger_pressed_value);
+  prefs.putUChar("cef_pc", current.cef_press_count);
+  prefs.putUShort("cef_pw", current.cef_press_window_ms);
   prefs.putUShort("tx_hz", current.tx_rate_hz);
   prefs.putUShort("cl_m09", current.cluster_motor09_id);
   prefs.putUShort("cl_wba", current.cluster_wba03_id);

@@ -132,7 +132,7 @@
   <details class="card card-mapping collapsible">
     <summary>
       <h3 class="card-title">🎯 MAP → Gauge mapping</h3>
-      <span class="summary-hint muted small">Pression OBD2 → position aiguille coolant</span>
+      <span class="summary-hint muted small">Pression OBD2 → position aiguille coolant — IDs CAN + fréquences + gate TX</span>
     </summary>
     <div class="collapsible-body">
       <div class="row">
@@ -148,15 +148,11 @@
       <p class="muted small">
         Mapping linéaire : aiguille proportionnelle au MAP sur toute la plage (vehicle-validated).
       </p>
-    </div>
-  </details>
 
-  <details class="card card-can-comm collapsible">
-    <summary>
-      <h3 class="card-title">🆔 Communication CAN (TX + RX)</h3>
-      <span class="summary-hint muted small">IDs des bus cluster + OBD2, fréquences, gate TX</span>
-    </summary>
-    <div class="collapsible-body">
+      <!-- v2.5.1: Communication CAN (TX + RX) moved INTO this card — these
+           are all the CAN-bus settings that drive the boost-on-coolant feature. -->
+      <hr class="divider">
+      <h4 class="subtitle">🆔 Communication CAN (TX + RX)</h4>
 
       <!-- Sub-section 1: Cluster bus IDs (RX lever + TX coolant) -->
       <h4 class="subtitle">🚌 CAN0 — Cluster bus</h4>
@@ -236,7 +232,7 @@
           <label class="checkbox">
             <input type="checkbox" id="set-force_tx_always">
             <span>🔧 <b>Force TX in ALL modes</b> (diagnostic)<br>
-                  <span class="muted small">Bypass lever check : TX même en P/R/D. Active aussi le polling OBD2 hors BOOST.</span></span>
+                  <span class="muted small">Bypass lever check : TX même en P/R/N/D. Active aussi le polling OBD2 hors BOOST.</span></span>
           </label>
         </div>
         <p class="muted small">
@@ -656,32 +652,57 @@
 
       <hr class="divider">
 
-      <h4 class="subtitle">🔘 Auto-trigger via bouton du véhicule (à venir)</h4>
-      <p class="muted small">
-        Configure ici quel bouton physique va déclencher la commande Clear Engine Fault
-        une fois que le firmware sera capable d'écouter. Défauts pointent sur le bouton TC
-        (vehicle-confirmed). Autres options : Hazard <code>0x366</code>, ou MFSW à capturer.
-        <br>⚠ <b>Config persistée maintenant, déclenchement firmware à venir.</b>
+      <h4 class="subtitle">🔘 Auto-trigger via bouton du véhicule</h4>
+
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="set-cef_auto_enabled">
+          <span>🟢 <b>Activer l'auto-trigger</b><br>
+                <span class="muted small">Quand activé, BOT32 enverra automatiquement le Clear Engine Fault si la séquence de boutons configurée ci-dessous est détectée. <b>Activé par défaut.</b></span>
+          </span>
+        </label>
+      </div>
+
+      <p class="muted small" style="margin-top: 10px;">
+        ⚠ <b>Détecteur firmware à venir</b> — les valeurs configurées ici sont déjà persistées en NVS,
+        prêtes pour quand le module sera codé. La séquence détectée par défaut sera :
+        <b>Hazard ON/OFF 3 fois en 4 secondes</b>.
       </p>
+
+      <h5 class="subtitle">Bouton source</h5>
       <div class="sub-card">
         <div class="row">
           <label>Trigger CAN ID<br>
-            <input type="text" id="set-cef_trigger_can_id" class="hex-input" placeholder="0x0FD">
-            <span class="muted small">défaut <code>0x0FD</code> (TC button)</span>
+            <input type="text" id="set-cef_trigger_can_id" class="hex-input" placeholder="0x366">
+            <span class="muted small">défaut <code>0x366</code> (Hazard / Blinkmodi_01)</span>
           </label>
           <label>Byte index (0..7)<br>
             <input type="number" id="set-cef_trigger_byte_idx" min="0" max="7" step="1">
-            <span class="muted small">défaut <code>6</code></span>
+            <span class="muted small">défaut <code>2</code> (D3)</span>
           </label>
         </div>
         <div class="row">
           <label>Valeur "au repos"<br>
             <input type="number" id="set-cef_trigger_rest_value" min="0" max="255">
-            <span class="muted small">défaut <code>0</code></span>
+            <span class="muted small">défaut <code>0</code> (Hazard OFF)</span>
           </label>
           <label>Valeur "pressé"<br>
             <input type="number" id="set-cef_trigger_pressed_value" min="0" max="255">
-            <span class="muted small">défaut <code>3</code></span>
+            <span class="muted small">défaut <code>16</code> (0x10 — Hazard ON)</span>
+          </label>
+        </div>
+      </div>
+
+      <h5 class="subtitle">Séquence de détection (multi-press)</h5>
+      <div class="sub-card">
+        <div class="row">
+          <label>Nombre de presses (ON/OFF cycles)<br>
+            <input type="number" id="set-cef_press_count" min="1" max="10" step="1">
+            <span class="muted small">défaut <code>3</code> presses (ON/OFF x3)</span>
+          </label>
+          <label>Fenêtre temps (ms)<br>
+            <input type="number" id="set-cef_press_window_ms" min="500" max="30000" step="100">
+            <span class="muted small">défaut <code>4000</code> ms (4 secondes)</span>
           </label>
         </div>
       </div>

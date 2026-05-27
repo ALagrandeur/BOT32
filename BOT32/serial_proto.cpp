@@ -16,7 +16,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.5.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.5.1"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -61,10 +61,13 @@ static void emit_settings() {
   doc["display_value_source"]          = s.display_value_source;
   doc["display_override_byte1_high"]   = s.display_override_byte1_high;
   doc["display_byte3_value_mode"]      = s.display_byte3_value_mode;
+  doc["cef_auto_enabled"]              = s.cef_auto_enabled;
   doc["cef_trigger_can_id"]            = s.cef_trigger_can_id;
   doc["cef_trigger_byte_idx"]          = s.cef_trigger_byte_idx;
   doc["cef_trigger_rest_value"]        = s.cef_trigger_rest_value;
   doc["cef_trigger_pressed_value"]     = s.cef_trigger_pressed_value;
+  doc["cef_press_count"]               = s.cef_press_count;
+  doc["cef_press_window_ms"]           = s.cef_press_window_ms;
   doc["tx_rate_hz"]        = s.tx_rate_hz;
   doc["cluster_motor09_id"] = s.cluster_motor09_id;
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
@@ -314,10 +317,13 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "display_value_source")          == 0) ok = settings_set_display_value_source(doc["value"]          | 0);
     else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(doc["value"]   | 0x00);
     else if (strcmp(key, "display_byte3_value_mode")      == 0) ok = settings_set_display_byte3_value_mode(doc["value"]      | 0);
-    else if (strcmp(key, "cef_trigger_can_id")        == 0) ok = settings_set_cef_trigger_can_id(doc["value"]        | 0x0FD);
-    else if (strcmp(key, "cef_trigger_byte_idx")      == 0) ok = settings_set_cef_trigger_byte_idx(doc["value"]      | 6);
+    else if (strcmp(key, "cef_auto_enabled")          == 0) ok = settings_set_cef_auto_enabled(doc["value"]          | true);
+    else if (strcmp(key, "cef_trigger_can_id")        == 0) ok = settings_set_cef_trigger_can_id(doc["value"]        | 0x366);
+    else if (strcmp(key, "cef_trigger_byte_idx")      == 0) ok = settings_set_cef_trigger_byte_idx(doc["value"]      | 2);
     else if (strcmp(key, "cef_trigger_rest_value")    == 0) ok = settings_set_cef_trigger_rest_value(doc["value"]    | 0);
-    else if (strcmp(key, "cef_trigger_pressed_value") == 0) ok = settings_set_cef_trigger_pressed_value(doc["value"] | 3);
+    else if (strcmp(key, "cef_trigger_pressed_value") == 0) ok = settings_set_cef_trigger_pressed_value(doc["value"] | 0x10);
+    else if (strcmp(key, "cef_press_count")           == 0) ok = settings_set_cef_press_count(doc["value"]           | 3);
+    else if (strcmp(key, "cef_press_window_ms")       == 0) ok = settings_set_cef_press_window_ms(doc["value"]       | 4000);
     else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
     else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
     else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);

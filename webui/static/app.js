@@ -85,9 +85,11 @@ const SETTING_KEYS = [
   "display_trigger_rest_value", "display_trigger_pressed_value",
   "display_value_source", "display_override_byte1_high",
   "display_byte3_value_mode",  // v2.3.0: raw / ÷7 / tens / units
-  // v2.4.0: clear-engine-fault auto-trigger config (roadmap)
+  // v2.4.0+: clear-engine-fault auto-trigger config (roadmap detection)
+  "cef_auto_enabled",
   "cef_trigger_can_id", "cef_trigger_byte_idx",
   "cef_trigger_rest_value", "cef_trigger_pressed_value",
+  "cef_press_count", "cef_press_window_ms",
   // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
   "tx_enabled", "force_tx_always",
   // Bench test

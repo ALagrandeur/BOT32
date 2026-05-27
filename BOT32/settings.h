@@ -40,14 +40,17 @@ struct Settings {
   // without the P/R/N/D/S/M letters (which are confusing with real gears).
   uint8_t  display_byte3_value_mode;          // 0=raw full byte (default), 1=÷7 legacy, 2=tens digit, 3=units digit
 
-  // v2.4.0: trigger config for AUTOMATIC Clear Engine Fault when a physical
-  // vehicle button is pressed. Fields are persisted now so the user can
-  // configure them ahead of time; the auto-trigger handler in firmware is
-  // ROADMAP (not yet implemented). The manual button in UI works today.
-  uint16_t cef_trigger_can_id;        // default 0x0FD (TC button — most-pressable identified so far)
-  uint8_t  cef_trigger_byte_idx;      // default 6
-  uint8_t  cef_trigger_rest_value;    // default 0x00
-  uint8_t  cef_trigger_pressed_value; // default 0x03
+  // v2.4.0+: trigger config for AUTOMATIC Clear Engine Fault when a physical
+  // vehicle button is pressed. Fields are persisted now; the auto-trigger
+  // detector in firmware is ROADMAP (not yet implemented).
+  // v2.5.1 defaults: Hazard button, 3 ON/OFF cycles within 4 seconds.
+  bool     cef_auto_enabled;          // master toggle for auto-trigger (default true)
+  uint16_t cef_trigger_can_id;        // default 0x366 (Hazard / Blinkmodi_01)
+  uint8_t  cef_trigger_byte_idx;      // default 2 (D3)
+  uint8_t  cef_trigger_rest_value;    // default 0x00 (Hazard OFF)
+  uint8_t  cef_trigger_pressed_value; // default 0x10 (Hazard ON bit)
+  uint8_t  cef_press_count;           // number of ON/OFF cycles required (default 3)
+  uint16_t cef_press_window_ms;       // time window for the press sequence (default 4000 ms)
 
   // Cluster TX rate
   uint16_t tx_rate_hz;       // default 30 Hz (v1.5.2+) (Motor_09)
@@ -125,10 +128,13 @@ bool settings_set_display_trigger_pressed_value(uint8_t v);
 bool settings_set_display_value_source(uint8_t v);
 bool settings_set_display_override_byte1_high(uint8_t v);
 bool settings_set_display_byte3_value_mode(uint8_t v);
+bool settings_set_cef_auto_enabled(bool v);
 bool settings_set_cef_trigger_can_id(uint16_t v);
 bool settings_set_cef_trigger_byte_idx(uint8_t v);
 bool settings_set_cef_trigger_rest_value(uint8_t v);
 bool settings_set_cef_trigger_pressed_value(uint8_t v);
+bool settings_set_cef_press_count(uint8_t v);
+bool settings_set_cef_press_window_ms(uint16_t v);
 bool settings_set_tx_rate_hz(uint16_t v);
 bool settings_set_tx_enabled(bool v);
 bool settings_set_force_tx_always(bool v);
