@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 14  // v2.5.1: cef_auto_enabled + cef_press_count + cef_press_window_ms + new Hazard defaults
+#define SETTINGS_VERSION 15  // v2.6.0: WiFi AP mode (wifi_enabled + ssid + password)
 
 static Settings make_defaults() {
   Settings s;
@@ -40,6 +40,12 @@ static Settings make_defaults() {
   s.cef_trigger_pressed_value = 0x10;       // Hazard ON bit
   s.cef_press_count           = 3;          // 3 ON/OFF cycles
   s.cef_press_window_ms       = 4000;       // within 4 seconds
+  // v2.6.0: WiFi AP defaults
+  s.wifi_enabled              = false;      // OFF by default — must be enabled by user
+  strncpy(s.wifi_ap_ssid,     "BOT32", sizeof(s.wifi_ap_ssid) - 1);
+  s.wifi_ap_ssid[sizeof(s.wifi_ap_ssid) - 1] = 0;
+  strncpy(s.wifi_ap_password, "BOT32-2026", sizeof(s.wifi_ap_password) - 1);
+  s.wifi_ap_password[sizeof(s.wifi_ap_password) - 1] = 0;
   s.tx_rate_hz        = 1000 / MOTOR_09_TX_INTERVAL_MS;
   s.cluster_motor09_id = CAN_ID_MOTOR_09;
   s.cluster_wba03_id   = CAN_ID_WBA_03;
@@ -99,6 +105,16 @@ void settings_init() {
   current.cef_trigger_pressed_value = prefs.getUChar("cef_pv", 0x10);
   current.cef_press_count           = prefs.getUChar("cef_pc", 3);
   current.cef_press_window_ms       = prefs.getUShort("cef_pw", 4000);
+  // v2.6.0: WiFi AP settings
+  current.wifi_enabled              = prefs.getBool("wf_en", false);
+  {
+    String ssid = prefs.getString("wf_ssid", "BOT32");
+    strncpy(current.wifi_ap_ssid, ssid.c_str(), sizeof(current.wifi_ap_ssid) - 1);
+    current.wifi_ap_ssid[sizeof(current.wifi_ap_ssid) - 1] = 0;
+    String pw = prefs.getString("wf_pw", "BOT32-2026");
+    strncpy(current.wifi_ap_password, pw.c_str(), sizeof(current.wifi_ap_password) - 1);
+    current.wifi_ap_password[sizeof(current.wifi_ap_password) - 1] = 0;
+  }
   current.tx_rate_hz        = prefs.getUShort("tx_hz", 1000 / MOTOR_09_TX_INTERVAL_MS);
   current.cluster_motor09_id = prefs.getUShort("cl_m09", CAN_ID_MOTOR_09);
   current.cluster_wba03_id   = prefs.getUShort("cl_wba", CAN_ID_WBA_03);
@@ -244,6 +260,22 @@ bool settings_set_cef_press_window_ms(uint16_t v) {
   current.cef_press_window_ms = v;
   return prefs.putUShort("cef_pw", v) > 0;
 }
+bool settings_set_wifi_enabled(bool v) {
+  current.wifi_enabled = v;
+  return save_bool("wf_en", v);
+}
+bool settings_set_wifi_ap_ssid(const char* v) {
+  if (!v || strlen(v) == 0) return false;
+  strncpy(current.wifi_ap_ssid, v, sizeof(current.wifi_ap_ssid) - 1);
+  current.wifi_ap_ssid[sizeof(current.wifi_ap_ssid) - 1] = 0;
+  return prefs.putString("wf_ssid", current.wifi_ap_ssid) > 0;
+}
+bool settings_set_wifi_ap_password(const char* v) {
+  if (!v || strlen(v) < 8) return false;  // WPA2 minimum 8 chars
+  strncpy(current.wifi_ap_password, v, sizeof(current.wifi_ap_password) - 1);
+  current.wifi_ap_password[sizeof(current.wifi_ap_password) - 1] = 0;
+  return prefs.putString("wf_pw", current.wifi_ap_password) > 0;
+}
 bool settings_set_tx_rate_hz(uint16_t v) {
   current.tx_rate_hz = v;
   return save_ushort("tx_hz", v);
@@ -354,6 +386,9 @@ void settings_reset_to_defaults() {
   prefs.putUChar("cef_pv", current.cef_trigger_pressed_value);
   prefs.putUChar("cef_pc", current.cef_press_count);
   prefs.putUShort("cef_pw", current.cef_press_window_ms);
+  prefs.putBool("wf_en", current.wifi_enabled);
+  prefs.putString("wf_ssid", current.wifi_ap_ssid);
+  prefs.putString("wf_pw", current.wifi_ap_password);
   prefs.putUShort("tx_hz", current.tx_rate_hz);
   prefs.putUShort("cl_m09", current.cluster_motor09_id);
   prefs.putUShort("cl_wba", current.cluster_wba03_id);

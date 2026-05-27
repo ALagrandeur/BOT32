@@ -13,10 +13,11 @@
 #include "haldex_link.h"
 #include "haldex_espnow.h"
 #include "cluster_override.h"
+#include "wifi_ui.h"
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.5.1"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.6.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -68,6 +69,13 @@ static void emit_settings() {
   doc["cef_trigger_pressed_value"]     = s.cef_trigger_pressed_value;
   doc["cef_press_count"]               = s.cef_press_count;
   doc["cef_press_window_ms"]           = s.cef_press_window_ms;
+  // v2.6.0: WiFi AP settings + live diag
+  doc["wifi_enabled"]      = s.wifi_enabled;
+  doc["wifi_ap_ssid"]      = s.wifi_ap_ssid;
+  doc["wifi_ap_password"]  = s.wifi_ap_password;
+  doc["wifi_active"]       = wifi_ui_is_active();
+  doc["wifi_ip"]           = wifi_ui_get_ip();
+  doc["wifi_clients"]      = wifi_ui_get_n_clients();
   doc["tx_rate_hz"]        = s.tx_rate_hz;
   doc["cluster_motor09_id"] = s.cluster_motor09_id;
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
@@ -324,6 +332,9 @@ static void handle_cmd(const char* line) {
     else if (strcmp(key, "cef_trigger_pressed_value") == 0) ok = settings_set_cef_trigger_pressed_value(doc["value"] | 0x10);
     else if (strcmp(key, "cef_press_count")           == 0) ok = settings_set_cef_press_count(doc["value"]           | 3);
     else if (strcmp(key, "cef_press_window_ms")       == 0) ok = settings_set_cef_press_window_ms(doc["value"]       | 4000);
+    else if (strcmp(key, "wifi_enabled")              == 0) { ok = settings_set_wifi_enabled(doc["value"]              | false); if (ok) wifi_ui_apply(); }
+    else if (strcmp(key, "wifi_ap_ssid")              == 0) { ok = settings_set_wifi_ap_ssid(doc["value"]              | ""); if (ok) wifi_ui_apply(); }
+    else if (strcmp(key, "wifi_ap_password")          == 0) { ok = settings_set_wifi_ap_password(doc["value"]          | ""); if (ok) wifi_ui_apply(); }
     else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
     else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
     else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);

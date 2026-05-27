@@ -52,6 +52,14 @@ struct Settings {
   uint8_t  cef_press_count;           // number of ON/OFF cycles required (default 3)
   uint16_t cef_press_window_ms;       // time window for the press sequence (default 4000 ms)
 
+  // v2.6.0: WiFi AP mode for phone access while in vehicle.
+  // USB serial path remains 100% active in parallel — this is purely additive.
+  // When wifi_enabled = true, ESP32 starts a WiFi AP and serves a mobile
+  // HTML page at http://192.168.4.1 (default IP for ESP32 AP mode).
+  bool     wifi_enabled;              // master toggle (default false)
+  char     wifi_ap_ssid[33];          // AP SSID (default "BOT32")
+  char     wifi_ap_password[64];      // AP password (default "BOT32-2026", WPA2, min 8 chars)
+
   // Cluster TX rate
   uint16_t tx_rate_hz;       // default 30 Hz (v1.5.2+) (Motor_09)
 
@@ -135,6 +143,9 @@ bool settings_set_cef_trigger_rest_value(uint8_t v);
 bool settings_set_cef_trigger_pressed_value(uint8_t v);
 bool settings_set_cef_press_count(uint8_t v);
 bool settings_set_cef_press_window_ms(uint16_t v);
+bool settings_set_wifi_enabled(bool v);
+bool settings_set_wifi_ap_ssid(const char* v);
+bool settings_set_wifi_ap_password(const char* v);
 bool settings_set_tx_rate_hz(uint16_t v);
 bool settings_set_tx_enabled(bool v);
 bool settings_set_force_tx_always(bool v);

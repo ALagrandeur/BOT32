@@ -90,6 +90,8 @@ const SETTING_KEYS = [
   "cef_trigger_can_id", "cef_trigger_byte_idx",
   "cef_trigger_rest_value", "cef_trigger_pressed_value",
   "cef_press_count", "cef_press_window_ms",
+  // v2.6.0: WiFi AP mode for phone access
+  "wifi_enabled", "wifi_ap_ssid", "wifi_ap_password",
   // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
   "tx_enabled", "force_tx_always",
   // Bench test
@@ -409,6 +411,24 @@ socket.on("status", (s) => {
     } else {
       hbEl.textContent = "—";
       hbEl.className = "value-big inactive";
+    }
+  }
+
+  // v2.6.0: WiFi AP live status
+  const wifiStatus  = $("live-wifi-status");
+  const wifiUrl     = $("live-wifi-url");
+  const wifiClients = $("live-wifi-clients");
+  if (wifiStatus) {
+    if (s.wifi_active === true) {
+      wifiStatus.textContent = "✓ active";
+      wifiStatus.className = "value-big mode-SILENT";
+      if (wifiUrl)     wifiUrl.textContent = s.wifi_ip ? "http://" + s.wifi_ip : "—";
+      if (wifiClients) wifiClients.textContent = (s.wifi_clients !== undefined) ? s.wifi_clients : "—";
+    } else {
+      wifiStatus.textContent = "off";
+      wifiStatus.className = "value-big inactive";
+      if (wifiUrl)     wifiUrl.textContent = "—";
+      if (wifiClients) wifiClients.textContent = "—";
     }
   }
 

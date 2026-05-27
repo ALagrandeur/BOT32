@@ -629,6 +629,78 @@
     </div>
   </details>
 
+  <details class="card collapsible">
+    <summary>
+      <h3 class="card-title">📶 WiFi remote (accès cellulaire dans l'auto)</h3>
+      <span class="summary-hint muted small">Active un point d'accès WiFi pour consulter les données via téléphone</span>
+    </summary>
+    <div class="collapsible-body">
+      <p class="muted small">
+        Quand activé, l'ESP32 crée un point d'accès WiFi. Connecte ton téléphone à ce réseau
+        puis ouvre <code>http://192.168.4.1</code> dans le navigateur — tu verras une page mobile
+        avec les données live + le bouton Clear Engine Fault.
+        <br>⚠ <b>La connexion USB-C avec le PC reste 100% active en parallèle</b>, peu importe l'état du WiFi.
+      </p>
+
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="set-wifi_enabled">
+          <span>📶 <b>Activer WiFi AP mode</b><br>
+                <span class="muted small">Quand coché, l'ESP32 broadcast un SSID. Reboot non requis — l'AP démarre/s'arrête en live.</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="sub-card">
+        <h4 class="subtitle">Credentials du point d'accès</h4>
+        <div class="row">
+          <label>SSID (nom du réseau)<br>
+            <input type="text" id="set-wifi_ap_ssid" maxlength="32" placeholder="BOT32">
+            <span class="muted small">défaut <code>BOT32</code> · max 32 caractères</span>
+          </label>
+          <label>Mot de passe (WPA2)<br>
+            <input type="text" id="set-wifi_ap_password" maxlength="63" placeholder="BOT32-2026">
+            <span class="muted small">défaut <code>BOT32-2026</code> · min 8 caractères</span>
+          </label>
+        </div>
+      </div>
+
+      <h4 class="subtitle">📡 État live</h4>
+      <div class="grid grid-3">
+        <div>
+          <span class="lbl">Status AP</span>
+          <span id="live-wifi-status" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">URL d'accès</span>
+          <span id="live-wifi-url" class="value-big">—</span>
+        </div>
+        <div>
+          <span class="lbl">Clients connectés</span>
+          <span id="live-wifi-clients" class="value-big">—</span>
+        </div>
+      </div>
+
+      <details class="nested-details">
+        <summary class="muted small">📡 Détails techniques (cliquer)</summary>
+        <ul class="todo-list">
+          <li>Mode WiFi : <code>WIFI_AP</code> (ou <code>WIFI_AP_STA</code> si Haldex ESP-NOW actif aussi)</li>
+          <li>IP fixe : <code>192.168.4.1</code> (défaut ESP32 softAP)</li>
+          <li>Server HTTP sur port 80 (WebServer.h built-in, pas de lib externe)</li>
+          <li>Routes :
+            <ul>
+              <li><code>GET /</code> → HTML mobile (embedded PROGMEM)</li>
+              <li><code>GET /api/status</code> → JSON live (lever, MAP, coolant, ethanol, haldex)</li>
+              <li><code>POST /api/cmd</code> → commandes (clear_engine_fault, set_haldex_mode)</li>
+            </ul>
+          </li>
+          <li>Polling téléphone : 500 ms (auto-refresh JavaScript)</li>
+          <li>Pas d'auth — réseau privé fermé (à toi de protéger l'accès au véhicule)</li>
+        </ul>
+      </details>
+    </div>
+  </details>
+
   <!-- v2.4.1: Clear Engine Fault — moved INTO Configuration section (was in Roadmap).
        Manual button works today; auto-trigger via vehicle button is roadmap. -->
   <details class="card collapsible">

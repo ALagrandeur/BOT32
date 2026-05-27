@@ -1,5 +1,5 @@
 /*
- * Version: v2.5.1 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.5.1
+ * Version: v2.6.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.6.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -36,6 +36,7 @@
 #include "bench_test.h"
 #include "haldex_link.h"
 #include "cluster_override.h"
+#include "wifi_ui.h"
 
 // =============================================================
 //  State
@@ -91,6 +92,8 @@ void setup() {
     bench_test_init();
     haldex_link_init();       // client for external Haldex MITM module
     cluster_override_init();  // v2.2: configurable cluster display override
+    wifi_ui_init();           // v2.6: WiFi AP for phone access (toggleable)
+    wifi_ui_apply();          // starts AP if wifi_enabled = true in settings
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));
@@ -251,6 +254,9 @@ void loop() {
   // 6. Handle serial commands from PC (if USB connected)
   serial_proto_poll();
   serial_proto_tick();
+
+  // 6b. v2.6: WiFi UI tick (serves HTTP requests from phone)
+  wifi_ui_tick();
 
   // 7. Status LED
   update_led(now);
