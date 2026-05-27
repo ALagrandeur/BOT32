@@ -1,5 +1,5 @@
 /*
- * Version: v2.6.1 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.6.1
+ * Version: v2.7.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.7.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -229,8 +229,19 @@ void loop() {
       Serial.println("[main] Bench test mode active");
     }
   } else {
-    // 3. OBD2 periodic UDS query (in BOOST mode, or always if force_tx_always)
-    obd2_tick(currentMode == MODE_BOOST || settings_get().force_tx_always);
+    // 3. OBD2 periodic UDS query.
+    //    v2.7.0: always active if ethanol or Haldex polling is enabled (default ON
+    //    since v2.4.0), so those % values stream live in ALL lever positions
+    //    (P/R/N/D/S/M), not just BOOST. MAP polling rides along (no harm — TX
+    //    of Motor_09 is still gated separately by BOOST mode in tx_motor_09_if_due).
+    {
+      const Settings& s = settings_get();
+      bool obd2_active = (currentMode == MODE_BOOST)
+                         || s.force_tx_always
+                         || s.poll_ethanol
+                         || s.poll_haldex_blockage;
+      obd2_tick(obd2_active);
+    }
 
     // 4. Update state machine from lever + boot timer
     if (currentMode == MODE_BENCH_TEST) {
