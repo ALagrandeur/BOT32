@@ -65,4 +65,11 @@ void serial_proto_set_coolant_byte(uint8_t b);
 // Emit a log line to the PC.
 void serial_proto_log(const char* level, const char* msg);
 
+// v2.6.1: shared setting dispatch — same logic as the JSON "set" cmd handler.
+// Returns true if the key was recognized and the setter succeeded.
+// Used by both serial_proto (USB JSON) and wifi_ui (HTTP REST POST).
+// value can be any JSON type — bool, number, string — interpreted per key.
+#include <ArduinoJson.h>
+bool serial_proto_apply_setting(const char* key, JsonVariantConst value);
+
 #endif // BOT32_SERIAL_PROTO_H

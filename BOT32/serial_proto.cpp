@@ -17,7 +17,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.6.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.6.1"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -69,13 +69,10 @@ static void emit_settings() {
   doc["cef_trigger_pressed_value"]     = s.cef_trigger_pressed_value;
   doc["cef_press_count"]               = s.cef_press_count;
   doc["cef_press_window_ms"]           = s.cef_press_window_ms;
-  // v2.6.0: WiFi AP settings + live diag
+  // v2.6.0: WiFi AP settings (live diag fields moved to emit_status in v2.6.1)
   doc["wifi_enabled"]      = s.wifi_enabled;
   doc["wifi_ap_ssid"]      = s.wifi_ap_ssid;
   doc["wifi_ap_password"]  = s.wifi_ap_password;
-  doc["wifi_active"]       = wifi_ui_is_active();
-  doc["wifi_ip"]           = wifi_ui_get_ip();
-  doc["wifi_clients"]      = wifi_ui_get_n_clients();
   doc["tx_rate_hz"]        = s.tx_rate_hz;
   doc["cluster_motor09_id"] = s.cluster_motor09_id;
   doc["cluster_wba03_id"]   = s.cluster_wba03_id;
@@ -166,6 +163,12 @@ static void emit_status() {
   doc["cluster_override_pressed"]      = cluster_override_is_trigger_pressed();
   doc["cluster_override_encoded_byte"] = cluster_override_get_last_encoded_byte();
   doc["cluster_override_value_pct"]    = cluster_override_get_last_value_pct();
+
+  // v2.6.1: WiFi AP live diagnostics (moved from emit_settings so the UI
+  // refreshes the status pill in real-time, not only on settings change).
+  doc["wifi_active"]       = wifi_ui_is_active();
+  doc["wifi_ip"]           = wifi_ui_get_ip();
+  doc["wifi_clients"]      = wifi_ui_get_n_clients();
 
   // Haldex link state (from external MITM module, see haldex_link.cpp)
   HaldexState hx = haldex_link_get_state();
@@ -308,58 +311,68 @@ static void handle_cmd(const char* line) {
   if (strcmp(cmd, "set") == 0) {
     const char* key = doc["key"];
     if (!key) { emit_ack("set", false, "no key"); return; }
-    bool ok = false;
-    if      (strcmp(key, "map_min_mbar")          == 0) ok = settings_set_map_min_mbar(doc["value"]    | 0.0f);
-    else if (strcmp(key, "map_max_mbar")          == 0) ok = settings_set_map_max_mbar(doc["value"]    | 0.0f);
-    else if (strcmp(key, "obd2_did_map")       == 0) ok = settings_set_obd2_did_map(doc["value"]       | 0);
-    else if (strcmp(key, "obd2_req_id")        == 0) ok = settings_set_obd2_req_id(doc["value"]        | 0);
-    else if (strcmp(key, "obd2_resp_id")       == 0) ok = settings_set_obd2_resp_id(doc["value"]       | 0);
-    else if (strcmp(key, "obd2_poll_hz")       == 0) ok = settings_set_obd2_poll_hz(doc["value"]       | 5);
-    else if (strcmp(key, "poll_ethanol")         == 0) ok = settings_set_poll_ethanol(doc["value"]         | false);
-    else if (strcmp(key, "poll_haldex_blockage") == 0) ok = settings_set_poll_haldex_blockage(doc["value"] | false);
-    else if (strcmp(key, "cluster_override_enabled")      == 0) ok = settings_set_cluster_override_enabled(doc["value"]      | false);
-    else if (strcmp(key, "display_trigger_can_id")        == 0) ok = settings_set_display_trigger_can_id(doc["value"]        | 0x0FD);
-    else if (strcmp(key, "display_trigger_byte_idx")      == 0) ok = settings_set_display_trigger_byte_idx(doc["value"]      | 6);
-    else if (strcmp(key, "display_trigger_rest_value")    == 0) ok = settings_set_display_trigger_rest_value(doc["value"]    | 0);
-    else if (strcmp(key, "display_trigger_pressed_value") == 0) ok = settings_set_display_trigger_pressed_value(doc["value"] | 3);
-    else if (strcmp(key, "display_value_source")          == 0) ok = settings_set_display_value_source(doc["value"]          | 0);
-    else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(doc["value"]   | 0x00);
-    else if (strcmp(key, "display_byte3_value_mode")      == 0) ok = settings_set_display_byte3_value_mode(doc["value"]      | 0);
-    else if (strcmp(key, "cef_auto_enabled")          == 0) ok = settings_set_cef_auto_enabled(doc["value"]          | true);
-    else if (strcmp(key, "cef_trigger_can_id")        == 0) ok = settings_set_cef_trigger_can_id(doc["value"]        | 0x366);
-    else if (strcmp(key, "cef_trigger_byte_idx")      == 0) ok = settings_set_cef_trigger_byte_idx(doc["value"]      | 2);
-    else if (strcmp(key, "cef_trigger_rest_value")    == 0) ok = settings_set_cef_trigger_rest_value(doc["value"]    | 0);
-    else if (strcmp(key, "cef_trigger_pressed_value") == 0) ok = settings_set_cef_trigger_pressed_value(doc["value"] | 0x10);
-    else if (strcmp(key, "cef_press_count")           == 0) ok = settings_set_cef_press_count(doc["value"]           | 3);
-    else if (strcmp(key, "cef_press_window_ms")       == 0) ok = settings_set_cef_press_window_ms(doc["value"]       | 4000);
-    else if (strcmp(key, "wifi_enabled")              == 0) { ok = settings_set_wifi_enabled(doc["value"]              | false); if (ok) wifi_ui_apply(); }
-    else if (strcmp(key, "wifi_ap_ssid")              == 0) { ok = settings_set_wifi_ap_ssid(doc["value"]              | ""); if (ok) wifi_ui_apply(); }
-    else if (strcmp(key, "wifi_ap_password")          == 0) { ok = settings_set_wifi_ap_password(doc["value"]          | ""); if (ok) wifi_ui_apply(); }
-    else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(doc["value"]         | 20);
-    else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(doc["value"]         | false);
-    else if (strcmp(key, "force_tx_always")     == 0) ok = settings_set_force_tx_always(doc["value"]    | false);
-    else if (strcmp(key, "block_airbag")        == 0) ok = settings_set_block_airbag(doc["value"]       | true);
-    else if (strcmp(key, "cluster_motor09_id")  == 0) ok = settings_set_cluster_motor09_id(doc["value"] | 0);
-    else if (strcmp(key, "cluster_wba03_id")    == 0) ok = settings_set_cluster_wba03_id(doc["value"]   | 0);
-    else if (strcmp(key, "bench_test_enabled") == 0) ok = settings_set_bench_test_enabled(doc["value"] | false);
-    else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(doc["value"]          | 0);
-    else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(doc["value"]     | 0);
-    else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(doc["value"]     | 0);
-    else if (strcmp(key, "bench_display_value_pct") == 0) ok = settings_set_bench_display_value_pct(doc["value"] | 0);
-    else if (strcmp(key, "bench_force_override")    == 0) ok = settings_set_bench_force_override(doc["value"]    | false);
-    else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(doc["value"]     | false);
-    else if (strcmp(key, "haldex_bus")            == 0) ok = settings_set_haldex_bus(doc["value"]         | 1);
-    else if (strcmp(key, "haldex_state_id")       == 0) ok = settings_set_haldex_state_id(doc["value"]    | 0x6B0);
-    else if (strcmp(key, "haldex_cmd_id")         == 0) ok = settings_set_haldex_cmd_id(doc["value"]      | 0x6B1);
-    else if (strcmp(key, "haldex_transport")      == 0) ok = settings_set_haldex_transport(doc["value"]   | 0);
-    else if (strcmp(key, "haldex_espnow_peer_mac") == 0) ok = settings_set_haldex_espnow_peer_mac(doc["value"] | "");
-    else { emit_ack("set", false, "unknown key"); return; }
+    bool ok = serial_proto_apply_setting(key, doc["value"]);
     emit_ack("set", ok);
     if (ok) emit_settings();
     return;
   }
 
   emit_ack(cmd, false, "unknown cmd");
+}
+
+// =============================================================
+//  v2.6.1: shared setting dispatch — used by serial JSON "set" cmd AND
+//  by the WiFi HTTP /api/set endpoint. One source of truth for which
+//  keys are valid + their default coercion values.
+// =============================================================
+bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
+  if (!key) return false;
+  bool ok = false;
+  if      (strcmp(key, "map_min_mbar")          == 0) ok = settings_set_map_min_mbar(v    | 0.0f);
+  else if (strcmp(key, "map_max_mbar")          == 0) ok = settings_set_map_max_mbar(v    | 0.0f);
+  else if (strcmp(key, "obd2_did_map")          == 0) ok = settings_set_obd2_did_map(v    | 0);
+  else if (strcmp(key, "obd2_req_id")           == 0) ok = settings_set_obd2_req_id(v     | 0);
+  else if (strcmp(key, "obd2_resp_id")          == 0) ok = settings_set_obd2_resp_id(v    | 0);
+  else if (strcmp(key, "obd2_poll_hz")          == 0) ok = settings_set_obd2_poll_hz(v    | 5);
+  else if (strcmp(key, "poll_ethanol")          == 0) ok = settings_set_poll_ethanol(v          | false);
+  else if (strcmp(key, "poll_haldex_blockage")  == 0) ok = settings_set_poll_haldex_blockage(v  | false);
+  else if (strcmp(key, "cluster_override_enabled")      == 0) ok = settings_set_cluster_override_enabled(v      | false);
+  else if (strcmp(key, "display_trigger_can_id")        == 0) ok = settings_set_display_trigger_can_id(v        | 0x0FD);
+  else if (strcmp(key, "display_trigger_byte_idx")      == 0) ok = settings_set_display_trigger_byte_idx(v      | 6);
+  else if (strcmp(key, "display_trigger_rest_value")    == 0) ok = settings_set_display_trigger_rest_value(v    | 0);
+  else if (strcmp(key, "display_trigger_pressed_value") == 0) ok = settings_set_display_trigger_pressed_value(v | 3);
+  else if (strcmp(key, "display_value_source")          == 0) ok = settings_set_display_value_source(v          | 0);
+  else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(v   | 0x00);
+  else if (strcmp(key, "display_byte3_value_mode")      == 0) ok = settings_set_display_byte3_value_mode(v      | 0);
+  else if (strcmp(key, "cef_auto_enabled")          == 0) ok = settings_set_cef_auto_enabled(v          | true);
+  else if (strcmp(key, "cef_trigger_can_id")        == 0) ok = settings_set_cef_trigger_can_id(v        | 0x366);
+  else if (strcmp(key, "cef_trigger_byte_idx")      == 0) ok = settings_set_cef_trigger_byte_idx(v      | 2);
+  else if (strcmp(key, "cef_trigger_rest_value")    == 0) ok = settings_set_cef_trigger_rest_value(v    | 0);
+  else if (strcmp(key, "cef_trigger_pressed_value") == 0) ok = settings_set_cef_trigger_pressed_value(v | 0x10);
+  else if (strcmp(key, "cef_press_count")           == 0) ok = settings_set_cef_press_count(v           | 3);
+  else if (strcmp(key, "cef_press_window_ms")       == 0) ok = settings_set_cef_press_window_ms(v       | 4000);
+  else if (strcmp(key, "wifi_enabled")              == 0) { ok = settings_set_wifi_enabled(v              | false); if (ok) wifi_ui_apply(); }
+  else if (strcmp(key, "wifi_ap_ssid")              == 0) { ok = settings_set_wifi_ap_ssid(v              | ""); if (ok) wifi_ui_apply(); }
+  else if (strcmp(key, "wifi_ap_password")          == 0) { ok = settings_set_wifi_ap_password(v          | ""); if (ok) wifi_ui_apply(); }
+  else if (strcmp(key, "tx_rate_hz")         == 0) ok = settings_set_tx_rate_hz(v         | 20);
+  else if (strcmp(key, "tx_enabled")         == 0) ok = settings_set_tx_enabled(v         | false);
+  else if (strcmp(key, "force_tx_always")    == 0) ok = settings_set_force_tx_always(v    | false);
+  else if (strcmp(key, "block_airbag")       == 0) ok = settings_set_block_airbag(v       | true);
+  else if (strcmp(key, "cluster_motor09_id") == 0) ok = settings_set_cluster_motor09_id(v | 0);
+  else if (strcmp(key, "cluster_wba03_id")   == 0) ok = settings_set_cluster_wba03_id(v   | 0);
+  else if (strcmp(key, "bench_test_enabled") == 0) ok = settings_set_bench_test_enabled(v | false);
+  else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(v          | 0);
+  else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(v     | 0);
+  else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(v     | 0);
+  else if (strcmp(key, "bench_display_value_pct") == 0) ok = settings_set_bench_display_value_pct(v | 0);
+  else if (strcmp(key, "bench_force_override")    == 0) ok = settings_set_bench_force_override(v    | false);
+  else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(v     | false);
+  else if (strcmp(key, "haldex_bus")            == 0) ok = settings_set_haldex_bus(v         | 1);
+  else if (strcmp(key, "haldex_state_id")       == 0) ok = settings_set_haldex_state_id(v    | 0x6B0);
+  else if (strcmp(key, "haldex_cmd_id")         == 0) ok = settings_set_haldex_cmd_id(v      | 0x6B1);
+  else if (strcmp(key, "haldex_transport")      == 0) ok = settings_set_haldex_transport(v   | 0);
+  else if (strcmp(key, "haldex_espnow_peer_mac") == 0) ok = settings_set_haldex_espnow_peer_mac(v | "");
+  return ok;
 }
 
 // =============================================================

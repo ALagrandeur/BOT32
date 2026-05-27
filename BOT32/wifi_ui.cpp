@@ -8,6 +8,7 @@
 #include "coolant.h"
 #include "cluster_override.h"
 #include "haldex_link.h"
+#include "serial_proto.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
@@ -85,6 +86,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 
 <div class="actions">
   <button class="primary" onclick="cmd('clear_engine_fault')">🔧 Clear Engine Fault</button>
+  <button onclick="location.href='/settings'">⚙ Tous les réglages</button>
 </div>
 
 <div class="status" id="st">—</div>
@@ -133,6 +135,204 @@ poll();
 </body></html>)HTML";
 
 // =============================================================
+//  Mobile SETTINGS page (served at "/settings")
+//  Compact form with all main settings, mirrors PC UI in dark theme.
+//  Fetches current values from /api/get_settings, POSTs changes to /api/set.
+// =============================================================
+static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>BOT32 settings</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#1a1a2e;color:#e8e8f0;margin:0;padding:14px;font-size:15px;padding-bottom:60px}
+  h1{margin:0 0 8px;font-size:20px;color:#7df}
+  h2{font-size:14px;color:#7df;border-bottom:1px solid #404060;padding-bottom:4px;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  .row.full{grid-template-columns:1fr}
+  label{display:block;font-size:11px;color:#8a8aa0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  input,select{width:100%;padding:8px;background:#252540;border:1px solid #404060;color:#fff;border-radius:6px;font-size:15px;font-family:inherit}
+  input[type=checkbox]{width:22px;height:22px;vertical-align:middle;margin-right:6px}
+  .cb{display:flex;align-items:center;font-size:14px;padding:6px 0;color:#e8e8f0}
+  .hint{font-size:10px;color:#666;margin-top:2px}
+  .save{position:fixed;bottom:0;left:0;right:0;padding:10px 14px;background:#0a4;color:#fff;text-align:center;font-weight:600;font-size:14px}
+  .save.err{background:#a33}
+  .back{display:inline-block;color:#7df;text-decoration:none;font-size:13px;margin-bottom:10px}
+</style></head>
+<body>
+<a class="back" href="/">← Retour live</a>
+<h1>⚙ Réglages BOT32</h1>
+
+<h2>🎯 MAP → Gauge mapping</h2>
+<div class="row">
+  <div><label>MAP min mbar</label><input type="number" data-k="map_min_mbar" min="0" max="4000" step="10"></div>
+  <div><label>MAP max mbar</label><input type="number" data-k="map_max_mbar" min="0" max="4000" step="10"></div>
+</div>
+
+<h2>🆔 Cluster bus IDs</h2>
+<div class="row">
+  <div><label>Motor_09 ID</label><input type="text" data-k="cluster_motor09_id" data-hex="1"></div>
+  <div><label>WBA_03 ID</label><input type="text" data-k="cluster_wba03_id" data-hex="1"></div>
+</div>
+
+<h2>🔍 OBD2 bus IDs</h2>
+<div class="row">
+  <div><label>Req ID</label><input type="text" data-k="obd2_req_id" data-hex="1"></div>
+  <div><label>Resp ID</label><input type="text" data-k="obd2_resp_id" data-hex="1"></div>
+</div>
+<div class="row">
+  <div><label>DID MAP</label><input type="text" data-k="obd2_did_map" data-hex="1"></div>
+  <div><label>Poll Hz</label><input type="number" data-k="obd2_poll_hz" min="1" max="30"></div>
+</div>
+
+<h2>⏱ TX</h2>
+<div class="row">
+  <div><label>TX rate Hz</label><input type="number" data-k="tx_rate_hz" min="5" max="50"></div>
+</div>
+<label class="cb"><input type="checkbox" data-k="tx_enabled"> 🟢 TX enabled (master)</label>
+<label class="cb"><input type="checkbox" data-k="force_tx_always"> 🔧 Force TX in ALL modes</label>
+
+<h2>🧪 Bench test</h2>
+<label class="cb"><input type="checkbox" data-k="bench_test_enabled"> Enable bench test</label>
+<div class="row">
+  <div><label>Bench bus</label>
+    <select data-k="bench_test_bus"><option value="0">CAN0 cluster</option><option value="1">CAN1 OBD2</option></select>
+  </div>
+  <div><label>Bench RPM</label><input type="number" data-k="bench_rpm" min="0" max="8000" step="50"></div>
+</div>
+<div class="row">
+  <div><label>Bench MAP mbar</label><input type="number" data-k="bench_map_mbar" min="0" max="3000" step="20"></div>
+  <div><label>Bench display %</label><input type="number" data-k="bench_display_value_pct" min="0" max="100"></div>
+</div>
+<label class="cb"><input type="checkbox" data-k="bench_force_override"> 🎯 Force cluster override (bench)</label>
+
+<h2>🎨 Cluster display override</h2>
+<label class="cb"><input type="checkbox" data-k="cluster_override_enabled"> 🎨 Enable cluster display override</label>
+<div class="row">
+  <div><label>Trigger CAN ID</label><input type="text" data-k="display_trigger_can_id" data-hex="1"></div>
+  <div><label>Byte idx (0-7)</label><input type="number" data-k="display_trigger_byte_idx" min="0" max="7"></div>
+</div>
+<div class="row">
+  <div><label>Rest value</label><input type="number" data-k="display_trigger_rest_value" min="0" max="255"></div>
+  <div><label>Pressed value</label><input type="number" data-k="display_trigger_pressed_value" min="0" max="255"></div>
+</div>
+<div class="row">
+  <div><label>Source</label>
+    <select data-k="display_value_source"><option value="0">⛽ Ethanol</option><option value="1">🏁 Haldex</option></select>
+  </div>
+  <div><label>Byte1 high (lettre)</label><input type="number" data-k="display_override_byte1_high" min="0" max="255"></div>
+</div>
+<div class="row full">
+  <div><label>Mode encodage byte[3]</label>
+    <select data-k="display_byte3_value_mode">
+      <option value="0">0 — Raw (val brute)</option>
+      <option value="1">1 — Legacy ÷7</option>
+      <option value="2">2 — Tens digit</option>
+      <option value="3">3 — Units digit</option>
+    </select>
+  </div>
+</div>
+
+<h2>🔧 Clear Engine Fault auto-trigger</h2>
+<label class="cb"><input type="checkbox" data-k="cef_auto_enabled"> 🟢 Auto-trigger enabled</label>
+<div class="row">
+  <div><label>Trigger CAN ID</label><input type="text" data-k="cef_trigger_can_id" data-hex="1"></div>
+  <div><label>Byte idx</label><input type="number" data-k="cef_trigger_byte_idx" min="0" max="7"></div>
+</div>
+<div class="row">
+  <div><label>Rest value</label><input type="number" data-k="cef_trigger_rest_value" min="0" max="255"></div>
+  <div><label>Pressed value</label><input type="number" data-k="cef_trigger_pressed_value" min="0" max="255"></div>
+</div>
+<div class="row">
+  <div><label>Press count</label><input type="number" data-k="cef_press_count" min="1" max="10"></div>
+  <div><label>Window ms</label><input type="number" data-k="cef_press_window_ms" min="500" max="30000" step="100"></div>
+</div>
+
+<h2>📶 WiFi AP</h2>
+<label class="cb"><input type="checkbox" data-k="wifi_enabled"> 📶 WiFi AP enabled</label>
+<div class="row">
+  <div><label>SSID</label><input type="text" data-k="wifi_ap_ssid" maxlength="32"></div>
+  <div><label>Password (8+)</label><input type="text" data-k="wifi_ap_password" maxlength="63"></div>
+</div>
+
+<h2>🏁 Haldex AWD link</h2>
+<label class="cb"><input type="checkbox" data-k="haldex_enabled"> 🏁 Haldex link enabled</label>
+<div class="row">
+  <div><label>Bus</label>
+    <select data-k="haldex_bus"><option value="0">CAN0 cluster</option><option value="1">CAN1 chassis</option></select>
+  </div>
+  <div><label>Transport</label>
+    <select data-k="haldex_transport"><option value="0">CAN</option><option value="1">ESP-NOW</option></select>
+  </div>
+</div>
+<div class="row">
+  <div><label>State broadcast ID</label><input type="text" data-k="haldex_state_id" data-hex="1"></div>
+  <div><label>Cmd ID</label><input type="text" data-k="haldex_cmd_id" data-hex="1"></div>
+</div>
+<div class="row full">
+  <div><label>ESP-NOW peer MAC</label><input type="text" data-k="haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF"></div>
+</div>
+
+<div class="save" id="save">Touche un champ pour modifier</div>
+
+<script>
+function toHex(n){return '0x'+Number(n||0).toString(16).toUpperCase().padStart(3,'0')}
+function parseHex(s){if(!s)return 0;s=String(s).trim();if(s.startsWith('0x'))return parseInt(s.substring(2),16);if(/[a-fA-F]/.test(s))return parseInt(s,16);return parseInt(s,10)}
+
+async function load(){
+  try{
+    const r = await fetch('/api/get_settings');
+    const s = await r.json();
+    document.querySelectorAll('[data-k]').forEach(el=>{
+      const k = el.dataset.k;
+      if(s[k] === undefined) return;
+      if(el.type === 'checkbox'){ el.checked = !!s[k]; }
+      else if(el.dataset.hex === '1'){ el.value = toHex(s[k]); }
+      else if(el.tagName === 'SELECT'){ el.value = String(s[k]); }
+      else { el.value = s[k]; }
+    });
+    setStatus('Réglages chargés', false);
+  }catch(e){ setStatus('Erreur chargement', true); }
+}
+
+async function save(k, v){
+  setStatus('⏳ Envoi '+k+'...', false);
+  try{
+    const r = await fetch('/api/set', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({key:k, value:v})});
+    const j = await r.json();
+    setStatus(j.ok ? '✓ '+k+' sauvegardé' : '✗ '+k+' refusé : '+(j.msg||'?'), !j.ok);
+  }catch(e){ setStatus('✗ Erreur réseau', true); }
+}
+
+function setStatus(t, err){
+  const el = document.getElementById('save');
+  el.textContent = t;
+  el.classList.toggle('err', !!err);
+}
+
+// Auto-save on change/blur
+document.querySelectorAll('[data-k]').forEach(el=>{
+  const ev = (el.type==='checkbox'||el.tagName==='SELECT') ? 'change' : 'blur';
+  el.addEventListener(ev, ()=>{
+    const k = el.dataset.k;
+    let v;
+    if(el.type === 'checkbox'){ v = el.checked; }
+    else if(el.dataset.hex === '1'){
+      v = parseHex(el.value);
+      el.value = toHex(v);
+    }
+    else if(el.type === 'number'){ v = +el.value; }
+    else { v = el.value; }
+    save(k, v);
+  });
+});
+
+load();
+</script>
+</body></html>)HTML";
+
+// =============================================================
 //  Route handlers
 // =============================================================
 static void handle_root() {
@@ -143,7 +343,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "2.6.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "2.6.1";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -163,18 +363,84 @@ static void handle_status() {
   g_server.send(200, "application/json", out);
 }
 
-static void handle_settings() {
-  // Read-only settings dump
+static void handle_settings_page() {
+  // Serve the mobile settings HTML
+  g_server.send_P(200, "text/html", SETTINGS_HTML);
+}
+
+static void handle_api_get_settings() {
+  // Full settings dump (includes password — user is on private WiFi anyway)
   const Settings& s = settings_get();
   JsonDocument doc;
-  doc["map_min_mbar"]  = s.map_min_mbar;
-  doc["map_max_mbar"]  = s.map_max_mbar;
-  doc["tx_enabled"]    = s.tx_enabled;
-  doc["wifi_enabled"]  = s.wifi_enabled;
-  doc["wifi_ap_ssid"]  = s.wifi_ap_ssid;
-  // password intentionally not returned
+  doc["map_min_mbar"]              = s.map_min_mbar;
+  doc["map_max_mbar"]              = s.map_max_mbar;
+  doc["obd2_req_id"]               = s.obd2_req_id;
+  doc["obd2_resp_id"]              = s.obd2_resp_id;
+  doc["obd2_did_map"]              = s.obd2_did_map;
+  doc["obd2_poll_hz"]              = s.obd2_poll_hz;
+  doc["tx_rate_hz"]                = s.tx_rate_hz;
+  doc["cluster_motor09_id"]        = s.cluster_motor09_id;
+  doc["cluster_wba03_id"]          = s.cluster_wba03_id;
+  doc["tx_enabled"]                = s.tx_enabled;
+  doc["force_tx_always"]           = s.force_tx_always;
+  doc["poll_ethanol"]              = s.poll_ethanol;
+  doc["poll_haldex_blockage"]      = s.poll_haldex_blockage;
+  doc["bench_test_enabled"]        = s.bench_test_enabled;
+  doc["bench_test_bus"]            = s.bench_test_bus;
+  doc["bench_rpm"]                 = s.bench_rpm;
+  doc["bench_map_mbar"]            = s.bench_map_mbar;
+  doc["bench_display_value_pct"]   = s.bench_display_value_pct;
+  doc["bench_force_override"]      = s.bench_force_override;
+  doc["cluster_override_enabled"]      = s.cluster_override_enabled;
+  doc["display_trigger_can_id"]        = s.display_trigger_can_id;
+  doc["display_trigger_byte_idx"]      = s.display_trigger_byte_idx;
+  doc["display_trigger_rest_value"]    = s.display_trigger_rest_value;
+  doc["display_trigger_pressed_value"] = s.display_trigger_pressed_value;
+  doc["display_value_source"]          = s.display_value_source;
+  doc["display_override_byte1_high"]   = s.display_override_byte1_high;
+  doc["display_byte3_value_mode"]      = s.display_byte3_value_mode;
+  doc["cef_auto_enabled"]              = s.cef_auto_enabled;
+  doc["cef_trigger_can_id"]            = s.cef_trigger_can_id;
+  doc["cef_trigger_byte_idx"]          = s.cef_trigger_byte_idx;
+  doc["cef_trigger_rest_value"]        = s.cef_trigger_rest_value;
+  doc["cef_trigger_pressed_value"]     = s.cef_trigger_pressed_value;
+  doc["cef_press_count"]               = s.cef_press_count;
+  doc["cef_press_window_ms"]           = s.cef_press_window_ms;
+  doc["wifi_enabled"]              = s.wifi_enabled;
+  doc["wifi_ap_ssid"]              = s.wifi_ap_ssid;
+  doc["wifi_ap_password"]          = s.wifi_ap_password;
+  doc["haldex_enabled"]            = s.haldex_enabled;
+  doc["haldex_bus"]                = s.haldex_bus;
+  doc["haldex_state_id"]           = s.haldex_state_id;
+  doc["haldex_cmd_id"]             = s.haldex_cmd_id;
+  doc["haldex_transport"]          = s.haldex_transport;
+  doc["haldex_espnow_peer_mac"]    = s.haldex_espnow_peer_mac;
   String out;
   serializeJson(doc, out);
+  g_server.send(200, "application/json", out);
+}
+
+static void handle_api_set() {
+  if (!g_server.hasArg("plain")) {
+    g_server.send(400, "application/json", "{\"ok\":false,\"msg\":\"no body\"}");
+    return;
+  }
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, g_server.arg("plain"));
+  if (err) {
+    g_server.send(400, "application/json", "{\"ok\":false,\"msg\":\"bad JSON\"}");
+    return;
+  }
+  const char* key = doc["key"];
+  if (!key) {
+    g_server.send(400, "application/json", "{\"ok\":false,\"msg\":\"no key\"}");
+    return;
+  }
+  // Delegate to the shared dispatch in serial_proto.cpp
+  bool ok = serial_proto_apply_setting(key, doc["value"]);
+  String out = "{\"ok\":";
+  out += ok ? "true" : "false";
+  out += ok ? ",\"msg\":\"saved\"}" : ",\"msg\":\"unknown key or invalid value\"}";
   g_server.send(200, "application/json", out);
 }
 
@@ -239,12 +505,9 @@ void wifi_ui_apply() {
     return;
   }
 
-  if (g_active && g_curr_ssid == String(s.wifi_ap_ssid)) {
-    // Already active with same SSID — nothing to do
-    return;
-  }
-
-  // Stop previous AP if running with different SSID
+  // v2.6.1 FIX: always restart on apply. Previous check only tracked SSID
+  // change, so password edits were silently ignored. Now we always tear
+  // down + restart with current SSID/password.
   if (g_active) {
     g_server.stop();
     WiFi.softAPdisconnect(true);
@@ -267,10 +530,12 @@ void wifi_ui_apply() {
   }
   g_curr_ssid = String(s.wifi_ap_ssid);
 
-  g_server.on("/",             HTTP_GET,  handle_root);
-  g_server.on("/api/status",   HTTP_GET,  handle_status);
-  g_server.on("/api/settings", HTTP_GET,  handle_settings);
-  g_server.on("/api/cmd",      HTTP_POST, handle_cmd);
+  g_server.on("/",                  HTTP_GET,  handle_root);
+  g_server.on("/settings",          HTTP_GET,  handle_settings_page);     // v2.6.1: full mobile settings UI
+  g_server.on("/api/status",        HTTP_GET,  handle_status);
+  g_server.on("/api/get_settings",  HTTP_GET,  handle_api_get_settings);  // v2.6.1: full settings JSON dump
+  g_server.on("/api/set",           HTTP_POST, handle_api_set);           // v2.6.1: update one setting
+  g_server.on("/api/cmd",           HTTP_POST, handle_cmd);
   g_server.onNotFound(handle_not_found);
   g_server.begin();
 
