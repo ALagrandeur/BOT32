@@ -769,5 +769,87 @@ socket.on("connection", (c) => {
   if (c.connected) {
     setTimeout(() => socket.emit("cmd", { cmd: "get_settings" }), 200);
     setTimeout(() => socket.emit("cmd", { cmd: "get_status" }), 400);
+    setTimeout(() => socket.emit("cmd", { cmd: "get_bench_frames" }), 600);  // v3.4.0
   }
 });
+
+// ===========================================================
+//  v3.4.0 — Bench "lamp killer" : injecteur de trames live
+//  Self-contained (builds its own DOM card, no index.html edits).
+//  The firmware sends a "bench_frames" event listing candidate healthy-bus
+//  status frames. We render one checkbox per frame, grouped. Toggling a box
+//  sends {cmd:"bench_frame", idx, on} — live, no reflash. Frames only TX
+//  while bench mode is ACTIVE (set-bench_test_enabled + TX enabled).
+// ===========================================================
+(function () {
+  function ensureCard() {
+    let card = document.getElementById("lampkiller-card");
+    if (card) return card;
+    card = document.createElement("section");
+    card.id = "lampkiller-card";
+    card.className = "card";
+    card.style.cssText = "margin-top:16px;border-left:4px solid #ffd000;";
+    card.innerHTML =
+      '<h3 class="card-title">🔦 Test voyants — injecteur de trames (bench)</h3>' +
+      '<p class="muted small">Active une trame à la fois et observe quel voyant s\'éteint. ' +
+      'N\'émet QUE si le <b>bench test mode</b> est actif. Au reboot, tout revient à OFF.</p>' +
+      '<div style="margin:8px 0"><button id="lk-alloff" class="secondary">⏹ Tout désactiver</button> ' +
+      '<span id="lk-count" class="muted small"></span></div>' +
+      '<div id="lk-groups"></div>';
+    const main = document.querySelector("main") || document.body;
+    main.appendChild(card);
+    card.querySelector("#lk-alloff").addEventListener("click", () => {
+      socket.emit("cmd", { cmd: "bench_frames_all_off" });
+      card.querySelectorAll('input[data-lk]').forEach(cb => { cb.checked = false; });
+      updateCount();
+    });
+    return card;
+  }
+
+  function updateCount() {
+    const card = document.getElementById("lampkiller-card");
+    if (!card) return;
+    const n = card.querySelectorAll('input[data-lk]:checked').length;
+    const el = card.querySelector("#lk-count");
+    if (el) el.textContent = n ? (n + " trame(s) active(s)") : "aucune trame active";
+  }
+
+  socket.on("bench_frames", (msg) => {
+    const frames = (msg && msg.frames) || [];
+    const card = ensureCard();
+    const host = card.querySelector("#lk-groups");
+    host.innerHTML = "";
+    // group by .group
+    const groups = {};
+    frames.forEach(fr => { (groups[fr.group] = groups[fr.group] || []).push(fr); });
+    Object.keys(groups).sort().forEach(gname => {
+      const fs = document.createElement("details");
+      fs.open = false;
+      fs.style.cssText = "margin:6px 0;border:1px solid var(--border,#333);border-radius:6px;padding:6px 10px";
+      const sum = document.createElement("summary");
+      sum.style.cssText = "cursor:pointer;font-weight:600";
+      sum.textContent = gname + "  (" + groups[gname].length + ")";
+      fs.appendChild(sum);
+      groups[gname].forEach(fr => {
+        const id = "0x" + Number(fr.id).toString(16).toUpperCase().padStart(3, "0");
+        const lbl = document.createElement("label");
+        lbl.style.cssText = "display:block;padding:3px 0;font-size:13px";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!fr.on;
+        cb.dataset.lk = fr.idx;
+        cb.style.marginRight = "8px";
+        cb.addEventListener("change", () => {
+          socket.emit("cmd", { cmd: "bench_frame", idx: fr.idx, on: cb.checked });
+          updateCount();
+        });
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(
+          id + "  ·  " + fr.period + " ms" + (fr.crc ? "  ·  CRC" : "")));
+        fs.appendChild(lbl);
+      });
+      host.appendChild(fs);
+    });
+    updateCount();
+  });
+})();

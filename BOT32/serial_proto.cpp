@@ -15,10 +15,11 @@
 #include "wifi_ui.h"
 #include "button_sniffer.h"
 #include "haldex_modes.h"
+#include "bench_frames.h"
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.3.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.4.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -321,6 +322,42 @@ static void handle_cmd(const char* line) {
     bool pt = doc["on"] | true;   // default safe (true = passthrough ON)
     bool ok = haldex_modes_set_passthrough(pt);
     emit_ack("set_haldex_passthrough", ok, ok ? (pt ? "passthrough ON" : "MITM armed") : "refused (disabled)");
+    return;
+  }
+
+  // v3.4.0: bench "lamp killer" — list the candidate frames (static metadata)
+  if (strcmp(cmd, "get_bench_frames") == 0) {
+    JsonDocument r;
+    r["evt"] = "bench_frames";
+    JsonArray arr = r["frames"].to<JsonArray>();
+    uint8_t n = bench_frames_count();
+    for (uint8_t i = 0; i < n; i++) {
+      JsonObject o = arr.add<JsonObject>();
+      o["idx"]    = i;
+      o["id"]     = bench_frames_id(i);
+      o["period"] = bench_frames_period(i);
+      o["crc"]    = bench_frames_needs_crc(i);
+      o["group"]  = bench_frames_group(i);
+      o["on"]     = bench_frames_enabled(i);
+    }
+    serializeJson(r, Serial);
+    Serial.println();
+    return;
+  }
+
+  // v3.4.0: toggle one bench frame live (no reflash)
+  if (strcmp(cmd, "bench_frame") == 0) {
+    uint8_t idx = (uint8_t)(doc["idx"] | 255);
+    bool on     = doc["on"] | false;
+    bool ok = bench_frames_set_enabled(idx, on);
+    emit_ack("bench_frame", ok);
+    return;
+  }
+
+  // v3.4.0: disable all bench frames at once (safety)
+  if (strcmp(cmd, "bench_frames_all_off") == 0) {
+    bench_frames_all_off();
+    emit_ack("bench_frames_all_off", true);
     return;
   }
 

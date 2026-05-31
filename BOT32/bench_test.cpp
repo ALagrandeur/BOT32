@@ -8,6 +8,7 @@
 #include "coolant.h"
 #include "vw_mqb.h"
 #include "serial_proto.h"
+#include "bench_frames.h"   // v3.4.0: live-toggleable "lamp killer" frame injector
 
 // Per-frame rolling counter for MQB CRC (4-bit, 0..15)
 static uint8_t  counter_wake     = 0;   // 0x3C0
@@ -30,7 +31,7 @@ static uint32_t last_tsk07_ms     = 0;
 static uint32_t last_lh_eps_ms    = 0;
 
 void bench_test_init() {
-  // nothing yet — state is local to this file
+  bench_frames_init();   // v3.4.0: all candidate lamp frames default OFF
 }
 
 // Helper: send a frame on the configured bench bus + mirror to PC
@@ -147,6 +148,12 @@ bool bench_test_tick() {
     bench_send_crc(0x32A, LH_EPS_TEMPLATE, 8, counter_lh_eps);
     last_lh_eps_ms = now;
   }
+
+  // ───── v3.4.0: user-toggled "lamp killer" candidate frames ─────
+  // Each enabled frame is replayed at its own period with CRC regen where
+  // needed. All default OFF; the user enables them from the UI to discover
+  // which frame clears which warning lamp.
+  bench_frames_tick(now);
 
   return true;  // bench is active — caller should skip normal TX
 }
