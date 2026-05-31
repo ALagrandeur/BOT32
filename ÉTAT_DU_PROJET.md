@@ -19,6 +19,15 @@ v0.4.0 (X2) : **spoof des vitesses de roue** en FWD burnout — réécrit ESP_19
 (embrayage ouvert) ne lève pas de défaut. Ne trompe que le Haldex (l'ESP/ABS
 amont se neutralise au bouton TC/ESP).
 
+**v3.4.0 — Test voyants au banc (lamp killer).** Outil pour cartographier les
+voyants du combiné : 43 trames d'état « bus sain » (extraites de
+`OFF to start cluster.csv`, voyants éteints à la fin), activables **une à une
+en direct depuis l'UI PC** (sans reflasher), pour découvrir quelle trame éteint
+quel voyant. 10 trames à CRC+compteur MQB (constantes dérivées de la capture,
+CRC régénéré). Tout OFF au boot ; n'émet qu'en bench mode actif. Voyant airbag
+reste allumé (0x040 bloqué par sécurité). Générateurs : `tools/derive_bench_frames.py`
++ `tools/generate_bench_frames_cpp.py`.
+
 `SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
 
 ### Haldex (v3.1.0 → v3.2.0)
