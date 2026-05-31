@@ -24,16 +24,40 @@
 #define CAN_ID_OBD2_BROADCAST  0x700   // TX: OBD-II functional broadcast (Mode 04 clear DTC)
 #define CAN_ID_HALDEX_REQ      0x70F   // TX: UDS request to Haldex ECU (vehicle-confirmed v2.1)
 #define CAN_ID_HALDEX_RESP     0x779   // RX: UDS response from Haldex ECU
+#define CAN_ID_TCM_REQ         0x7E1   // TX: UDS request to Transmission ECU (DSG) — v2.8.0
+#define CAN_ID_TCM_RESP        0x7E9   // RX: UDS response from Transmission ECU (DSG) — v2.8.0
+
+// Cluster-bus sniffer IDs — v2.8.0
+// Hand brake state appears in KOMBI_01 (0x30B) byte[2] bit 7
+//   0x80 = engaged (ON), 0x00 = released (OFF)
+// MFSW (multi-function steering wheel) OK button appears in 0x5BF byte[0]
+//   0x07 = released, 0x00 = pressed
+#define CAN_ID_KOMBI_01        0x30B   // RX: cluster status (hand brake + others)
+#define CAN_ID_MFSW            0x5BF   // RX: multi-function steering-wheel buttons
 
 // UDS Data Identifiers (DIDs) — all confirmed on MK7 Alltrack 2017
 #define UDS_DID_MAP                0x39C0  // Saugrohrdruck (MAP, mbar, 16-bit) — engine ECU
 #define UDS_DID_ETHANOL            0xF452  // Ethanol content (8-bit, raw*100/255 = %) — engine ECU
 #define UDS_DID_HALDEX_BLOCKAGE    0x2BF3  // Haldex degree of blockage (16-bit) — Haldex ECU
+// v2.8.0 — three temperature DIDs (validated 2026-05-26 via SavvyCAN captures)
+#define UDS_DID_DSG_OIL            0x2104  // DSG transmission oil temp — TCM (0x7E1/0x7E9)
+                                           //   formula: temp_C = data[4]
+#define UDS_DID_EGT                0x40D5  // Exhaust gas temp (bank 1, sensor 1) — engine ECU
+                                           //   formula: temp_C = ((data[4]<<8)|data[5]) - 250
+#define UDS_DID_ENGINE_OIL         0xF43C  // Engine oil temperature — engine ECU
+                                           //   formula: temp_C = data[5] - 8
 #define UDS_OBD2_MODE_CLEAR_DTC    0x04    // OBD-II Mode 04 (clear emissions DTCs, broadcast)
 
 // Stale timeouts for cached UDS read values
 #define ETHANOL_STALE_TIMEOUT_MS         5000
 #define HALDEX_BLOCKAGE_STALE_TIMEOUT_MS 2000
+// v2.8.0 — temp values change slowly, keep generous timeouts
+#define DSG_OIL_STALE_TIMEOUT_MS         5000
+#define EGT_STALE_TIMEOUT_MS             5000
+#define ENGINE_OIL_STALE_TIMEOUT_MS      5000
+// v2.8.0 — sniffer staleness (cluster bus broadcasts these IDs at ~10-20 Hz)
+#define HANDBRAKE_STALE_TIMEOUT_MS       2000
+#define MFSW_STALE_TIMEOUT_MS            2000
 
 // =============================================================
 //  Forbidden IDs (NEVER TX)

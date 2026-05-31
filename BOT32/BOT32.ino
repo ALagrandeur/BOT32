@@ -1,5 +1,5 @@
 /*
- * Version: v2.7.1 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.7.1
+ * Version: v2.8.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v2.8.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -37,6 +37,7 @@
 #include "haldex_link.h"
 #include "cluster_override.h"
 #include "wifi_ui.h"
+#include "button_sniffer.h"
 
 // =============================================================
 //  State
@@ -94,6 +95,7 @@ void setup() {
     cluster_override_init();  // v2.2: configurable cluster display override
     wifi_ui_init();           // v2.6: WiFi AP for phone access (toggleable)
     wifi_ui_apply();          // starts AP if wifi_enabled = true in settings
+    button_sniffer_init();    // v2.8: hand brake + OK MFSW passive sniffers
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));

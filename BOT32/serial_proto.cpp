@@ -14,10 +14,11 @@
 #include "haldex_espnow.h"
 #include "cluster_override.h"
 #include "wifi_ui.h"
+#include "button_sniffer.h"
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.7.1"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.8.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -154,6 +155,26 @@ static void emit_status() {
   doc["haldex_blockage_pct"]    = hdx_blk >= 0 ? hdx_blk : (float)-1;
   doc["haldex_blockage_raw"]    = obd2_get_last_haldex_blockage_raw();
   doc["haldex_blockage_age_ms"] = obd2_get_haldex_blockage_age_ms();
+
+  // v2.8.0 — three new temperatures (UDS polled, round-robin)
+  // Sentinel -1000 means "no data yet". UI must check for this.
+  float dsg_oil = obd2_get_last_dsg_oil_c();
+  doc["dsg_oil_c"]      = dsg_oil > -999.0f ? dsg_oil : (float)-1000;
+  doc["dsg_oil_age_ms"] = obd2_get_dsg_oil_age_ms();
+
+  float egt = obd2_get_last_egt_c();
+  doc["egt_c"]      = egt > -999.0f ? egt : (float)-1000;
+  doc["egt_age_ms"] = obd2_get_egt_age_ms();
+
+  float eng_oil = obd2_get_last_engine_oil_c();
+  doc["engine_oil_c"]      = eng_oil > -999.0f ? eng_oil : (float)-1000;
+  doc["engine_oil_age_ms"] = obd2_get_engine_oil_age_ms();
+
+  // v2.8.0 — two new sniffer fields (cluster CAN passive listeners)
+  doc["handbrake_active"]   = button_sniffer_handbrake_active();
+  doc["handbrake_age_ms"]   = button_sniffer_handbrake_age_ms();
+  doc["ok_button_pressed"]  = button_sniffer_ok_pressed();
+  doc["ok_button_age_ms"]   = button_sniffer_ok_age_ms();
 
   // v2.1: clear-all-DTCs progress (only meaningful while running)
   doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();

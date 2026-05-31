@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 16  // v2.7.1: tx_enabled_before_bench (auto TX toggle on bench transitions)
+#define SETTINGS_VERSION 17  // v2.8.0: bump obd2_poll_hz default 15 -> 30 (6-slot round-robin needs more bandwidth)
 
 static Settings make_defaults() {
   Settings s;
@@ -18,9 +18,10 @@ static Settings make_defaults() {
   s.obd2_req_id       = CAN_ID_OBD2_REQ;
   s.obd2_resp_id      = CAN_ID_OBD2_RESP;
   s.obd2_did_map      = UDS_DID_MAP;
-  // v2.4.0: bumped from 5 -> 15 to keep MAP responsive when MAP + ethanol +
-  // haldex are polled round-robin (each gets ~5Hz at 15Hz total).
-  s.obd2_poll_hz      = 15;
+  // v2.8.0: bumped from 15 -> 30. With 6 round-robin slots (MAP + ethanol +
+  // Haldex + DSG oil + EGT + Engine oil), 30 Hz total gives each slot ~5 Hz —
+  // matches the v2.4.0 per-slot rate when there were only 3 slots.
+  s.obd2_poll_hz      = 30;
   s.poll_ethanol            = true;   // v2.4.0: ON by default (no UI toggle)
   s.poll_haldex_blockage    = true;   // v2.4.0: ON by default (no UI toggle)
   // v2.2: cluster override defaults (using TC button as default trigger)
@@ -87,7 +88,7 @@ void settings_init() {
   current.obd2_req_id       = prefs.getUShort("obd_req", CAN_ID_OBD2_REQ);
   current.obd2_resp_id      = prefs.getUShort("obd_resp", CAN_ID_OBD2_RESP);
   current.obd2_did_map      = prefs.getUShort("obd_did", UDS_DID_MAP);
-  current.obd2_poll_hz      = prefs.getUShort("obd_hz", 15);          // v2.4.0 default
+  current.obd2_poll_hz      = prefs.getUShort("obd_hz", 30);          // v2.8.0 default (6 slots)
   current.poll_ethanol          = prefs.getBool("p_etoh", true);       // v2.4.0 default ON
   current.poll_haldex_blockage  = prefs.getBool("p_hdxb", true);       // v2.4.0 default ON
   current.cluster_override_enabled      = prefs.getBool("co_en", false);

@@ -9,6 +9,7 @@
 #include "cluster_override.h"
 #include "haldex_link.h"
 #include "serial_proto.h"
+#include "button_sniffer.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
@@ -82,6 +83,26 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
     <div class="lbl">🏁 Haldex %</div><div class="val" id="hdx">—</div>
     <div class="can">DID 0x2BF3</div>
   </div>
+  <div class="card">
+    <div class="lbl">🌡 DSG oil °C</div><div class="val" id="dsg">—</div>
+    <div class="can">DID 0x2104</div>
+  </div>
+  <div class="card">
+    <div class="lbl">🛢 Engine oil °C</div><div class="val" id="eoil">—</div>
+    <div class="can">DID 0xF43C</div>
+  </div>
+  <div class="card">
+    <div class="lbl">🔥 EGT °C</div><div class="val" id="egt">—</div>
+    <div class="can">DID 0x40D5</div>
+  </div>
+  <div class="card">
+    <div class="lbl">🅿 Hand brake</div><div class="val" id="hbr">—</div>
+    <div class="can">0x30B b[2] bit 7</div>
+  </div>
+  <div class="card">
+    <div class="lbl">🅾 OK button</div><div class="val" id="okb">—</div>
+    <div class="can">0x5BF b[0]</div>
+  </div>
 </div>
 
 <div class="actions">
@@ -108,6 +129,14 @@ async function poll(){
     setVal('rcool', s.real_coolant_c>=0 ? s.real_coolant_c.toFixed(1)+'°' : null);
     setVal('eth', s.ethanol_pct>=0 ? s.ethanol_pct.toFixed(1)+'%' : null);
     setVal('hdx', s.haldex_blockage_pct>=0 ? s.haldex_blockage_pct.toFixed(1)+'%' : null);
+    // v2.8.0 — 3 temps + 2 sniffers (sentinel -1000 = no data for temps)
+    setVal('dsg',  (s.dsg_oil_c    !== undefined && s.dsg_oil_c    > -999) ? s.dsg_oil_c.toFixed(0)    + '°' : null);
+    setVal('eoil', (s.engine_oil_c !== undefined && s.engine_oil_c > -999) ? s.engine_oil_c.toFixed(0) + '°' : null);
+    setVal('egt',  (s.egt_c        !== undefined && s.egt_c        > -999) ? s.egt_c.toFixed(0)        + '°' : null);
+    const hbFresh = (s.handbrake_age_ms !== undefined && s.handbrake_age_ms < 5000);
+    setVal('hbr', hbFresh ? (s.handbrake_active ? '✓ ON' : 'OFF') : null);
+    const okFresh = (s.ok_button_age_ms !== undefined && s.ok_button_age_ms < 5000);
+    setVal('okb', okFresh ? (s.ok_button_pressed ? '✓ PRESS' : 'rel.') : null);
     $('conn').classList.remove('off');
     $('conn').textContent='●';
   }catch(e){
@@ -359,7 +388,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "2.7.1";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "2.8.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -374,6 +403,14 @@ static void handle_status() {
   doc["real_coolant_c"]    = coolant_get_real_temp_c();
   doc["ethanol_pct"]       = obd2_get_last_ethanol_pct();
   doc["haldex_blockage_pct"] = obd2_get_last_haldex_blockage_pct();
+  // v2.8.0 — 3 new temps + 2 sniffer flags for mobile live grid
+  doc["dsg_oil_c"]       = obd2_get_last_dsg_oil_c();
+  doc["egt_c"]           = obd2_get_last_egt_c();
+  doc["engine_oil_c"]    = obd2_get_last_engine_oil_c();
+  doc["handbrake_active"]  = button_sniffer_handbrake_active();
+  doc["handbrake_age_ms"]  = button_sniffer_handbrake_age_ms();
+  doc["ok_button_pressed"] = button_sniffer_ok_pressed();
+  doc["ok_button_age_ms"]  = button_sniffer_ok_age_ms();
   String out;
   serializeJson(doc, out);
   g_server.send(200, "application/json", out);

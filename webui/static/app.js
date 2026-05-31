@@ -450,6 +450,81 @@ socket.on("status", (s) => {
     }
   }
 
+  // v2.8.0 — DSG oil temp (sentinel -1000 = no data)
+  const dsgEl = $("live-dsg-oil");
+  if (dsgEl) {
+    if (s.dsg_oil_c !== undefined && s.dsg_oil_c > -999) {
+      dsgEl.textContent = s.dsg_oil_c.toFixed(0) + "°C";
+      dsgEl.className = "value-big";
+    } else {
+      dsgEl.textContent = "—";
+      dsgEl.className = "value-big inactive";
+    }
+  }
+
+  // v2.8.0 — Engine oil temp (sentinel -1000 = no data)
+  const oilEl = $("live-engine-oil");
+  if (oilEl) {
+    if (s.engine_oil_c !== undefined && s.engine_oil_c > -999) {
+      oilEl.textContent = s.engine_oil_c.toFixed(0) + "°C";
+      oilEl.className = "value-big";
+    } else {
+      oilEl.textContent = "—";
+      oilEl.className = "value-big inactive";
+    }
+  }
+
+  // v2.8.0 — Exhaust gas temp (EGT, sentinel -1000 = no data)
+  const egtEl = $("live-egt");
+  if (egtEl) {
+    if (s.egt_c !== undefined && s.egt_c > -999) {
+      egtEl.textContent = s.egt_c.toFixed(0) + "°C";
+      egtEl.className = "value-big";
+    } else {
+      egtEl.textContent = "—";
+      egtEl.className = "value-big inactive";
+    }
+  }
+
+  // v2.8.0 — Hand brake sniffer (passive, cluster bus)
+  const hbrEl = $("live-handbrake");
+  if (hbrEl) {
+    // Show only if a frame was ever received; stale = greyed
+    const age = s.handbrake_age_ms;
+    const fresh = (age !== undefined && age < 5000);
+    if (fresh) {
+      if (s.handbrake_active === true) {
+        hbrEl.textContent = "✓ ENGAGED";
+        hbrEl.className = "value-big mode-BOOST";
+      } else {
+        hbrEl.textContent = "released";
+        hbrEl.className = "value-big";
+      }
+    } else {
+      hbrEl.textContent = "—";
+      hbrEl.className = "value-big inactive";
+    }
+  }
+
+  // v2.8.0 — OK MFSW button sniffer (passive, cluster bus)
+  const okEl = $("live-ok-button");
+  if (okEl) {
+    const age = s.ok_button_age_ms;
+    const fresh = (age !== undefined && age < 5000);
+    if (fresh) {
+      if (s.ok_button_pressed === true) {
+        okEl.textContent = "✓ PRESSED";
+        okEl.className = "value-big mode-BOOST";
+      } else {
+        okEl.textContent = "released";
+        okEl.className = "value-big";
+      }
+    } else {
+      okEl.textContent = "—";
+      okEl.className = "value-big inactive";
+    }
+  }
+
   // v2.6.0: WiFi AP live status
   const wifiStatus  = $("live-wifi-status");
   const wifiUrl     = $("live-wifi-url");

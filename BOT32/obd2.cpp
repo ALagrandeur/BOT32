@@ -22,9 +22,22 @@ static uint32_t last_ethanol_ms  = 0;
 static int32_t  last_haldex_blockage_raw = -1;
 static uint32_t last_haldex_blockage_ms  = 0;
 
+// v2.8.0 — three temperature readings
+// We use float with -1000.0 sentinel (instead of -1) because real temps can
+// legitimately be negative (cold start at -30 C, etc.).
+static float    last_dsg_oil_c     = -1000.0f;
+static uint32_t last_dsg_oil_ms    = 0;
+static float    last_egt_c         = -1000.0f;
+static uint32_t last_egt_ms        = 0;
+static float    last_engine_oil_c  = -1000.0f;
+static uint32_t last_engine_oil_ms = 0;
+
 // Generic polling state
 static uint32_t last_query_ms = 0;
 static uint8_t  poll_slot     = 0;   // round-robin index across enabled DIDs
+
+// v2.8.0 — round-robin slot count: MAP, Ethanol, Haldex, DSG oil, EGT, Engine oil
+static const uint8_t N_POLL_SLOTS = 6;
 
 // Stats
 static uint32_t queries_sent      = 0;
@@ -137,6 +150,36 @@ static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
       responses_ok++;
       return;
     }
+
+    // === DSG oil temp (Transmission ECU 0x7E9, DID 0x2104) — v2.8.0 ===
+    //   Formula: temp_C = data[4] (validated trans 71.csv: 0x47=71)
+    if (f.id == CAN_ID_TCM_RESP && did == UDS_DID_DSG_OIL) {
+      last_dsg_oil_c  = (float)f.data[4];
+      last_dsg_oil_ms = millis();
+      responses_ok++;
+      return;
+    }
+
+    // === EGT (Engine ECU 0x7E8, DID 0x40D5) — v2.8.0 ===
+    //   Formula: temp_C = ((data[4]<<8)|data[5]) - 250
+    //   Validated oil 72 et exhaust 480.csv: 0x02DA=730 -> 480 C
+    if (f.id == s.obd2_resp_id && did == UDS_DID_EGT) {
+      uint16_t raw = ((uint16_t)f.data[4] << 8) | f.data[5];
+      last_egt_c   = (float)((int32_t)raw - 250);
+      last_egt_ms  = millis();
+      responses_ok++;
+      return;
+    }
+
+    // === Engine oil temp (Engine ECU 0x7E8, DID 0xF43C) — v2.8.0 ===
+    //   Formula (chosen hypothesis): temp_C = data[5] - 8
+    //   Validated oil 72 et exhaust 480.csv at ~72 C reading.
+    if (f.id == s.obd2_resp_id && did == UDS_DID_ENGINE_OIL) {
+      last_engine_oil_c  = (float)((int16_t)f.data[5] - 8);
+      last_engine_oil_ms = millis();
+      responses_ok++;
+      return;
+    }
   }
 
   // Positive response to OBD-II Mode 04 (clear DTC)
@@ -217,6 +260,27 @@ uint16_t obd2_get_last_haldex_blockage_raw() {
 uint32_t obd2_get_haldex_blockage_age_ms() {
   if (last_haldex_blockage_ms == 0) return UINT32_MAX;
   return millis() - last_haldex_blockage_ms;
+}
+
+// v2.8.0 — DSG oil temp
+float obd2_get_last_dsg_oil_c()       { return last_dsg_oil_c; }
+uint32_t obd2_get_dsg_oil_age_ms() {
+  if (last_dsg_oil_ms == 0) return UINT32_MAX;
+  return millis() - last_dsg_oil_ms;
+}
+
+// v2.8.0 — EGT
+float obd2_get_last_egt_c()           { return last_egt_c; }
+uint32_t obd2_get_egt_age_ms() {
+  if (last_egt_ms == 0) return UINT32_MAX;
+  return millis() - last_egt_ms;
+}
+
+// v2.8.0 — Engine oil temp
+float obd2_get_last_engine_oil_c()    { return last_engine_oil_c; }
+uint32_t obd2_get_engine_oil_age_ms() {
+  if (last_engine_oil_ms == 0) return UINT32_MAX;
+  return millis() - last_engine_oil_ms;
 }
 
 // =============================================================
@@ -333,13 +397,16 @@ void obd2_tick(bool active) {
   uint32_t poll_period_ms = 1000UL / (s.obd2_poll_hz > 0 ? s.obd2_poll_hz : 5);
   if (now - last_query_ms < poll_period_ms) return;
 
-  // Round-robin between enabled polls
-  // slot 0 = MAP (always on if active)
-  // slot 1 = Ethanol (if s.poll_ethanol)
+  // Round-robin between enabled polls — v2.8.0: 6 slots
+  // slot 0 = MAP            (always on if active)
+  // slot 1 = Ethanol         (if s.poll_ethanol)
   // slot 2 = Haldex blockage (if s.poll_haldex_blockage)
-  // Tries up to 3 slots so we don't skip a tick if only some are enabled.
-  for (uint8_t attempt = 0; attempt < 3; attempt++) {
-    uint8_t slot = (poll_slot + attempt) % 3;
+  // slot 3 = DSG oil temp    (always on, no UI toggle — Live grid only)
+  // slot 4 = EGT             (always on)
+  // slot 5 = Engine oil temp (always on)
+  // Tries all N_POLL_SLOTS so we don't skip a tick if only some are enabled.
+  for (uint8_t attempt = 0; attempt < N_POLL_SLOTS; attempt++) {
+    uint8_t slot = (poll_slot + attempt) % N_POLL_SLOTS;
     bool sent = false;
     switch (slot) {
       case 0:
@@ -358,9 +425,24 @@ void obd2_tick(bool active) {
           sent = true;
         }
         break;
+      case 3:
+        // v2.8.0 — DSG oil temp via TCM (0x7E1 -> 0x7E9)
+        obd2_send_uds_read(UDS_DID_DSG_OIL, CAN_ID_TCM_REQ);
+        sent = true;
+        break;
+      case 4:
+        // v2.8.0 — EGT via engine ECU
+        obd2_send_uds_read(UDS_DID_EGT, s.obd2_req_id);
+        sent = true;
+        break;
+      case 5:
+        // v2.8.0 — Engine oil temp via engine ECU
+        obd2_send_uds_read(UDS_DID_ENGINE_OIL, s.obd2_req_id);
+        sent = true;
+        break;
     }
     if (sent) {
-      poll_slot = (slot + 1) % 3;
+      poll_slot = (slot + 1) % N_POLL_SLOTS;
       last_query_ms = now;
       break;
     }
@@ -375,6 +457,16 @@ void obd2_tick(bool active) {
   }
   if (obd2_get_haldex_blockage_age_ms() > HALDEX_BLOCKAGE_STALE_TIMEOUT_MS) {
     last_haldex_blockage_raw = -1;
+  }
+  // v2.8.0 — temp staleness
+  if (obd2_get_dsg_oil_age_ms() > DSG_OIL_STALE_TIMEOUT_MS) {
+    last_dsg_oil_c = -1000.0f;
+  }
+  if (obd2_get_egt_age_ms() > EGT_STALE_TIMEOUT_MS) {
+    last_egt_c = -1000.0f;
+  }
+  if (obd2_get_engine_oil_age_ms() > ENGINE_OIL_STALE_TIMEOUT_MS) {
+    last_engine_oil_c = -1000.0f;
   }
 }
 

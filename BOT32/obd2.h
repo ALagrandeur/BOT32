@@ -69,6 +69,29 @@ float obd2_get_last_haldex_blockage_pct();
 uint16_t obd2_get_last_haldex_blockage_raw();
 uint32_t obd2_get_haldex_blockage_age_ms();
 
+// DSG transmission oil temperature (Celsius) — v2.8.0
+//   DID 0x2104 from Transmission ECU (request 0x7E1, response 0x7E9).
+//   Formula: temp_C = data[4] (direct byte value, validated from trans 71.csv).
+//   Returns -1000 if no recent data (allows below-zero real temps).
+float    obd2_get_last_dsg_oil_c();
+uint32_t obd2_get_dsg_oil_age_ms();
+
+// Exhaust gas temperature (Celsius) — v2.8.0
+//   DID 0x40D5 from Engine ECU (request 0x7E0, response 0x7E8).
+//   Formula: temp_C = ((data[4]<<8)|data[5]) - 250  (raw_BE minus 250).
+//   Validated from oil72_exhaust480.csv (raw 0x02DA = 730 -> 480 C).
+//   Returns -1000 if no recent data.
+float    obd2_get_last_egt_c();
+uint32_t obd2_get_egt_age_ms();
+
+// Engine oil temperature (Celsius) — v2.8.0
+//   DID 0xF43C from Engine ECU (request 0x7E0, response 0x7E8).
+//   Formula (chosen hypothesis): temp_C = data[5] - 8.
+//   Validated from oil72_exhaust480.csv at ~72 C reading.
+//   Returns -1000 if no recent data.
+float    obd2_get_last_engine_oil_c();
+uint32_t obd2_get_engine_oil_age_ms();
+
 // =============================================================
 //  Action commands (one-shot, user-triggered from UI)
 // =============================================================
