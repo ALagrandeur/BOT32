@@ -426,6 +426,21 @@ static void handle_status() {
   doc["hazard_age_ms"]     = button_sniffer_hazard_age_ms();
   doc["tc_button_pressed"] = button_sniffer_tc_pressed();
   doc["tc_button_age_ms"]  = button_sniffer_tc_age_ms();
+
+  // v3.1.0 — Haldex (MITM) live + locally-decided mode for the mobile UI
+  {
+    HaldexState hx = haldex_link_get_state();
+    uint32_t hx_age = haldex_link_get_age_ms();
+    JsonObject hxo = doc["haldex"].to<JsonObject>();
+    hxo["online"]              = hx.valid && (hx_age < HALDEX_LINK_STALE_MS);
+    hxo["age_ms"]              = hx_age;
+    hxo["local_mode"]          = haldex_modes_get();
+    hxo["vehicle_kmh"]         = hx.vehicle_kmh;
+    hxo["pedal_pct"]           = hx.pedal_pct;
+    hxo["lock_target_pct"]     = hx.lock_target_pct;
+    hxo["pump_engagement_pct"] = hx.pump_engagement_pct;
+  }
+
   String out;
   serializeJson(doc, out);
   g_server.send(200, "application/json", out);

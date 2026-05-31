@@ -449,3 +449,5 @@ details.collapsible[open] > summary {
 .race-btn-off     { background: var(--muted); }
 .race-btn-burnout { background: #ff8c00; }
 .race-btn-launch  { background: var(--temp); color: #002918; }
+/* v3.1.0: highlight the currently-active Haldex mode button */
+.race-btn.active { outline: 3px solid #ffd000; outline-offset: 2px; }
