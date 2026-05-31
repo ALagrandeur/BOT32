@@ -6,7 +6,6 @@
 #include "obd2.h"
 #include "lever_decoder.h"
 #include "coolant.h"
-#include "cluster_override.h"
 #include "haldex_link.h"
 #include "serial_proto.h"
 #include "button_sniffer.h"
@@ -103,6 +102,14 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
     <div class="lbl">🅾 OK button</div><div class="val" id="okb">—</div>
     <div class="can">0x5BF b[0]</div>
   </div>
+  <div class="card">
+    <div class="lbl">⚠ Hazard</div><div class="val" id="hz">—</div>
+    <div class="can">0x366 b[2] bit 4</div>
+  </div>
+  <div class="card">
+    <div class="lbl">🚫 TC button</div><div class="val" id="tc">—</div>
+    <div class="can">0x0FD b[6]</div>
+  </div>
 </div>
 
 <div class="actions">
@@ -137,6 +144,11 @@ async function poll(){
     setVal('hbr', hbFresh ? (s.handbrake_active ? '✓ ON' : 'OFF') : null);
     const okFresh = (s.ok_button_age_ms !== undefined && s.ok_button_age_ms < 5000);
     setVal('okb', okFresh ? (s.ok_button_pressed ? '✓ PRESS' : 'rel.') : null);
+    // v2.9.0 — Hazard + TC sniffers
+    const hzFresh = (s.hazard_age_ms !== undefined && s.hazard_age_ms < 5000);
+    setVal('hz', hzFresh ? (s.hazard_active ? '✓ ON' : 'OFF') : null);
+    const tcFresh = (s.tc_button_age_ms !== undefined && s.tc_button_age_ms < 5000);
+    setVal('tc', tcFresh ? (s.tc_button_pressed ? '✓ PRESS' : 'rel.') : null);
     $('conn').classList.remove('off');
     $('conn').textContent='●';
   }catch(e){
@@ -232,35 +244,6 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 </div>
 <div class="row">
   <div><label>Bench MAP mbar</label><input type="number" data-k="bench_map_mbar" min="0" max="3000" step="20"></div>
-  <div><label>Bench display %</label><input type="number" data-k="bench_display_value_pct" min="0" max="100"></div>
-</div>
-<label class="cb"><input type="checkbox" data-k="bench_force_override"> 🎯 Force cluster override (bench)</label>
-
-<h2>🎨 Cluster display override</h2>
-<label class="cb"><input type="checkbox" data-k="cluster_override_enabled"> 🎨 Enable cluster display override</label>
-<div class="row">
-  <div><label>Trigger CAN ID</label><input type="text" data-k="display_trigger_can_id" data-hex="1"></div>
-  <div><label>Byte idx (0-7)</label><input type="number" data-k="display_trigger_byte_idx" min="0" max="7"></div>
-</div>
-<div class="row">
-  <div><label>Rest value</label><input type="number" data-k="display_trigger_rest_value" min="0" max="255"></div>
-  <div><label>Pressed value</label><input type="number" data-k="display_trigger_pressed_value" min="0" max="255"></div>
-</div>
-<div class="row">
-  <div><label>Source</label>
-    <select data-k="display_value_source"><option value="0">⛽ Ethanol</option><option value="1">🏁 Haldex</option></select>
-  </div>
-  <div><label>Byte1 high (lettre)</label><input type="number" data-k="display_override_byte1_high" min="0" max="255"></div>
-</div>
-<div class="row full">
-  <div><label>Mode encodage byte[3]</label>
-    <select data-k="display_byte3_value_mode">
-      <option value="0">0 — Raw (val brute)</option>
-      <option value="1">1 — Legacy ÷7</option>
-      <option value="2">2 — Tens digit</option>
-      <option value="3">3 — Units digit</option>
-    </select>
-  </div>
 </div>
 
 <h2>🔧 Clear Engine Fault auto-trigger</h2>
@@ -388,7 +371,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "2.8.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "2.9.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -411,6 +394,11 @@ static void handle_status() {
   doc["handbrake_age_ms"]  = button_sniffer_handbrake_age_ms();
   doc["ok_button_pressed"] = button_sniffer_ok_pressed();
   doc["ok_button_age_ms"]  = button_sniffer_ok_age_ms();
+  // v2.9.0 — Hazard + TC button sniffers
+  doc["hazard_active"]     = button_sniffer_hazard_active();
+  doc["hazard_age_ms"]     = button_sniffer_hazard_age_ms();
+  doc["tc_button_pressed"] = button_sniffer_tc_pressed();
+  doc["tc_button_age_ms"]  = button_sniffer_tc_age_ms();
   String out;
   serializeJson(doc, out);
   g_server.send(200, "application/json", out);
@@ -442,16 +430,8 @@ static void handle_api_get_settings() {
   doc["bench_test_bus"]            = s.bench_test_bus;
   doc["bench_rpm"]                 = s.bench_rpm;
   doc["bench_map_mbar"]            = s.bench_map_mbar;
-  doc["bench_display_value_pct"]   = s.bench_display_value_pct;
-  doc["bench_force_override"]      = s.bench_force_override;
-  doc["cluster_override_enabled"]      = s.cluster_override_enabled;
-  doc["display_trigger_can_id"]        = s.display_trigger_can_id;
-  doc["display_trigger_byte_idx"]      = s.display_trigger_byte_idx;
-  doc["display_trigger_rest_value"]    = s.display_trigger_rest_value;
-  doc["display_trigger_pressed_value"] = s.display_trigger_pressed_value;
-  doc["display_value_source"]          = s.display_value_source;
-  doc["display_override_byte1_high"]   = s.display_override_byte1_high;
-  doc["display_byte3_value_mode"]      = s.display_byte3_value_mode;
+  // v2.9.0: bench_display_value_pct + bench_force_override removed.
+  // v2.9.0: 7 cluster_override / display_* settings removed.
   doc["cef_auto_enabled"]              = s.cef_auto_enabled;
   doc["cef_trigger_can_id"]            = s.cef_trigger_can_id;
   doc["cef_trigger_byte_idx"]          = s.cef_trigger_byte_idx;

@@ -79,12 +79,7 @@ const SETTING_KEYS = [
   // Rates
   "obd2_poll_hz", "tx_rate_hz",
   // v2.4.0: poll_ethanol + poll_haldex_blockage removed from UI (always ON).
-  // v2.2: cluster display override
-  "cluster_override_enabled",
-  "display_trigger_can_id", "display_trigger_byte_idx",
-  "display_trigger_rest_value", "display_trigger_pressed_value",
-  "display_value_source", "display_override_byte1_high",
-  "display_byte3_value_mode",  // v2.3.0: raw / ÷7 / tens / units
+  // v2.9.0: cluster_override + display_* removed from UI (feature deleted).
   // v2.4.0+: clear-engine-fault auto-trigger config (roadmap detection)
   "cef_auto_enabled",
   "cef_trigger_can_id", "cef_trigger_byte_idx",
@@ -94,9 +89,8 @@ const SETTING_KEYS = [
   "wifi_enabled", "wifi_ap_ssid", "wifi_ap_password",
   // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
   "tx_enabled", "force_tx_always",
-  // Bench test
+  // Bench test (v2.9.0: bench_display_value_pct + bench_force_override removed)
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
-  "bench_display_value_pct", "bench_force_override",  // v2.2.1
   // Haldex link
   "haldex_enabled", "haldex_bus", "haldex_state_id", "haldex_cmd_id",
   "haldex_transport", "haldex_espnow_peer_mac",
@@ -117,10 +111,7 @@ function applySettings(s) {
   // Update slider displays (sliders need their displayed value updated)
   if (s.bench_rpm !== undefined) $("bench-rpm-display").textContent = s.bench_rpm;
   if (s.bench_map_mbar !== undefined) $("bench-map-display").textContent = s.bench_map_mbar;
-  if (s.bench_display_value_pct !== undefined) {
-    const dvp = $("bench-dvp-display");
-    if (dvp) dvp.textContent = s.bench_display_value_pct;
-  }
+  // v2.9.0: bench-dvp-display removed with the cluster_override feature.
   // Highlight airbag line in bench list if block_airbag is OFF
   const airbagLine = $("bench-airbag-line");
   if (airbagLine) {
@@ -200,10 +191,7 @@ document.querySelectorAll('input[type="range"]').forEach(slider => {
     // Update visible display immediately
     if (key === "bench_rpm") $("bench-rpm-display").textContent = value;
     if (key === "bench_map_mbar") $("bench-map-display").textContent = value;
-    if (key === "bench_display_value_pct") {
-      const el = $("bench-dvp-display");
-      if (el) el.textContent = value;
-    }
+    // v2.9.0: bench_display_value_pct slider removed with cluster_override.
     // Send to ESP32 (throttled to 10/sec)
     throttledSliderSend(key, value);
   });
@@ -525,6 +513,44 @@ socket.on("status", (s) => {
     }
   }
 
+  // v2.9.0 — Hazard switch sniffer (passive, cluster bus)
+  const hzEl = $("live-hazard");
+  if (hzEl) {
+    const age = s.hazard_age_ms;
+    const fresh = (age !== undefined && age < 5000);
+    if (fresh) {
+      if (s.hazard_active === true) {
+        hzEl.textContent = "✓ ON";
+        hzEl.className = "value-big mode-BOOST";
+      } else {
+        hzEl.textContent = "OFF";
+        hzEl.className = "value-big";
+      }
+    } else {
+      hzEl.textContent = "—";
+      hzEl.className = "value-big inactive";
+    }
+  }
+
+  // v2.9.0 — Traction Control button sniffer (passive, cluster bus)
+  const tcEl = $("live-tc-button");
+  if (tcEl) {
+    const age = s.tc_button_age_ms;
+    const fresh = (age !== undefined && age < 5000);
+    if (fresh) {
+      if (s.tc_button_pressed === true) {
+        tcEl.textContent = "✓ PRESSED";
+        tcEl.className = "value-big mode-BOOST";
+      } else {
+        tcEl.textContent = "released";
+        tcEl.className = "value-big";
+      }
+    } else {
+      tcEl.textContent = "—";
+      tcEl.className = "value-big inactive";
+    }
+  }
+
   // v2.6.0: WiFi AP live status
   const wifiStatus  = $("live-wifi-status");
   const wifiUrl     = $("live-wifi-url");
@@ -554,34 +580,7 @@ socket.on("status", (s) => {
     }
   }
 
-  // v2.2: Cluster override live indicators
-  const overPressed = $("live-override-pressed");
-  const overValue   = $("live-override-value");
-  const overEncoded = $("live-override-encoded");
-  if (overPressed) {
-    if (s.cluster_override_pressed === true) {
-      overPressed.textContent = "✓ PRESSED";
-      overPressed.className = "value-big mode-BOOST";
-    } else if (s.cluster_override_pressed === false) {
-      overPressed.textContent = "released";
-      overPressed.className = "value-big inactive";
-    }
-  }
-  if (overValue) {
-    if (s.cluster_override_value_pct !== undefined && s.cluster_override_value_pct >= 0) {
-      overValue.textContent = s.cluster_override_value_pct.toFixed(1) + "%";
-      overValue.className = "value-big";
-    } else {
-      overValue.textContent = "—";
-      overValue.className = "value-big inactive";
-    }
-  }
-  if (overEncoded) {
-    if (s.cluster_override_encoded_byte !== undefined) {
-      const b = s.cluster_override_encoded_byte;
-      overEncoded.textContent = b + " (0x" + b.toString(16).toUpperCase().padStart(2,"0") + ")";
-    }
-  }
+  // v2.9.0: cluster_override live indicators removed (feature deleted).
 });
 
 function updateHaldexLive(hx) {

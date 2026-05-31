@@ -12,13 +12,12 @@
 #include "coolant.h"
 #include "haldex_link.h"
 #include "haldex_espnow.h"
-#include "cluster_override.h"
 #include "wifi_ui.h"
 #include "button_sniffer.h"
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.8.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.9.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -55,14 +54,7 @@ static void emit_settings() {
   doc["obd2_poll_hz"]      = s.obd2_poll_hz;
   doc["poll_ethanol"]          = s.poll_ethanol;
   doc["poll_haldex_blockage"]  = s.poll_haldex_blockage;
-  doc["cluster_override_enabled"]      = s.cluster_override_enabled;
-  doc["display_trigger_can_id"]        = s.display_trigger_can_id;
-  doc["display_trigger_byte_idx"]      = s.display_trigger_byte_idx;
-  doc["display_trigger_rest_value"]    = s.display_trigger_rest_value;
-  doc["display_trigger_pressed_value"] = s.display_trigger_pressed_value;
-  doc["display_value_source"]          = s.display_value_source;
-  doc["display_override_byte1_high"]   = s.display_override_byte1_high;
-  doc["display_byte3_value_mode"]      = s.display_byte3_value_mode;
+  // v2.9.0: cluster_override settings removed.
   doc["cef_auto_enabled"]              = s.cef_auto_enabled;
   doc["cef_trigger_can_id"]            = s.cef_trigger_can_id;
   doc["cef_trigger_byte_idx"]          = s.cef_trigger_byte_idx;
@@ -85,8 +77,7 @@ static void emit_settings() {
   doc["bench_rpm"]          = s.bench_rpm;
   doc["bench_map_mbar"]     = s.bench_map_mbar;
   doc["bench_test_bus"]     = s.bench_test_bus;
-  doc["bench_display_value_pct"] = s.bench_display_value_pct;
-  doc["bench_force_override"]    = s.bench_force_override;
+  // v2.9.0: bench_display_value_pct + bench_force_override removed.
   doc["tx_enabled_before_bench"] = s.tx_enabled_before_bench;  // v2.7.1 diag (read-only)
   doc["haldex_enabled"]     = s.haldex_enabled;
   doc["haldex_bus"]         = s.haldex_bus;
@@ -175,16 +166,18 @@ static void emit_status() {
   doc["handbrake_age_ms"]   = button_sniffer_handbrake_age_ms();
   doc["ok_button_pressed"]  = button_sniffer_ok_pressed();
   doc["ok_button_age_ms"]   = button_sniffer_ok_age_ms();
+  // v2.9.0 — Hazard switch + Traction Control button sniffers
+  doc["hazard_active"]      = button_sniffer_hazard_active();
+  doc["hazard_age_ms"]      = button_sniffer_hazard_age_ms();
+  doc["tc_button_pressed"]  = button_sniffer_tc_pressed();
+  doc["tc_button_age_ms"]   = button_sniffer_tc_age_ms();
 
   // v2.1: clear-all-DTCs progress (only meaningful while running)
   doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();
   doc["clear_all_dtcs_progress"]    = obd2_clear_all_dtcs_progress_pct();
   doc["clear_all_dtcs_ecu"]         = obd2_clear_all_dtcs_current_ecu();
 
-  // v2.2: cluster override diagnostics
-  doc["cluster_override_pressed"]      = cluster_override_is_trigger_pressed();
-  doc["cluster_override_encoded_byte"] = cluster_override_get_last_encoded_byte();
-  doc["cluster_override_value_pct"]    = cluster_override_get_last_value_pct();
+  // v2.9.0: cluster_override diagnostics removed (feature deleted).
 
   // v2.6.1: WiFi AP live diagnostics (moved from emit_settings so the UI
   // refreshes the status pill in real-time, not only on settings change).
@@ -358,14 +351,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "obd2_poll_hz")          == 0) ok = settings_set_obd2_poll_hz(v    | 5);
   else if (strcmp(key, "poll_ethanol")          == 0) ok = settings_set_poll_ethanol(v          | false);
   else if (strcmp(key, "poll_haldex_blockage")  == 0) ok = settings_set_poll_haldex_blockage(v  | false);
-  else if (strcmp(key, "cluster_override_enabled")      == 0) ok = settings_set_cluster_override_enabled(v      | false);
-  else if (strcmp(key, "display_trigger_can_id")        == 0) ok = settings_set_display_trigger_can_id(v        | 0x0FD);
-  else if (strcmp(key, "display_trigger_byte_idx")      == 0) ok = settings_set_display_trigger_byte_idx(v      | 6);
-  else if (strcmp(key, "display_trigger_rest_value")    == 0) ok = settings_set_display_trigger_rest_value(v    | 0);
-  else if (strcmp(key, "display_trigger_pressed_value") == 0) ok = settings_set_display_trigger_pressed_value(v | 3);
-  else if (strcmp(key, "display_value_source")          == 0) ok = settings_set_display_value_source(v          | 0);
-  else if (strcmp(key, "display_override_byte1_high")   == 0) ok = settings_set_display_override_byte1_high(v   | 0x00);
-  else if (strcmp(key, "display_byte3_value_mode")      == 0) ok = settings_set_display_byte3_value_mode(v      | 0);
+  // v2.9.0: cluster_override + display_* setters removed (feature deleted).
   else if (strcmp(key, "cef_auto_enabled")          == 0) ok = settings_set_cef_auto_enabled(v          | true);
   else if (strcmp(key, "cef_trigger_can_id")        == 0) ok = settings_set_cef_trigger_can_id(v        | 0x366);
   else if (strcmp(key, "cef_trigger_byte_idx")      == 0) ok = settings_set_cef_trigger_byte_idx(v      | 2);
@@ -386,8 +372,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(v          | 0);
   else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(v     | 0);
   else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(v     | 0);
-  else if (strcmp(key, "bench_display_value_pct") == 0) ok = settings_set_bench_display_value_pct(v | 0);
-  else if (strcmp(key, "bench_force_override")    == 0) ok = settings_set_bench_force_override(v    | false);
+  // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
   else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(v     | false);
   else if (strcmp(key, "haldex_bus")            == 0) ok = settings_set_haldex_bus(v         | 1);
   else if (strcmp(key, "haldex_state_id")       == 0) ok = settings_set_haldex_state_id(v    | 0x6B0);

@@ -27,13 +27,21 @@
 #define CAN_ID_TCM_REQ         0x7E1   // TX: UDS request to Transmission ECU (DSG) — v2.8.0
 #define CAN_ID_TCM_RESP        0x7E9   // RX: UDS response from Transmission ECU (DSG) — v2.8.0
 
-// Cluster-bus sniffer IDs — v2.8.0
+// Cluster-bus sniffer IDs — v2.8.0+
 // Hand brake state appears in KOMBI_01 (0x30B) byte[2] bit 7
 //   0x80 = engaged (ON), 0x00 = released (OFF)
 // MFSW (multi-function steering wheel) OK button appears in 0x5BF byte[0]
 //   0x07 = released, 0x00 = pressed
 #define CAN_ID_KOMBI_01        0x30B   // RX: cluster status (hand brake + others)
 #define CAN_ID_MFSW            0x5BF   // RX: multi-function steering-wheel buttons
+
+// v2.9.0 — two new button sniffers (passive)
+// Hazard button — Blinkmodi_01 (0x366) byte[2] bit 4 (0x10) — vehicle-confirmed
+//   0x10 = Hazard ON, 0x00 = Hazard OFF
+// Traction Control button — ESP_21 (0x0FD) byte[6] — vehicle-confirmed
+//   0x03 = TC button held (pressed), 0x00 = TC enabled (released)
+#define CAN_ID_HAZARD          0x366   // RX: Blinkmodi_01 (hazard switch)
+#define CAN_ID_TC_BUTTON       0x0FD   // RX: ESP_21 (Traction Control button)
 
 // UDS Data Identifiers (DIDs) — all confirmed on MK7 Alltrack 2017
 #define UDS_DID_MAP                0x39C0  // Saugrohrdruck (MAP, mbar, 16-bit) — engine ECU

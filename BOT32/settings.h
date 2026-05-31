@@ -24,21 +24,8 @@ struct Settings {
   bool     poll_ethanol;             // DID 0xF452 from engine ECU
   bool     poll_haldex_blockage;     // DID 0x2BF3 from Haldex ECU (0x70F/0x779)
 
-  // v2.2: configurable cluster display override
-  //   When a trigger CAN signal goes into "pressed" state, BOT32 starts
-  //   transmitting a modified WBA_03 at 40Hz to show a custom value (e.g.
-  //   ethanol %) in place of the gear indicator.
-  bool     cluster_override_enabled;          // master toggle, default false
-  uint16_t display_trigger_can_id;            // default 0x0FD (TC button)
-  uint8_t  display_trigger_byte_idx;          // default 6 (byte index 0..7)
-  uint8_t  display_trigger_rest_value;        // default 0x00 (TC enabled)
-  uint8_t  display_trigger_pressed_value;     // default 0x03 (TC button held)
-  uint8_t  display_value_source;              // 0=ethanol %, 1=haldex blockage %
-  uint8_t  display_override_byte1_high;       // WBA_03 byte[1] high nibble (default 0x00 = blank, try other codes)
-  // v2.3.0: encoding mode for byte[3] — lets user experiment with what the
-  // cluster displays. The user's goal is showing the raw % (1%, 2%, ..., 100%)
-  // without the P/R/N/D/S/M letters (which are confusing with real gears).
-  uint8_t  display_byte3_value_mode;          // 0=raw full byte (default), 1=÷7 legacy, 2=tens digit, 3=units digit
+  // v2.9.0: cluster display override removed entirely.
+  //   (Was v2.2 — see git history v2.8.0 and earlier for the original feature.)
 
   // v2.4.0+: trigger config for AUTOMATIC Clear Engine Fault when a physical
   // vehicle button is pressed. Fields are persisted now; the auto-trigger
@@ -84,14 +71,8 @@ struct Settings {
   uint16_t bench_map_mbar;       // 0..3000 mbar (Motor_09 byte 0 via coolant mapping)
   uint8_t  bench_test_bus;       // 0 = TX on CAN_CLUSTER, 1 = TX on CAN_OBD2
 
-  // v2.2.1: bench-test support for cluster display override
-  // - bench_display_value_pct: slider value (0..100) used as override source
-  //   when bench mode is on (bypasses OBD2 poll which won't work on bench).
-  // - bench_force_override: when true (AND bench_test_enabled), the trigger
-  //   check in cluster_override is bypassed so you can see the cluster
-  //   display the override value without simulating the trigger frame.
-  uint8_t  bench_display_value_pct;  // 0..100
-  bool     bench_force_override;     // bypass trigger detection (bench only)
+  // v2.9.0: bench_display_value_pct + bench_force_override removed
+  // (they were only used by the cluster display override feature, now deleted).
 
   // v2.7.1: bench mode auto-toggles tx_enabled (forces ON on enter, restores
   // previous on exit). This field memorizes the user's tx_enabled state at
@@ -133,14 +114,7 @@ bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
 bool settings_set_poll_ethanol(bool v);
 bool settings_set_poll_haldex_blockage(bool v);
-bool settings_set_cluster_override_enabled(bool v);
-bool settings_set_display_trigger_can_id(uint16_t v);
-bool settings_set_display_trigger_byte_idx(uint8_t v);
-bool settings_set_display_trigger_rest_value(uint8_t v);
-bool settings_set_display_trigger_pressed_value(uint8_t v);
-bool settings_set_display_value_source(uint8_t v);
-bool settings_set_display_override_byte1_high(uint8_t v);
-bool settings_set_display_byte3_value_mode(uint8_t v);
+// v2.9.0: 7 cluster_override setters removed (feature deleted).
 bool settings_set_cef_auto_enabled(bool v);
 bool settings_set_cef_trigger_can_id(uint16_t v);
 bool settings_set_cef_trigger_byte_idx(uint8_t v);
@@ -163,8 +137,7 @@ bool settings_set_bench_test_enabled(bool v);
 bool settings_set_bench_rpm(uint16_t v);
 bool settings_set_bench_map_mbar(uint16_t v);
 bool settings_set_bench_test_bus(uint8_t v);
-bool settings_set_bench_display_value_pct(uint8_t v);
-bool settings_set_bench_force_override(bool v);
+// v2.9.0: bench_display_value_pct + bench_force_override setters removed.
 bool settings_set_haldex_enabled(bool v);
 bool settings_set_haldex_bus(uint8_t v);
 bool settings_set_haldex_state_id(uint16_t v);

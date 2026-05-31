@@ -1,18 +1,27 @@
 /*
- * Button / state sniffer — implementation (v2.8.0).
+ * Button / state sniffer — implementation (v2.8.0, extended v2.9.0).
  */
 #include "button_sniffer.h"
 #include "config.h"
 #include "can_handler.h"
 
-// === Hand brake (KOMBI_01 0x30B, byte[2] bit 7) ===
+// === Hand brake (KOMBI_01 0x30B, byte[2] bit 7) — v2.8.0 ===
 static bool     hb_active   = false;
 static uint32_t hb_ms       = 0;
 
-// === MFSW OK button (0x5BF, byte[0]) ===
+// === MFSW OK button (0x5BF, byte[0]) — v2.8.0 ===
 //   raw value 0x07 = released, 0x00 = pressed
 static bool     ok_pressed  = false;
 static uint32_t ok_ms       = 0;
+
+// === Hazard switch (Blinkmodi_01 0x366, byte[2] bit 4 = 0x10) — v2.9.0 ===
+static bool     hz_active   = false;
+static uint32_t hz_ms       = 0;
+
+// === Traction Control button (ESP_21 0x0FD, byte[6]) — v2.9.0 ===
+//   0x03 = pressed (held), 0x00 = released (TC enabled, normal)
+static bool     tc_pressed  = false;
+static uint32_t tc_ms       = 0;
 
 static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
   if (ch != CAN_CLUSTER) return;
@@ -31,6 +40,23 @@ static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
     ok_ms      = millis();
     return;
   }
+
+  // v2.9.0 — Hazard switch (Blinkmodi_01)
+  // Vehicle capture confirmed: byte[2] bit 4 (mask 0x10) toggles when the
+  // hazard button is pressed (0x00 -> 0x10 -> 0x00).
+  if (f.id == CAN_ID_HAZARD && f.len >= 3) {
+    hz_active = (f.data[2] & 0x10) != 0;
+    hz_ms     = millis();
+    return;
+  }
+
+  // v2.9.0 — Traction Control button (ESP_21)
+  // Vehicle capture confirmed: byte[6] = 0x00 normally, 0x03 while held.
+  if (f.id == CAN_ID_TC_BUTTON && f.len >= 7) {
+    tc_pressed = (f.data[6] == 0x03);
+    tc_ms      = millis();
+    return;
+  }
 }
 
 void button_sniffer_init() {
@@ -47,4 +73,18 @@ bool button_sniffer_ok_pressed()         { return ok_pressed; }
 uint32_t button_sniffer_ok_age_ms() {
   if (ok_ms == 0) return UINT32_MAX;
   return millis() - ok_ms;
+}
+
+// v2.9.0 — Hazard
+bool button_sniffer_hazard_active()      { return hz_active; }
+uint32_t button_sniffer_hazard_age_ms() {
+  if (hz_ms == 0) return UINT32_MAX;
+  return millis() - hz_ms;
+}
+
+// v2.9.0 — Traction Control button
+bool button_sniffer_tc_pressed()         { return tc_pressed; }
+uint32_t button_sniffer_tc_age_ms() {
+  if (tc_ms == 0) return UINT32_MAX;
+  return millis() - tc_ms;
 }

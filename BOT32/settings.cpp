@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 17  // v2.8.0: bump obd2_poll_hz default 15 -> 30 (6-slot round-robin needs more bandwidth)
+#define SETTINGS_VERSION 18  // v2.9.0: removed 9 cluster_override-related fields
 
 static Settings make_defaults() {
   Settings s;
@@ -24,15 +24,7 @@ static Settings make_defaults() {
   s.obd2_poll_hz      = 30;
   s.poll_ethanol            = true;   // v2.4.0: ON by default (no UI toggle)
   s.poll_haldex_blockage    = true;   // v2.4.0: ON by default (no UI toggle)
-  // v2.2: cluster override defaults (using TC button as default trigger)
-  s.cluster_override_enabled         = false;
-  s.display_trigger_can_id           = 0x0FD;   // TC button (ESP_21)
-  s.display_trigger_byte_idx         = 6;       // TC state byte
-  s.display_trigger_rest_value       = 0x00;    // TC ON (normal)
-  s.display_trigger_pressed_value    = 0x03;    // TC button held (OFF)
-  s.display_value_source             = 0;       // 0 = ethanol % (default)
-  s.display_override_byte1_high      = 0x00;    // v2.3.0: blank (avoid P/R/N/D/S/M confusion)
-  s.display_byte3_value_mode         = 0;       // v2.3.0: raw full-byte (1:1 mapping)
+  // v2.9.0: cluster_override defaults removed (feature deleted).
   // v2.5.1: clear-engine-fault auto-trigger config — Hazard button, 3x in 4s
   s.cef_auto_enabled          = true;       // master toggle, ON by default
   s.cef_trigger_can_id        = 0x366;      // Hazard (Blinkmodi_01)
@@ -58,8 +50,7 @@ static Settings make_defaults() {
   s.bench_rpm          = 1500;
   s.bench_map_mbar     = 1500;
   s.bench_test_bus     = 0;      // default: CAN_CLUSTER
-  s.bench_display_value_pct = 11;  // default slider value (matches user's measured ethanol)
-  s.bench_force_override    = false;
+  // v2.9.0: bench_display_value_pct + bench_force_override removed.
   s.tx_enabled_before_bench = true;  // v2.7.1: default safe (TX restored ON if no bench transition)
   s.haldex_enabled     = false;  // default: Haldex link OFF (safety)
   s.haldex_bus         = 1;      // default: CAN_OBD2 (chassis CAN)
@@ -91,14 +82,8 @@ void settings_init() {
   current.obd2_poll_hz      = prefs.getUShort("obd_hz", 30);          // v2.8.0 default (6 slots)
   current.poll_ethanol          = prefs.getBool("p_etoh", true);       // v2.4.0 default ON
   current.poll_haldex_blockage  = prefs.getBool("p_hdxb", true);       // v2.4.0 default ON
-  current.cluster_override_enabled      = prefs.getBool("co_en", false);
-  current.display_trigger_can_id        = prefs.getUShort("co_tid", 0x0FD);
-  current.display_trigger_byte_idx      = prefs.getUChar("co_tbi", 6);
-  current.display_trigger_rest_value    = prefs.getUChar("co_trv", 0x00);
-  current.display_trigger_pressed_value = prefs.getUChar("co_tpv", 0x03);
-  current.display_value_source          = prefs.getUChar("co_src", 0);
-  current.display_override_byte1_high   = prefs.getUChar("co_b1h", 0x00);  // v2.3.0 default: blank
-  current.display_byte3_value_mode      = prefs.getUChar("co_b3m", 0);     // v2.3.0 default: raw
+  // v2.9.0: cluster_override NVS load removed (NVS keys "co_*" abandoned —
+  // SETTINGS_VERSION bump 17->18 will trigger a one-time reset that clears them).
   // v2.5.1: clear-engine-fault auto-trigger config (roadmap detection)
   current.cef_auto_enabled          = prefs.getBool("cef_en", true);
   current.cef_trigger_can_id        = prefs.getUShort("cef_id", 0x366);
@@ -128,8 +113,7 @@ void settings_init() {
   current.bench_rpm          = prefs.getUShort("bch_rpm", 1500);
   current.bench_map_mbar     = prefs.getUShort("bch_map", 1500);
   current.bench_test_bus     = prefs.getUChar("bch_bus", 0);
-  current.bench_display_value_pct = prefs.getUChar("bch_dvp", 11);
-  current.bench_force_override    = prefs.getBool("bch_fov", false);
+  // v2.9.0: bench_display_value_pct + bench_force_override NVS load removed.
   current.tx_enabled_before_bench = prefs.getBool("tx_pre_bch", true);  // v2.7.1
   current.haldex_enabled     = prefs.getBool("hdx_en", false);
   current.haldex_bus         = prefs.getUChar("hdx_bus", 1);
@@ -195,41 +179,7 @@ bool settings_set_poll_haldex_blockage(bool v) {
   current.poll_haldex_blockage = v;
   return save_bool("p_hdxb", v);
 }
-bool settings_set_cluster_override_enabled(bool v) {
-  current.cluster_override_enabled = v;
-  return save_bool("co_en", v);
-}
-bool settings_set_display_trigger_can_id(uint16_t v) {
-  current.display_trigger_can_id = v;
-  return save_ushort("co_tid", v);
-}
-bool settings_set_display_trigger_byte_idx(uint8_t v) {
-  if (v > 7) v = 7;
-  current.display_trigger_byte_idx = v;
-  return prefs.putUChar("co_tbi", v) > 0;
-}
-bool settings_set_display_trigger_rest_value(uint8_t v) {
-  current.display_trigger_rest_value = v;
-  return prefs.putUChar("co_trv", v) > 0;
-}
-bool settings_set_display_trigger_pressed_value(uint8_t v) {
-  current.display_trigger_pressed_value = v;
-  return prefs.putUChar("co_tpv", v) > 0;
-}
-bool settings_set_display_value_source(uint8_t v) {
-  if (v > 1) v = 0;
-  current.display_value_source = v;
-  return prefs.putUChar("co_src", v) > 0;
-}
-bool settings_set_display_override_byte1_high(uint8_t v) {
-  current.display_override_byte1_high = v & 0xF0;
-  return prefs.putUChar("co_b1h", current.display_override_byte1_high) > 0;
-}
-bool settings_set_display_byte3_value_mode(uint8_t v) {
-  if (v > 3) v = 0;
-  current.display_byte3_value_mode = v;
-  return prefs.putUChar("co_b3m", v) > 0;
-}
+// v2.9.0: 7 cluster_override setters removed (feature deleted).
 bool settings_set_cef_auto_enabled(bool v) {
   current.cef_auto_enabled = v;
   return save_bool("cef_en", v);
@@ -350,15 +300,7 @@ bool settings_set_bench_test_bus(uint8_t v) {
   current.bench_test_bus = (v > 1) ? 0 : v;
   return prefs.putUChar("bch_bus", current.bench_test_bus) > 0;
 }
-bool settings_set_bench_display_value_pct(uint8_t v) {
-  if (v > 100) v = 100;
-  current.bench_display_value_pct = v;
-  return prefs.putUChar("bch_dvp", v) > 0;
-}
-bool settings_set_bench_force_override(bool v) {
-  current.bench_force_override = v;
-  return save_bool("bch_fov", v);
-}
+// v2.9.0: bench_display_value_pct + bench_force_override setters removed.
 bool settings_set_haldex_enabled(bool v) {
   current.haldex_enabled = v;
   return save_bool("hdx_en", v);
@@ -397,14 +339,7 @@ void settings_reset_to_defaults() {
   prefs.putUShort("obd_hz", current.obd2_poll_hz);
   prefs.putBool("p_etoh", current.poll_ethanol);
   prefs.putBool("p_hdxb", current.poll_haldex_blockage);
-  prefs.putBool("co_en", current.cluster_override_enabled);
-  prefs.putUShort("co_tid", current.display_trigger_can_id);
-  prefs.putUChar("co_tbi", current.display_trigger_byte_idx);
-  prefs.putUChar("co_trv", current.display_trigger_rest_value);
-  prefs.putUChar("co_tpv", current.display_trigger_pressed_value);
-  prefs.putUChar("co_src", current.display_value_source);
-  prefs.putUChar("co_b1h", current.display_override_byte1_high);
-  prefs.putUChar("co_b3m", current.display_byte3_value_mode);
+  // v2.9.0: cluster_override NVS writes removed.
   prefs.putBool("cef_en", current.cef_auto_enabled);
   prefs.putUShort("cef_id", current.cef_trigger_can_id);
   prefs.putUChar("cef_bi", current.cef_trigger_byte_idx);
@@ -426,8 +361,7 @@ void settings_reset_to_defaults() {
   prefs.putUShort("bch_rpm", current.bench_rpm);
   prefs.putUShort("bch_map", current.bench_map_mbar);
   prefs.putUChar("bch_bus", current.bench_test_bus);
-  prefs.putUChar("bch_dvp", current.bench_display_value_pct);
-  prefs.putBool("bch_fov", current.bench_force_override);
+  // v2.9.0: bench_display_value_pct + bench_force_override NVS writes removed.
   prefs.putBool("tx_pre_bch", current.tx_enabled_before_bench);
   prefs.putBool("hdx_en", current.haldex_enabled);
   prefs.putUChar("hdx_bus", current.haldex_bus);
