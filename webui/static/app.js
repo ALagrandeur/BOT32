@@ -601,6 +601,27 @@ function updateHaldexLive(hx) {
   setCell(speedEl,  hx.vehicle_kmh);
   setCell(pedalEl,  hx.pedal_pct + "%");
 
+  // v3.2.0 — passthrough (actual state reported by the X2)
+  const ptEl = $("haldex-live-passthrough");
+  if (ptEl) {
+    if (online) {
+      const armed = (hx.passthrough === 0);
+      ptEl.textContent = armed ? "⚠ ARMÉ" : "ON (sûr)";
+      ptEl.className = armed ? "value-big mode-BOOST" : "value-big mode-SILENT";
+    } else { ptEl.textContent = "—"; ptEl.className = "value-big inactive"; }
+  }
+  // keep the arm checkbox in sync with the actual reported state (only when online)
+  const armCb = $("haldex-passthrough-arm");
+  if (armCb && online && !armCb.matches(":focus")) {
+    armCb.checked = (hx.passthrough === 0);
+  }
+  const ptStatus = $("haldex-passthrough-status");
+  if (ptStatus) {
+    ptStatus.textContent = online
+      ? ("État réel rapporté par le X2 : " + (hx.passthrough === 0 ? "MITM ARMÉ (modifie les trames)" : "passthrough ON (transparent)"))
+      : "État réel rapporté par le X2 : — (hors ligne)";
+  }
+
   if (rawEl) {
     rawEl.textContent = (online && hx.raw)
       ? hx.raw.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ') : "—";
@@ -627,6 +648,23 @@ if (btnClearEng) {
 }
 
 // v2.3.3: Clear All DTCs button removed entirely from UI.
+
+// v3.2.0 — Passthrough arm/disarm checkbox (sends set_haldex_passthrough)
+const haldexArmCb = $("haldex-passthrough-arm");
+if (haldexArmCb) {
+  haldexArmCb.addEventListener("change", (e) => {
+    const armed = e.target.checked;       // checked = MITM armed = passthrough OFF
+    if (armed && !confirm(
+        "⚠ DÉSARMER LE PASSTHROUGH\n\n" +
+        "Le module X2 va MODIFIER réellement les trames Haldex en mode FWD/50-50\n" +
+        "(action mécanique sur l'AWD). MOTORSPORT — circuit fermé seulement.\n\n" +
+        "Confirmer l'armement du MITM ?")) {
+      e.target.checked = false;           // revert
+      return;
+    }
+    socket.emit("cmd", { cmd: "set_haldex_passthrough", on: !armed });
+  });
+}
 
 // Haldex mode buttons — send set_haldex_mode command via socketio.
 // v3.1.0: confirm before engaging a race mode (FWD / 50-50); STOCK is instant.

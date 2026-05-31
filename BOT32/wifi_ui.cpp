@@ -114,6 +114,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 <div class="grid" id="hx-grid">
   <div class="card"><div class="lbl">Mode</div><div class="val" id="hx-mode">—</div></div>
   <div class="card"><div class="lbl">Connexion</div><div class="val" id="hx-conn">—</div></div>
+  <div class="card"><div class="lbl">MITM</div><div class="val" id="hx-pt">—</div></div>
   <div class="card"><div class="lbl">Vitesse km/h</div><div class="val" id="hx-spd">—</div></div>
   <div class="card"><div class="lbl">Pédale %</div><div class="val" id="hx-ped">—</div></div>
   <div class="card"><div class="lbl">Lock target %</div><div class="val" id="hx-tgt">—</div></div>
@@ -124,6 +125,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <button class="hxb hxb-fwd" onclick="hmode(1)">🔥 FWD</button>
   <button class="hxb hxb-5050" onclick="hmode(2)">🚀 50/50</button>
 </div>
+<button class="hxpt" id="hx-pt-btn" onclick="hpass()">Passthrough : —</button>
 
 <div class="actions">
   <button class="primary" onclick="cmd('clear_engine_fault')">🔧 Clear Engine Fault</button>
@@ -173,6 +175,13 @@ async function poll(){
     setVal('hx-ped',  online ? (hx.pedal_pct + '%') : null);
     setVal('hx-tgt',  online ? (hx.lock_target_pct + '%') : null);
     setVal('hx-pump', online ? (hx.pump_engagement_pct + '%') : null);
+    // passthrough (actual reported by the X2): ON = transparent/safe, OFF = MITM armed
+    const pt = online ? (hx.passthrough ? 1 : 0) : null;
+    if(pt!==null) g_pt = pt;   // remember for the toggle button
+    setVal('hx-pt', pt===null ? null : (pt ? 'ON' : 'ARMÉ'));
+    const ptBtn = $('hx-pt-btn');
+    if(ptBtn){ ptBtn.textContent = 'Passthrough : ' + (pt===null?'—':(pt?'ON (sûr)':'OFF — MITM ARMÉ'));
+               ptBtn.classList.toggle('armed', pt===0); }
     // highlight the active mode button
     document.querySelectorAll('.hxb').forEach((b,i)=>b.classList.toggle('active', i===lm));
     $('conn').classList.remove('off');
@@ -205,6 +214,18 @@ async function hmode(m){
     const r = await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'set_haldex_mode',mode:m})});
     const j = await r.json();
     $('st').textContent = j.ok ? '✓ Haldex '+(['STOCK','FWD','50/50'][m]) : '✗ '+(j.msg||'fail');
+    setTimeout(()=>$('st').textContent='—', 3000);
+  }catch(e){ $('st').textContent='✗ erreur réseau'; }
+}
+let g_pt = 1;  // last known passthrough (updated from /api/status)
+async function hpass(){
+  const want = g_pt ? false : true;  // toggle
+  if(!want && !confirm('⚠ DÉSARMER le passthrough\\n\\nLe module X2 va MODIFIER les trames Haldex en mode FWD/50-50 (action mécanique réelle).\\nCircuit fermé seulement. Continuer ?')) return;
+  $('st').textContent='⏳ passthrough…';
+  try{
+    const r = await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'set_haldex_passthrough',on:want})});
+    const j = await r.json();
+    $('st').textContent = j.ok ? ('✓ '+(want?'Passthrough ON':'MITM ARMÉ')) : '✗ '+(j.msg||'fail');
     setTimeout(()=>$('st').textContent='—', 3000);
   }catch(e){ $('st').textContent='✗ erreur réseau'; }
 }
@@ -398,7 +419,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "3.1.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "3.2.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -439,6 +460,8 @@ static void handle_status() {
     hxo["pedal_pct"]           = hx.pedal_pct;
     hxo["lock_target_pct"]     = hx.lock_target_pct;
     hxo["pump_engagement_pct"] = hx.pump_engagement_pct;
+    hxo["passthrough"]         = hx.passthrough;                       // actual (from X2)
+    hxo["passthrough_desired"] = haldex_modes_get_passthrough_desired();
   }
 
   String out;
@@ -485,10 +508,7 @@ static void handle_api_get_settings() {
   doc["wifi_ap_ssid"]              = s.wifi_ap_ssid;
   doc["wifi_ap_password"]          = s.wifi_ap_password;
   doc["haldex_enabled"]            = s.haldex_enabled;
-  doc["haldex_bus"]                = s.haldex_bus;
-  doc["haldex_state_id"]           = s.haldex_state_id;
-  doc["haldex_cmd_id"]             = s.haldex_cmd_id;
-  doc["haldex_transport"]          = s.haldex_transport;
+  // v3.2.0: haldex_bus/state_id/cmd_id/transport removed (ESP-NOW only).
   doc["haldex_espnow_peer_mac"]    = s.haldex_espnow_peer_mac;
   String out;
   serializeJson(doc, out);
@@ -544,6 +564,10 @@ static void handle_cmd() {
     uint8_t mode = doc["mode"] | 0;
     ok = haldex_modes_set_manual(mode);   // v3.1.0: via mode logic
     msg = ok ? "mode set" : "Haldex disabled or bad mode";
+  } else if (strcmp(cmd, "set_haldex_passthrough") == 0) {
+    bool pt = doc["on"] | true;           // v3.2.0: default safe (ON)
+    ok = haldex_modes_set_passthrough(pt);
+    msg = ok ? (pt ? "passthrough ON" : "MITM armed") : "Haldex disabled";
   } else {
     msg = "unknown cmd";
   }

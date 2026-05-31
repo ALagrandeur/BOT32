@@ -7,23 +7,26 @@
 
 ## Version actuelle
 
-**v3.1.0** — Haldex : pilotage des modes côté principal + UI ESP-NOW only.
-Repo public `ALagrandeur/BOT32` (`master`). Le module MITM (X2) est dans le
-dépôt **privé** `BOT32-HALDEX` (v0.1.0, Phase 1).
+**v3.2.0** (principal) + **BOT32-HALDEX v0.2.0** (module MITM privé, ESP32-CAN-X2).
+Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 
 `SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
 
-### Nouveautés v3.1.0 (lien Haldex)
-- **Lien ESP-NOW uniquement** (transport CAN retiré de l'UI). AP téléphone +
-  ESP-NOW **coexistent** sur le **canal WiFi 1** (les deux ESP32 verrouillés dessus).
+### Haldex (v3.1.0 → v3.2.0)
+- **Lien ESP-NOW uniquement.** AP téléphone + ESP-NOW **coexistent** sur le **canal 1**.
+  v3.2.0 a **retiré les 4 réglages morts** du transport CAN (haldex_bus/state_id/cmd_id/transport).
 - **3 modes** : STOCK / FWD / 50-50 (60/40, 75/25, Expert retirés).
-- **FWD** s'arme par le **combo physique Hazards ON + bouton TC** (sniffers existants)
-  ou par l'app/USB ; **sort quand les warnings s'éteignent**. **50-50** = app/USB ;
-  sort via le bouton STOCK. **Pas d'auto-revert**.
-- **LIVE** : Vitesse · Pédale % · Lock target % · Pump engagement % · Mode · Connexion.
-- Boutons de mode aussi sur l'**UI mobile** (pour déclencher 50-50 au téléphone en roulant).
-- Confirmation modale avant FWD/50-50. Témoin frein à main : **reporté** (jalon 3 —
-  frein mécanique, pas de trame CAN d'entrée → à valider au banc).
+- **FWD** = combo **Hazards ON + bouton TC** (ou app) ; sort quand les warnings s'éteignent.
+  **50-50** = app/USB ; sort via STOCK. **Pas d'auto-revert.**
+- **Passthrough ON/OFF** (commande live) : le X2 démarre toujours **ON** (transparent/sûr) ;
+  OFF = MITM **armé**. Affiché en live + confirmation modale avant d'armer.
+- **MITM réel (Phase 2)** sur le X2 : en FWD/50-50 armé, réécrit les trames MQB
+  d'allocation de couple (0x08A ESP_14, 0x0A7 Motor_11, 0x0A8 Motor_12) avec
+  recalcul du **CRC E2E AUTOSAR** (faits du protocole, inspiré d'OpenHaldex).
+- **LIVE** : Vitesse · Pédale % · Lock target % · Pump % · Mode · Connexion · Passthrough.
+- Boutons de mode + bouton passthrough sur l'**UI mobile** aussi.
+- Témoin frein à main pour le mode : **abandonné** (frein mécanique → pas de trame CAN
+  d'entrée à injecter). Le mode actuel se lit dans l'UI web.
 
 ---
 

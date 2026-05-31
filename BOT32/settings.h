@@ -79,22 +79,17 @@ struct Settings {
   // the moment bench was activated, so we can restore it on deactivate.
   bool     tx_enabled_before_bench;
 
-  // Haldex link — talks to an external Haldex MITM device.
-  // BOT32 acts as a client (reads state broadcasts, sends mode commands).
-  // The actual Haldex bus MITM runs on separate hardware (e.g., OpenHaldex-C6
-  // OR a user-built ESP32 + 2 CAN modules setup).
+  // Haldex link — wireless (ESP-NOW only) link to the external Haldex MITM
+  // device (ESP32-CAN-X2 running BOT32-HALDEX). BOT32 main sends mode +
+  // passthrough commands and reads the MITM's STATE broadcasts.
+  // v3.2.0: the legacy CAN-transport fields (haldex_bus / haldex_state_id /
+  // haldex_cmd_id / haldex_transport) were removed — ESP-NOW is the only
+  // transport now. Old NVS keys (hdx_bus/hdx_sid/hdx_cid/hdx_tr) are left
+  // orphaned (harmless) so existing settings are preserved without a reset.
   bool     haldex_enabled;       // master toggle, default false
-  uint8_t  haldex_bus;           // 0 = CAN_CLUSTER, 1 = CAN_OBD2 (used if haldex_transport=0)
-  uint16_t haldex_state_id;      // state broadcast CAN ID (used if transport=0)
-  uint16_t haldex_cmd_id;        // mode command CAN ID (used if transport=0)
-
-  // Transport selection: 0 = CAN (both devices share a CAN bus, OpenHaldex
-  // style), 1 = ESP-NOW (wireless peer-to-peer between BOT32 and the MITM
-  // ESP32, useful when the MITM has no chassis CAN connection).
-  uint8_t  haldex_transport;     // 0 = CAN, 1 = ESP-NOW (default 0)
   // Peer MAC for ESP-NOW. Format "AA:BB:CC:DD:EE:FF". Empty string => use
-  // broadcast (FF:FF:FF:FF:FF:FF). Recommended: set to the MITM ESP32 MAC
-  // for production to avoid receiving from other ESP-NOW devices nearby.
+  // broadcast (FF:FF:FF:FF:FF:FF). Recommended: set to the MITM X2 MAC for
+  // production to avoid receiving from other ESP-NOW devices nearby.
   char     haldex_espnow_peer_mac[18];
 
   uint8_t  version;              // settings struct version (for migration)
@@ -139,10 +134,7 @@ bool settings_set_bench_map_mbar(uint16_t v);
 bool settings_set_bench_test_bus(uint8_t v);
 // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
 bool settings_set_haldex_enabled(bool v);
-bool settings_set_haldex_bus(uint8_t v);
-bool settings_set_haldex_state_id(uint16_t v);
-bool settings_set_haldex_cmd_id(uint16_t v);
-bool settings_set_haldex_transport(uint8_t v);
+// v3.2.0: haldex_bus / state_id / cmd_id / transport setters removed (ESP-NOW only).
 bool settings_set_haldex_espnow_peer_mac(const char* v);
 
 // Reset to defaults (factory reset).

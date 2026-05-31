@@ -31,6 +31,7 @@ static bool     g_fwd_from_combo = false;   // FWD currently held by the combo
 static bool     g_prev_combo     = false;   // rising-edge detector
 static bool     g_telltale_phase = false;
 static uint32_t g_last_blink_ms  = 0;
+static bool     g_passthrough_desired = true;  // safe default (X2 boots ON too)
 
 void haldex_modes_init() {
   g_mode           = HALDEX_M_STOCK;
@@ -38,6 +39,7 @@ void haldex_modes_init() {
   g_prev_combo     = false;
   g_telltale_phase = false;
   g_last_blink_ms  = 0;
+  g_passthrough_desired = true;
 }
 
 // Internal: change mode + forward to the MITM if it actually changed.
@@ -104,3 +106,13 @@ void haldex_modes_tick(uint32_t now) {
 
 uint8_t haldex_modes_get()          { return g_mode; }
 bool    haldex_modes_telltale_on()  { return g_telltale_phase; }
+
+bool haldex_modes_set_passthrough(bool passthrough) {
+  const Settings& s = settings_get();
+  if (!s.haldex_enabled) return false;
+  bool ok = haldex_link_set_passthrough(passthrough);
+  if (ok) g_passthrough_desired = passthrough;
+  return ok;
+}
+
+bool haldex_modes_get_passthrough_desired() { return g_passthrough_desired; }

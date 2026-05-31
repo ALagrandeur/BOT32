@@ -415,6 +415,10 @@
           <span id="haldex-live-status" class="value-big">—</span>
           <span id="haldex-live-age" class="lbl">—</span>
         </div>
+        <div>
+          <span class="lbl">MITM (passthrough)</span>
+          <span id="haldex-live-passthrough" class="value-big">—</span>
+        </div>
       </div>
 
       <h4 class="subtitle">🎮 Mode controls (boutons live)</h4>
@@ -428,6 +432,18 @@
         FWD s'arme aussi par le combo physique <b>Hazards ON + bouton TC</b>
         (et se coupe quand les warnings s'éteignent). 50/50 : application seulement.
       </p>
+
+      <h4 class="subtitle">🔒 Passthrough (armement MITM)</h4>
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="haldex-passthrough-arm">
+          <span>⚠ <b>Désarmer le passthrough</b> — autorise le module X2 à
+            <b>modifier réellement</b> les trames Haldex en FWD/50-50.
+            Coché = MITM <b>armé</b> (action mécanique). Décoché = passthrough ON
+            (transparent, sûr). Le X2 démarre toujours en passthrough ON.</span>
+        </label>
+      </div>
+      <p class="muted small" id="haldex-passthrough-status">État réel rapporté par le X2 : —</p>
 
       <h4 class="subtitle">📋 Raw payload du dernier broadcast</h4>
       <div class="frame-preview">

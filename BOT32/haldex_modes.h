@@ -53,4 +53,15 @@ uint8_t haldex_modes_get();
 // active; always false in STOCK.
 bool    haldex_modes_telltale_on();
 
+// v3.2.0 — passthrough control (sent to the X2 over ESP-NOW).
+//   passthrough=true  -> X2 is a transparent bridge (safe; nothing modified).
+//   passthrough=false -> X2 arms the MITM (FWD/5050 actually force the lock).
+// The X2 always BOOTS in passthrough=ON; this is the desired value pushed by
+// the user. Returns true if the command was accepted + forwarded.
+bool    haldex_modes_set_passthrough(bool passthrough);
+
+// Last passthrough value we COMMANDED (desired). The ACTUAL value reported by
+// the X2 comes from the STATE packet (HaldexState.passthrough).
+bool    haldex_modes_get_passthrough_desired();
+
 #endif // BOT32_HALDEX_MODES_H

@@ -42,11 +42,13 @@
 // =============================================================
 static const uint8_t MAGIC_0 = 0xBA;
 static const uint8_t MAGIC_1 = 0xB0;
-#define PKT_TYPE_STATE     0x01
-#define PKT_TYPE_SET_MODE  0x02
+#define PKT_TYPE_STATE         0x01
+#define PKT_TYPE_SET_MODE      0x02
+#define PKT_TYPE_SET_PASSTHRU  0x03   // v3.2.0
 
-#define PKT_LEN_STATE      10
-#define PKT_LEN_SET_MODE   4
+#define PKT_LEN_STATE          10
+#define PKT_LEN_SET_MODE       4
+#define PKT_LEN_SET_PASSTHRU   4       // [BA B0 03 flag]
 
 // =============================================================
 //  Internal state
@@ -93,6 +95,7 @@ static void on_data_recv_impl(const uint8_t* data, int len) {
     s.lock_target_pct      = data[5];
     s.vehicle_kmh          = data[6];
     s.pedal_pct            = data[7];
+    s.passthrough          = data[8];   // v3.2.0: byte 8 = passthrough flag (1/0)
     s.len = (len - 3 > 8) ? 8 : (len - 3);
     for (uint8_t i = 0; i < 8; i++) {
       s.raw[i] = (i < s.len) ? data[3 + i] : 0;
@@ -184,12 +187,29 @@ bool haldex_espnow_send_mode(uint8_t mode) {
     haldex_espnow_init();
     if (!g_initialized) return false;
   }
-  if (mode > 5) return false;
+  if (mode > 2) return false;
 
   uint8_t pkt[PKT_LEN_SET_MODE] = { MAGIC_0, MAGIC_1, PKT_TYPE_SET_MODE, mode };
   esp_err_t r = esp_now_send(g_peer_mac, pkt, PKT_LEN_SET_MODE);
   if (r != ESP_OK) {
     Serial.print("[espnow] send_mode failed, err=0x");
+    Serial.println(r, HEX);
+    return false;
+  }
+  return true;
+}
+
+bool haldex_espnow_send_passthrough(bool passthrough) {
+  if (!g_initialized) {
+    haldex_espnow_init();
+    if (!g_initialized) return false;
+  }
+  uint8_t pkt[PKT_LEN_SET_PASSTHRU] = {
+    MAGIC_0, MAGIC_1, PKT_TYPE_SET_PASSTHRU, (uint8_t)(passthrough ? 1 : 0)
+  };
+  esp_err_t r = esp_now_send(g_peer_mac, pkt, PKT_LEN_SET_PASSTHRU);
+  if (r != ESP_OK) {
+    Serial.print("[espnow] send_passthrough failed, err=0x");
     Serial.println(r, HEX);
     return false;
   }

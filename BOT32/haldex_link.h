@@ -47,14 +47,11 @@
 #include <Arduino.h>
 #include "can_handler.h"
 
-// Operating modes (numbering matches the publicly documented convention)
+// Operating modes (v3.2.0: 3 supported modes — 6040/7525/Expert removed)
 enum HaldexMode {
   HALDEX_MODE_STOCK  = 0,
   HALDEX_MODE_FWD    = 1,
   HALDEX_MODE_5050   = 2,
-  HALDEX_MODE_6040   = 3,
-  HALDEX_MODE_7525   = 4,
-  HALDEX_MODE_EXPERT = 5,
 };
 
 // Live state snapshot of the Haldex MITM module
@@ -67,18 +64,25 @@ struct HaldexState {
   uint8_t   pump_engagement_pct;  // current Haldex pump duty, 0..100
   uint8_t   lock_target_pct;      // commanded lock target, 0..100
   uint8_t   vehicle_kmh;          // vehicle speed (low-res, 1 byte)
-  uint8_t   current_mode;         // 0..5 per HaldexMode enum
+  uint8_t   current_mode;         // 0..2 per HaldexMode enum
   uint8_t   pedal_pct;            // throttle pedal position, 0..100
+  uint8_t   passthrough;          // v3.2.0: 1 = X2 transparent (safe), 0 = MITM armed
 };
 
 // Initialize the link. Call AFTER can_init() in setup().
 // Registers CAN listeners; activation depends on settings.haldex_enabled.
 void haldex_link_init();
 
-// Send a "set mode" command to the MITM module.
-// Returns true if the frame was queued successfully (does not imply ACK by
-// the MITM module). Refuses to send if mode > 5 or haldex_enabled is false.
+// Send a "set mode" command to the MITM module (ESP-NOW).
+// Returns true if the packet was queued (does not imply ACK). Refuses to send
+// if mode > 2 or haldex_enabled is false.
 bool haldex_link_set_mode(uint8_t mode);
+
+// v3.2.0: send a "set passthrough" command to the MITM (ESP-NOW).
+// passthrough=true  -> X2 is a transparent bridge (safe, nothing modified).
+// passthrough=false -> X2 arms the MITM (FWD/5050 will modify frames).
+// Refuses if haldex_enabled is false.
+bool haldex_link_set_passthrough(bool passthrough);
 
 // Get a snapshot of the last received state.
 HaldexState haldex_link_get_state();

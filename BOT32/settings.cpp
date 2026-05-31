@@ -53,10 +53,7 @@ static Settings make_defaults() {
   // v2.9.0: bench_display_value_pct + bench_force_override removed.
   s.tx_enabled_before_bench = true;  // v2.7.1: default safe (TX restored ON if no bench transition)
   s.haldex_enabled     = false;  // default: Haldex link OFF (safety)
-  s.haldex_bus         = 1;      // default: CAN_OBD2 (chassis CAN)
-  s.haldex_state_id    = 0x6B0;  // default: documented broadcast ID
-  s.haldex_cmd_id      = 0x6B1;  // default: command ID (user adjusts to match)
-  s.haldex_transport   = 0;      // default: CAN (0). User selects 1 for ESP-NOW.
+  // v3.2.0: CAN-transport defaults removed (ESP-NOW only).
   s.haldex_espnow_peer_mac[0] = 0;  // default empty => use broadcast
   s.version           = SETTINGS_VERSION;
   return s;
@@ -116,10 +113,8 @@ void settings_init() {
   // v2.9.0: bench_display_value_pct + bench_force_override NVS load removed.
   current.tx_enabled_before_bench = prefs.getBool("tx_pre_bch", true);  // v2.7.1
   current.haldex_enabled     = prefs.getBool("hdx_en", false);
-  current.haldex_bus         = prefs.getUChar("hdx_bus", 1);
-  current.haldex_state_id    = prefs.getUShort("hdx_sid", 0x6B0);
-  current.haldex_cmd_id      = prefs.getUShort("hdx_cid", 0x6B1);
-  current.haldex_transport   = prefs.getUChar("hdx_tr", 0);
+  // v3.2.0: CAN-transport NVS load removed (ESP-NOW only). Orphan keys
+  // hdx_bus/hdx_sid/hdx_cid/hdx_tr remain in NVS but are no longer read.
   {
     String mac = prefs.getString("hdx_mac", "");
     strncpy(current.haldex_espnow_peer_mac, mac.c_str(),
@@ -305,22 +300,7 @@ bool settings_set_haldex_enabled(bool v) {
   current.haldex_enabled = v;
   return save_bool("hdx_en", v);
 }
-bool settings_set_haldex_bus(uint8_t v) {
-  current.haldex_bus = (v > 1) ? 1 : v;
-  return prefs.putUChar("hdx_bus", current.haldex_bus) > 0;
-}
-bool settings_set_haldex_state_id(uint16_t v) {
-  current.haldex_state_id = v;
-  return save_ushort("hdx_sid", v);
-}
-bool settings_set_haldex_cmd_id(uint16_t v) {
-  current.haldex_cmd_id = v;
-  return save_ushort("hdx_cid", v);
-}
-bool settings_set_haldex_transport(uint8_t v) {
-  current.haldex_transport = (v > 1) ? 0 : v;
-  return prefs.putUChar("hdx_tr", current.haldex_transport) > 0;
-}
+// v3.2.0: haldex_bus / state_id / cmd_id / transport setters removed (ESP-NOW only).
 bool settings_set_haldex_espnow_peer_mac(const char* v) {
   if (!v) return false;
   strncpy(current.haldex_espnow_peer_mac, v,
@@ -364,10 +344,7 @@ void settings_reset_to_defaults() {
   // v2.9.0: bench_display_value_pct + bench_force_override NVS writes removed.
   prefs.putBool("tx_pre_bch", current.tx_enabled_before_bench);
   prefs.putBool("hdx_en", current.haldex_enabled);
-  prefs.putUChar("hdx_bus", current.haldex_bus);
-  prefs.putUShort("hdx_sid", current.haldex_state_id);
-  prefs.putUShort("hdx_cid", current.haldex_cmd_id);
-  prefs.putUChar("hdx_tr", current.haldex_transport);
+  // v3.2.0: CAN-transport NVS writes removed (ESP-NOW only).
   prefs.putString("hdx_mac", current.haldex_espnow_peer_mac);
   prefs.putUChar("version", current.version);
   Serial.println("[NVS] Settings reset to defaults");

@@ -18,7 +18,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.1.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.2.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -81,10 +81,7 @@ static void emit_settings() {
   // v2.9.0: bench_display_value_pct + bench_force_override removed.
   doc["tx_enabled_before_bench"] = s.tx_enabled_before_bench;  // v2.7.1 diag (read-only)
   doc["haldex_enabled"]     = s.haldex_enabled;
-  doc["haldex_bus"]         = s.haldex_bus;
-  doc["haldex_state_id"]    = s.haldex_state_id;
-  doc["haldex_cmd_id"]      = s.haldex_cmd_id;
-  doc["haldex_transport"]   = s.haldex_transport;
+  // v3.2.0: haldex_bus/state_id/cmd_id/transport removed (ESP-NOW only).
   doc["haldex_espnow_peer_mac"] = s.haldex_espnow_peer_mac;
   doc["bot32_mac"]          = haldex_espnow_get_my_mac();   // for user pairing
   serializeJson(doc, Serial);
@@ -203,6 +200,9 @@ static void emit_status() {
   hx_obj["lock_target_pct"]     = hx.lock_target_pct;
   hx_obj["vehicle_kmh"]         = hx.vehicle_kmh;
   hx_obj["pedal_pct"]           = hx.pedal_pct;
+  // v3.2.0: passthrough — actual (from X2 STATE) + desired (what we commanded)
+  hx_obj["passthrough"]         = hx.passthrough;
+  hx_obj["passthrough_desired"] = haldex_modes_get_passthrough_desired();
   JsonArray raw = hx_obj["raw"].to<JsonArray>();
   for (uint8_t i = 0; i < hx.len; i++) raw.add(hx.raw[i]);
 
@@ -316,6 +316,14 @@ static void handle_cmd(const char* line) {
     return;
   }
 
+  // v3.2.0: arm/disarm the MITM passthrough on the X2 (ESP-NOW)
+  if (strcmp(cmd, "set_haldex_passthrough") == 0) {
+    bool pt = doc["on"] | true;   // default safe (true = passthrough ON)
+    bool ok = haldex_modes_set_passthrough(pt);
+    emit_ack("set_haldex_passthrough", ok, ok ? (pt ? "passthrough ON" : "MITM armed") : "refused (disabled)");
+    return;
+  }
+
   // v2.1: Clear engine fault — OBD-II Mode 04 broadcast on 0x700
   if (strcmp(cmd, "clear_engine_fault") == 0) {
     bool ok = obd2_clear_engine_fault();
@@ -381,10 +389,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(v     | 0);
   // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
   else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(v     | false);
-  else if (strcmp(key, "haldex_bus")            == 0) ok = settings_set_haldex_bus(v         | 1);
-  else if (strcmp(key, "haldex_state_id")       == 0) ok = settings_set_haldex_state_id(v    | 0x6B0);
-  else if (strcmp(key, "haldex_cmd_id")         == 0) ok = settings_set_haldex_cmd_id(v      | 0x6B1);
-  else if (strcmp(key, "haldex_transport")      == 0) ok = settings_set_haldex_transport(v   | 0);
+  // v3.2.0: haldex_bus/state_id/cmd_id/transport setters removed (ESP-NOW only).
   else if (strcmp(key, "haldex_espnow_peer_mac") == 0) ok = settings_set_haldex_espnow_peer_mac(v | "");
   return ok;
 }
