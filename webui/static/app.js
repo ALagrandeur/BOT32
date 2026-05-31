@@ -244,6 +244,42 @@ document.addEventListener("change", (e) => {
     }
   }
 
+  // v2.7.1: bench mode requires HAT jumper change + auto-toggles TX enabled
+  if (key === "bench_test_enabled") {
+    const txWas = $("set-tx_enabled").checked;
+    if (e.target.checked) {
+      const ok = confirm(
+        "⚠ Activer le bench mode\n\n" +
+        "AVANT de cliquer OK :\n" +
+        "1. Mets les 2 jumpers 120Ω du HAT en position ON\n" +
+        "   (terminaison nécessaire — pas de bus véhicule pour ACK)\n\n" +
+        "Auto :\n" +
+        "• TX enabled sera activé automatiquement\n" +
+        "• L'état actuel de TX (" + (txWas ? "ON" : "OFF") + ") est mémorisé pour restauration\n\n" +
+        "Continuer ?"
+      );
+      if (!ok) {
+        e.target.checked = false;
+        return;
+      }
+    } else {
+      const ok = confirm(
+        "⚠ Désactiver le bench mode\n\n" +
+        "AVANT de cliquer OK :\n" +
+        "1. Remets les 2 jumpers 120Ω du HAT en position OFF\n" +
+        "   (les bus véhicule ont leurs propres terminateurs OEM)\n\n" +
+        "Auto :\n" +
+        "• TX enabled sera remis à son état précédent\n" +
+        "  (la valeur sauvegardée à l'activation, accessible via la pill UI après save)\n\n" +
+        "Continuer ?"
+      );
+      if (!ok) {
+        e.target.checked = true;
+        return;
+      }
+    }
+  }
+
   socket.emit("cmd", { cmd: "set", key, value: e.target.checked });
   if (key === "block_airbag") {
     updateAirbagWarning(e.target.checked);

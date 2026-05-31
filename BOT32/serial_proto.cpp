@@ -17,7 +17,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "2.7.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "2.7.1"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -86,6 +86,7 @@ static void emit_settings() {
   doc["bench_test_bus"]     = s.bench_test_bus;
   doc["bench_display_value_pct"] = s.bench_display_value_pct;
   doc["bench_force_override"]    = s.bench_force_override;
+  doc["tx_enabled_before_bench"] = s.tx_enabled_before_bench;  // v2.7.1 diag (read-only)
   doc["haldex_enabled"]     = s.haldex_enabled;
   doc["haldex_bus"]         = s.haldex_bus;
   doc["haldex_state_id"]    = s.haldex_state_id;

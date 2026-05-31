@@ -9,7 +9,7 @@ static Preferences prefs;
 static Settings current;
 
 #define NVS_NAMESPACE  "bot32"
-#define SETTINGS_VERSION 15  // v2.6.0: WiFi AP mode (wifi_enabled + ssid + password)
+#define SETTINGS_VERSION 16  // v2.7.1: tx_enabled_before_bench (auto TX toggle on bench transitions)
 
 static Settings make_defaults() {
   Settings s;
@@ -59,6 +59,7 @@ static Settings make_defaults() {
   s.bench_test_bus     = 0;      // default: CAN_CLUSTER
   s.bench_display_value_pct = 11;  // default slider value (matches user's measured ethanol)
   s.bench_force_override    = false;
+  s.tx_enabled_before_bench = true;  // v2.7.1: default safe (TX restored ON if no bench transition)
   s.haldex_enabled     = false;  // default: Haldex link OFF (safety)
   s.haldex_bus         = 1;      // default: CAN_OBD2 (chassis CAN)
   s.haldex_state_id    = 0x6B0;  // default: documented broadcast ID
@@ -128,6 +129,7 @@ void settings_init() {
   current.bench_test_bus     = prefs.getUChar("bch_bus", 0);
   current.bench_display_value_pct = prefs.getUChar("bch_dvp", 11);
   current.bench_force_override    = prefs.getBool("bch_fov", false);
+  current.tx_enabled_before_bench = prefs.getBool("tx_pre_bch", true);  // v2.7.1
   current.haldex_enabled     = prefs.getBool("hdx_en", false);
   current.haldex_bus         = prefs.getUChar("hdx_bus", 1);
   current.haldex_state_id    = prefs.getUShort("hdx_sid", 0x6B0);
@@ -309,6 +311,29 @@ bool settings_set_obd2_resp_id(uint16_t v) {
   return save_ushort("obd_resp", v);
 }
 bool settings_set_bench_test_enabled(bool v) {
+  bool was_enabled = current.bench_test_enabled;
+  if (v == was_enabled) {
+    // No transition — just persist (defensive)
+    current.bench_test_enabled = v;
+    return save_bool("bch_en", v);
+  }
+  // v2.7.1: bench transitions auto-manage tx_enabled
+  if (v && !was_enabled) {
+    // ENTERING bench: memorize current tx_enabled, then force ON
+    current.tx_enabled_before_bench = current.tx_enabled;
+    prefs.putBool("tx_pre_bch", current.tx_enabled_before_bench);
+    Serial.print("[bench] Entering bench mode. Saved tx_enabled=");
+    Serial.print(current.tx_enabled_before_bench ? "true" : "false");
+    Serial.println(", forcing tx_enabled=true.");
+    current.tx_enabled = true;
+    save_bool("tx_en", true);
+  } else if (!v && was_enabled) {
+    // EXITING bench: restore tx_enabled to saved value
+    Serial.print("[bench] Exiting bench mode. Restoring tx_enabled=");
+    Serial.println(current.tx_enabled_before_bench ? "true" : "false");
+    current.tx_enabled = current.tx_enabled_before_bench;
+    save_bool("tx_en", current.tx_enabled);
+  }
   current.bench_test_enabled = v;
   return save_bool("bch_en", v);
 }
@@ -402,6 +427,7 @@ void settings_reset_to_defaults() {
   prefs.putUChar("bch_bus", current.bench_test_bus);
   prefs.putUChar("bch_dvp", current.bench_display_value_pct);
   prefs.putBool("bch_fov", current.bench_force_override);
+  prefs.putBool("tx_pre_bch", current.tx_enabled_before_bench);
   prefs.putBool("hdx_en", current.haldex_enabled);
   prefs.putUChar("hdx_bus", current.haldex_bus);
   prefs.putUShort("hdx_sid", current.haldex_state_id);

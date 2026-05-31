@@ -93,6 +93,11 @@ struct Settings {
   uint8_t  bench_display_value_pct;  // 0..100
   bool     bench_force_override;     // bypass trigger detection (bench only)
 
+  // v2.7.1: bench mode auto-toggles tx_enabled (forces ON on enter, restores
+  // previous on exit). This field memorizes the user's tx_enabled state at
+  // the moment bench was activated, so we can restore it on deactivate.
+  bool     tx_enabled_before_bench;
+
   // Haldex link — talks to an external Haldex MITM device.
   // BOT32 acts as a client (reads state broadcasts, sends mode commands).
   // The actual Haldex bus MITM runs on separate hardware (e.g., OpenHaldex-C6

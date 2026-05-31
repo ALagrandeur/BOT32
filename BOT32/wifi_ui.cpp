@@ -324,6 +324,22 @@ document.querySelectorAll('[data-k]').forEach(el=>{
     }
     else if(el.type === 'number'){ v = +el.value; }
     else { v = el.value; }
+
+    // v2.7.1: bench mode UX — warn about jumper + auto TX toggle
+    if(k === 'bench_test_enabled'){
+      if(v){
+        if(!confirm('Activer bench mode?\n\n1. Mets jumpers 120Ω HAT en ON\n2. TX sera auto-activé\n3. TX sera restauré au disable\n\nOK ?')){
+          el.checked = false;
+          return;
+        }
+      } else {
+        if(!confirm('Désactiver bench mode?\n\n1. Remets jumpers 120Ω en OFF\n2. TX sera remis à son état précédent\n\nOK ?')){
+          el.checked = true;
+          return;
+        }
+      }
+    }
+
     save(k, v);
   });
 });
@@ -343,7 +359,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "2.7.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "2.7.1";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
