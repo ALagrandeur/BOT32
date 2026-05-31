@@ -24,7 +24,7 @@ Auteur / propriétaire : **Antoine Lagrandeur** — hobbyiste, communique **en f
 | Repo git local | `C:\Users\AntoineLagrandeur\BOT32` |
 | GitHub | `ALagrandeur/BOT32`, branche `master` |
 | Sketch principal | `BOT32/BOT32.ino` (+ modules `.cpp/.h`) |
-| Sketch jumeau Haldex | `BOT32-Haldex/BOT32-Haldex.ino` |
+| Module Haldex MITM | **dépôt privé séparé** `BOT32-HALDEX` (carte ESP32-CAN-X2) — hors de ce repo |
 | UI PC | `webui/` — Flask + SocketIO (`server.py`, `static/index.html`, `app.js`, `style.css`) |
 | UI mobile | servie en PROGMEM depuis `BOT32/wifi_ui.cpp` (`MOBILE_HTML`) |
 | Docs | `docs/` |
@@ -87,7 +87,7 @@ Fonction cœur : **boost-on-coolant** — on calcule un octet « coolant » à p
 À chaque release, mettre à jour **tous** ces points avec la même version `vX.Y.Z` :
 
 1. En-tête `BOT32/BOT32.ino` (ligne 2).
-2. En-tête `BOT32-Haldex/BOT32-Haldex.ino` (ligne 2).
+2. *(BOT32-Haldex déplacé dans le dépôt privé `BOT32-HALDEX` — versionné indépendamment.)*
 3. `BUILD_VERSION` dans `BOT32/serial_proto.cpp`.
 4. Chaîne `version` dans `BOT32/wifi_ui.cpp` (`handle_status`).
 5. Tag git (`git tag vX.Y.Z`) + push + release GitHub.

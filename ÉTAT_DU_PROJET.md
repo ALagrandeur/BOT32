@@ -30,7 +30,8 @@ Toutes les fonctions sont **confirmées fonctionnelles sur banc** (incl. bouton 
   (auto-toggle TX + avertissements jumpers 120 Ω).
 - ✅ **UI web PC** (Flask + SocketIO) via USB série + **UI mobile** via WiFi AP (PROGMEM).
 - ✅ **Lien Haldex** (client) : lit l'état d'un module MITM externe, envoie des commandes
-  de mode. Transport CAN ou ESP-NOW. Sketch jumeau `BOT32-Haldex/`.
+  de mode via **ESP-NOW**. Le module MITM (firmware) vit désormais dans un **dépôt privé
+  séparé** `BOT32-HALDEX` (porté sur la carte Autosport Labs **ESP32-CAN-X2**).
 - ✅ **Sécurité** : `block_airbag` forcé ON, 5 s listen-only au boot, confirmations modales,
   aucun ID deviné émis par défaut, série USB toujours actif.
 
