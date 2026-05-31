@@ -14,10 +14,11 @@
 #include "haldex_espnow.h"
 #include "wifi_ui.h"
 #include "button_sniffer.h"
+#include "haldex_modes.h"
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.0.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.1.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -185,9 +186,17 @@ static void emit_status() {
 
   // Haldex link state (from external MITM module, see haldex_link.cpp)
   HaldexState hx = haldex_link_get_state();
+  uint32_t hx_age = haldex_link_get_age_ms();
   JsonObject hx_obj = doc["haldex"].to<JsonObject>();
   hx_obj["valid"]               = hx.valid;
-  hx_obj["age_ms"]              = haldex_link_get_age_ms();
+  hx_obj["age_ms"]              = hx_age;
+  // v3.1.0: explicit online flag (STATE arrives at 5 Hz; stale => link down)
+  hx_obj["online"]              = hx.valid && (hx_age < HALDEX_LINK_STALE_MS);
+  // v3.1.0: the mode decided locally by haldex_modes (immediate UI feedback,
+  // independent of the MITM's echoed mode) + the desired telltale blink phase.
+  hx_obj["local_mode"]          = haldex_modes_get();
+  hx_obj["local_mode_name"]     = haldex_mode_name(haldex_modes_get());
+  hx_obj["telltale_on"]         = haldex_modes_telltale_on();
   hx_obj["current_mode"]        = hx.current_mode;
   hx_obj["current_mode_name"]   = haldex_mode_name(hx.current_mode);
   hx_obj["pump_engagement_pct"] = hx.pump_engagement_pct;
@@ -298,12 +307,12 @@ static void handle_cmd(const char* line) {
     return;
   }
 
-  // Direct action to set the Haldex mode (not a setting — it sends a CAN
-  // command frame to the external MITM module).
+  // Direct action to set the Haldex mode. v3.1.0: routed through haldex_modes
+  // so the manual command + the physical combo logic stay consistent.
   if (strcmp(cmd, "set_haldex_mode") == 0) {
     uint8_t mode = doc["mode"] | 0;
-    bool ok = haldex_link_set_mode(mode);
-    emit_ack("set_haldex_mode", ok, ok ? haldex_mode_name(mode) : "TX failed or disabled");
+    bool ok = haldex_modes_set_manual(mode);
+    emit_ack("set_haldex_mode", ok, ok ? haldex_mode_name(mode) : "refused (disabled / bad mode)");
     return;
   }
 

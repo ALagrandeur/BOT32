@@ -7,11 +7,23 @@
 
 ## Version actuelle
 
-**v3.0.0** — version stable, taggée `v3.0.0` et poussée sur GitHub (`ALagrandeur/BOT32`, `master`).
-Release : https://github.com/ALagrandeur/BOT32/releases/tag/v3.0.0
-Toutes les fonctions sont **confirmées fonctionnelles sur banc** (incl. bouton OK).
+**v3.1.0** — Haldex : pilotage des modes côté principal + UI ESP-NOW only.
+Repo public `ALagrandeur/BOT32` (`master`). Le module MITM (X2) est dans le
+dépôt **privé** `BOT32-HALDEX` (v0.1.0, Phase 1).
 
 `SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
+
+### Nouveautés v3.1.0 (lien Haldex)
+- **Lien ESP-NOW uniquement** (transport CAN retiré de l'UI). AP téléphone +
+  ESP-NOW **coexistent** sur le **canal WiFi 1** (les deux ESP32 verrouillés dessus).
+- **3 modes** : STOCK / FWD / 50-50 (60/40, 75/25, Expert retirés).
+- **FWD** s'arme par le **combo physique Hazards ON + bouton TC** (sniffers existants)
+  ou par l'app/USB ; **sort quand les warnings s'éteignent**. **50-50** = app/USB ;
+  sort via le bouton STOCK. **Pas d'auto-revert**.
+- **LIVE** : Vitesse · Pédale % · Lock target % · Pump engagement % · Mode · Connexion.
+- Boutons de mode aussi sur l'**UI mobile** (pour déclencher 50-50 au téléphone en roulant).
+- Confirmation modale avant FWD/50-50. Témoin frein à main : **reporté** (jalon 3 —
+  frein mécanique, pas de trame CAN d'entrée → à valider au banc).
 
 ---
 
@@ -60,7 +72,8 @@ Bouton OK · Hazard · Traction Control (ON/OFF). (+ statut WiFi.)
 | v2.8.0 | **Huile DSG / EGT / huile moteur** + sniffers frein à main & bouton OK |
 | v2.9.0 | + sniffers Hazard & Traction Control, − cluster display override |
 | v2.10.0 | − huile moteur (live data), TC affiché ON/OFF, fix décodage bouton OK (0x5BF) |
-| **v3.0.0** | **Version stable** — toutes les fonctions confirmées sur banc (bouton OK validé) |
+| v3.0.0 | Version stable — toutes les fonctions confirmées sur banc (bouton OK validé) |
+| **v3.1.0** | **Haldex** : lien ESP-NOW only, 3 modes (STOCK/FWD/50-50), combo FWD (Hazards+TC), UI PC+mobile, coexistence AP/ESP-NOW canal 1. Module MITM porté **ESP32-CAN-X2** (repo privé). |
 
 ---
 

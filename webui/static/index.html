@@ -358,66 +358,33 @@
         <b>Ne pas utiliser sur la route publique.</b>
       </div>
 
-      <h4 class="subtitle">⚙️ Configuration</h4>
+      <h4 class="subtitle">⚙️ Configuration (lien ESP-NOW)</h4>
       <div class="row">
         <label class="checkbox">
           <input type="checkbox" id="set-haldex_enabled">
-          <span>🏁 <b>Enable Haldex link</b> (active la communication avec le module MITM)</span>
+          <span>🏁 <b>Enable Haldex link</b> (active le lien ESP-NOW avec le module MITM X2)</span>
         </label>
       </div>
 
-      <div class="row">
-        <label>Transport (comment BOT32 dialogue avec le MITM ESP32)<br>
-          <select id="set-haldex_transport">
-            <option value="0">CAN (les 2 sur le même bus CAN — défaut)</option>
-            <option value="1">ESP-NOW (sans fil, peer-to-peer)</option>
-          </select>
-          <span class="muted small">Reboot ESP32 requis après changement de transport.</span>
-        </label>
-      </div>
-
-      <!-- CAN-specific fields (visible when transport=0) -->
-      <div class="sub-card transport-can-fields">
-        <h5 class="subtitle" style="margin-top:0">📡 Paramètres CAN (transport = CAN)</h5>
+      <div class="sub-card">
+        <h5 class="subtitle" style="margin-top:0">📶 Appairage ESP-NOW</h5>
         <div class="row">
-          <label>Bus CAN (où est branché le MITM)<br>
-            <select id="set-haldex_bus">
-              <option value="0">CAN0 (cluster bus)</option>
-              <option value="1">CAN1 (OBD2 / chassis bus) — défaut</option>
-            </select>
-          </label>
-        </div>
-        <div class="row">
-          <label>State broadcast CAN ID<br>
-            <input type="text" id="set-haldex_state_id" class="hex-input" placeholder="0x6B0">
-            <span class="muted small">ID que le MITM émet périodiquement (défaut <code>0x6B0</code>)</span>
-          </label>
-          <label>Command CAN ID<br>
-            <input type="text" id="set-haldex_cmd_id" class="hex-input" placeholder="0x6B1">
-            <span class="muted small">ID utilisé par BOT32 pour envoyer "set mode" (défaut <code>0x6B1</code>)</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- ESP-NOW-specific fields (visible when transport=1) -->
-      <div class="sub-card transport-espnow-fields" style="display:none">
-        <h5 class="subtitle" style="margin-top:0">📶 Paramètres ESP-NOW (transport = ESP-NOW)</h5>
-        <div class="row">
-          <label>BOT32 MAC address (à copier dans le firmware du MITM ESP32)<br>
+          <label>BOT32 MAC address (à renseigner côté module X2)<br>
             <input type="text" id="haldex-my-mac" readonly value="—">
-            <span class="muted small">L'autre ESP32 doit autoriser ce MAC comme peer ESP-NOW.</span>
+            <span class="muted small">Le module X2 doit autoriser ce MAC comme peer ESP-NOW.</span>
           </label>
         </div>
         <div class="row">
-          <label>Peer MAC du MITM ESP32 (optionnel)<br>
+          <label>Peer MAC du module X2 (optionnel)<br>
             <input type="text" id="set-haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF (broadcast)">
-            <span class="muted small">Format <code>AA:BB:CC:DD:EE:FF</code>. Vide = broadcast (accepte n'importe quel peer ESP-NOW avec le magic header BOT32). Pour production, mets le MAC précis du MITM.</span>
+            <span class="muted small">Vide = broadcast. Mets le MAC précis du X2 pour verrouiller l'appairage.</span>
           </label>
         </div>
         <p class="muted small">
-          ⚠ Le MITM ESP32 doit implémenter le protocole ESP-NOW BOT32 décrit dans
-          <code>docs/haldex_integration.md</code> (header magic <code>0xBA 0xB0</code>,
-          packet types 0x01=STATE / 0x02=SET_MODE).
+          📡 Lien <b>ESP-NOW uniquement</b>, verrouillé sur le canal WiFi
+          <code>1</code> (partagé avec l'AP téléphone — coexistence). Le module
+          X2 doit utiliser le même canal. Protocole : header <code>0xBA 0xB0</code>,
+          <code>0x01</code>=STATE / <code>0x02</code>=SET_MODE.
         </p>
       </div>
 
@@ -454,15 +421,12 @@
       <div class="race-buttons-preview">
         <button class="race-btn race-btn-off" data-haldex-mode="0">🅾 STOCK (OFF)</button>
         <button class="race-btn race-btn-burnout" data-haldex-mode="1">🔥 FWD (burnout)</button>
-        <button class="race-btn race-btn-launch" data-haldex-mode="2">🚀 5050 (launch)</button>
-      </div>
-      <div class="race-buttons-preview" style="margin-top: 6px;">
-        <button class="race-btn race-btn-other" data-haldex-mode="3">60/40</button>
-        <button class="race-btn race-btn-other" data-haldex-mode="4">75/25</button>
-        <button class="race-btn race-btn-other" data-haldex-mode="5">⚙ Expert</button>
+        <button class="race-btn race-btn-launch" data-haldex-mode="2">🚀 50/50 (launch)</button>
       </div>
       <p class="muted small" style="margin-top: 8px;" id="haldex-cmd-status">
-        Cliquer sur un mode pour envoyer la commande au module MITM.
+        Cliquer sur un mode pour l'envoyer au module MITM.
+        FWD s'arme aussi par le combo physique <b>Hazards ON + bouton TC</b>
+        (et se coupe quand les warnings s'éteignent). 50/50 : application seulement.
       </p>
 
       <h4 class="subtitle">📋 Raw payload du dernier broadcast</h4>

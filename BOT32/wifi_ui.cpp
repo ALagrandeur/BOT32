@@ -7,8 +7,10 @@
 #include "lever_decoder.h"
 #include "coolant.h"
 #include "haldex_link.h"
+#include "haldex_modes.h"
 #include "serial_proto.h"
 #include "button_sniffer.h"
+#include "config.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
@@ -108,6 +110,21 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   </div>
 </div>
 
+<h2 style="font-size:14px;color:#7df;margin:16px 0 8px">🏁 Haldex (MITM)</h2>
+<div class="grid" id="hx-grid">
+  <div class="card"><div class="lbl">Mode</div><div class="val" id="hx-mode">—</div></div>
+  <div class="card"><div class="lbl">Connexion</div><div class="val" id="hx-conn">—</div></div>
+  <div class="card"><div class="lbl">Vitesse km/h</div><div class="val" id="hx-spd">—</div></div>
+  <div class="card"><div class="lbl">Pédale %</div><div class="val" id="hx-ped">—</div></div>
+  <div class="card"><div class="lbl">Lock target %</div><div class="val" id="hx-tgt">—</div></div>
+  <div class="card"><div class="lbl">Pump eng. %</div><div class="val" id="hx-pump">—</div></div>
+</div>
+<div class="hx-btns">
+  <button class="hxb hxb-off" onclick="hmode(0)">🅾 STOCK</button>
+  <button class="hxb hxb-fwd" onclick="hmode(1)">🔥 FWD</button>
+  <button class="hxb hxb-5050" onclick="hmode(2)">🚀 50/50</button>
+</div>
+
 <div class="actions">
   <button class="primary" onclick="cmd('clear_engine_fault')">🔧 Clear Engine Fault</button>
   <button onclick="location.href='/settings'">⚙ Tous les réglages</button>
@@ -145,6 +162,19 @@ async function poll(){
     const tcFresh = (s.tc_button_age_ms !== undefined && s.tc_button_age_ms < 5000);
     // v2.10.0: bouton tenu = traction control OFF ; relâché = ON (normal)
     setVal('tc', tcFresh ? (s.tc_button_pressed ? 'OFF' : 'ON') : null);
+    // v3.1.0 — Haldex (MITM)
+    const hx = s.haldex || {};
+    const names = ['STOCK','FWD','50/50'];
+    const lm = (hx.local_mode !== undefined) ? hx.local_mode : 0;
+    setVal('hx-mode', names[lm] || '—');
+    const online = !!hx.online;
+    setVal('hx-conn', online ? '✓ OK' : '✗ off', !online);
+    setVal('hx-spd',  online ? hx.vehicle_kmh : null);
+    setVal('hx-ped',  online ? (hx.pedal_pct + '%') : null);
+    setVal('hx-tgt',  online ? (hx.lock_target_pct + '%') : null);
+    setVal('hx-pump', online ? (hx.pump_engagement_pct + '%') : null);
+    // highlight the active mode button
+    document.querySelectorAll('.hxb').forEach((b,i)=>b.classList.toggle('active', i===lm));
     $('conn').classList.remove('off');
     $('conn').textContent='●';
   }catch(e){
@@ -163,6 +193,18 @@ async function cmd(c){
     const r = await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:c})});
     const j = await r.json();
     $('st').textContent = j.ok ? '✓ '+c+' OK' : '✗ '+c+' '+(j.msg||'fail');
+    setTimeout(()=>$('st').textContent='—', 3000);
+  }catch(e){ $('st').textContent='✗ erreur réseau'; }
+}
+async function hmode(m){
+  // Confirm before engaging a race mode (FWD / 50-50). STOCK is instant.
+  if(m===1 && !confirm('🔥 FWD (traction avant)\\n\\nMode circuit fermé. Engager FWD ?')) return;
+  if(m===2 && !confirm('🚀 50/50 (lock max)\\n\\nMode circuit fermé. Engager 50/50 ?')) return;
+  $('st').textContent='⏳ mode…';
+  try{
+    const r = await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'set_haldex_mode',mode:m})});
+    const j = await r.json();
+    $('st').textContent = j.ok ? '✓ Haldex '+(['STOCK','FWD','50/50'][m]) : '✗ '+(j.msg||'fail');
     setTimeout(()=>$('st').textContent='—', 3000);
   }catch(e){ $('st').textContent='✗ erreur réseau'; }
 }
@@ -264,22 +306,11 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div><label>Password (8+)</label><input type="text" data-k="wifi_ap_password" maxlength="63"></div>
 </div>
 
-<h2>🏁 Haldex AWD link</h2>
+<h2>🏁 Haldex AWD link (ESP-NOW)</h2>
 <label class="cb"><input type="checkbox" data-k="haldex_enabled"> 🏁 Haldex link enabled</label>
-<div class="row">
-  <div><label>Bus</label>
-    <select data-k="haldex_bus"><option value="0">CAN0 cluster</option><option value="1">CAN1 chassis</option></select>
-  </div>
-  <div><label>Transport</label>
-    <select data-k="haldex_transport"><option value="0">CAN</option><option value="1">ESP-NOW</option></select>
-  </div>
-</div>
-<div class="row">
-  <div><label>State broadcast ID</label><input type="text" data-k="haldex_state_id" data-hex="1"></div>
-  <div><label>Cmd ID</label><input type="text" data-k="haldex_cmd_id" data-hex="1"></div>
-</div>
 <div class="row full">
-  <div><label>ESP-NOW peer MAC</label><input type="text" data-k="haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF"></div>
+  <div><label>ESP-NOW peer MAC (MITM X2)</label><input type="text" data-k="haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF (broadcast)">
+    <div class="hint">Vide = broadcast. Mets le MAC du module X2 pour verrouiller l'appairage.</div></div>
 </div>
 
 <div class="save" id="save">Touche un champ pour modifier</div>
@@ -367,7 +398,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "3.0.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "3.1.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -496,8 +527,8 @@ static void handle_cmd() {
     msg = ok ? "Mode 04 broadcast sent" : "TX failed";
   } else if (strcmp(cmd, "set_haldex_mode") == 0) {
     uint8_t mode = doc["mode"] | 0;
-    ok = haldex_link_set_mode(mode);
-    msg = ok ? "mode set" : "Haldex disabled or TX failed";
+    ok = haldex_modes_set_manual(mode);   // v3.1.0: via mode logic
+    msg = ok ? "mode set" : "Haldex disabled or bad mode";
   } else {
     msg = "unknown cmd";
   }
@@ -544,19 +575,26 @@ void wifi_ui_apply() {
     g_active = false;
   }
 
-  // ESP-NOW (Haldex transport=1) also uses WiFi. If both are needed, use APSTA mode.
-  bool need_sta = (s.haldex_enabled && s.haldex_transport == 1);
+  // v3.1.0: the Haldex link is ESP-NOW only. When it's enabled we run AP+STA
+  // so the phone AP and the ESP-NOW link coexist, and we LOCK the AP to a
+  // fixed channel (ESP-NOW must share the AP's radio channel; the MITM X2
+  // locks the same channel).
+  bool need_sta = s.haldex_enabled;   // ESP-NOW transport is now the only one
   if (need_sta) {
     WiFi.mode(WIFI_AP_STA);
   } else {
     WiFi.mode(WIFI_AP);
   }
 
-  bool started = WiFi.softAP(s.wifi_ap_ssid, s.wifi_ap_password);
+  // softAP(ssid, pass, channel, hidden=0, max_conn=4)
+  bool started = WiFi.softAP(s.wifi_ap_ssid, s.wifi_ap_password, WIFI_AP_CHANNEL);
   if (!started) {
     Serial.println("[wifi_ui] softAP FAILED");
     return;
   }
+  Serial.print("[wifi_ui] AP locked to channel ");
+  Serial.print(WIFI_AP_CHANNEL);
+  Serial.println(need_sta ? " (AP+STA for ESP-NOW coexistence)" : " (AP only)");
   g_curr_ssid = String(s.wifi_ap_ssid);
 
   g_server.on("/",                  HTTP_GET,  handle_root);

@@ -91,9 +91,8 @@ const SETTING_KEYS = [
   "tx_enabled", "force_tx_always",
   // Bench test (v2.9.0: bench_display_value_pct + bench_force_override removed)
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
-  // Haldex link
-  "haldex_enabled", "haldex_bus", "haldex_state_id", "haldex_cmd_id",
-  "haldex_transport", "haldex_espnow_peer_mac",
+  // Haldex link (v3.1.0: ESP-NOW only — transport/bus/state_id/cmd_id removed)
+  "haldex_enabled", "haldex_espnow_peer_mac",
 ];
 
 function applySettings(s) {
@@ -330,27 +329,10 @@ $("btn-push-all").addEventListener("click", () => {
 
 socket.on("settings", (s) => {
   applySettings(s);
-  // Haldex: show/hide CAN vs ESP-NOW sub-cards based on transport
-  updateHaldexTransportUI(s.haldex_transport || 0);
-  // Display BOT32 MAC (read-only, for the user to copy into the MITM ESP32 firmware)
+  // Display BOT32 MAC (read-only, to copy into the MITM X2 firmware)
   const macEl = document.getElementById("haldex-my-mac");
   if (macEl && s.bot32_mac) macEl.value = s.bot32_mac;
 });
-
-function updateHaldexTransportUI(transport) {
-  const canFields = document.querySelector(".transport-can-fields");
-  const espnowFields = document.querySelector(".transport-espnow-fields");
-  if (canFields)    canFields.style.display    = (transport == 1) ? "none" : "";
-  if (espnowFields) espnowFields.style.display = (transport == 1) ? "" : "none";
-}
-
-// Also react when user changes the transport dropdown directly
-const transportSel = document.getElementById("set-haldex_transport");
-if (transportSel) {
-  transportSel.addEventListener("change", (e) => {
-    updateHaldexTransportUI(+e.target.value);
-  });
-}
 
 // ===========================================================
 //  Live status (NO mode display per user request)
@@ -574,6 +556,8 @@ socket.on("status", (s) => {
   // v2.9.0: cluster_override live indicators removed (feature deleted).
 });
 
+const HALDEX_MODE_NAMES = ["STOCK", "FWD", "50/50"];
+
 function updateHaldexLive(hx) {
   if (!hx) return;
   const modeEl   = $("haldex-live-mode");
@@ -585,31 +569,41 @@ function updateHaldexLive(hx) {
   const ageEl    = $("haldex-live-age");
   const rawEl    = $("haldex-live-raw");
 
-  if (!hx.valid) {
-    if (modeEl)   { modeEl.textContent = "—";   modeEl.className   = "value-big inactive"; }
-    if (pumpEl)   { pumpEl.textContent = "—";   pumpEl.className   = "value-big inactive"; }
-    if (targetEl) { targetEl.textContent = "—"; targetEl.className = "value-big inactive"; }
-    if (speedEl)  { speedEl.textContent = "—";  speedEl.className  = "value-big inactive"; }
-    if (pedalEl)  { pedalEl.textContent = "—";  pedalEl.className  = "value-big inactive"; }
-    if (statusEl) { statusEl.textContent = "—"; statusEl.className = "value-big inactive"; }
-    if (ageEl)    ageEl.textContent = "no broadcast RX";
-    if (rawEl)    rawEl.textContent = "—";
-    return;
+  // v3.1.0: mode shown is the LOCALLY-decided mode (immediate feedback),
+  // connection comes from the explicit "online" flag (STATE heartbeat).
+  const lm = (hx.local_mode !== undefined) ? hx.local_mode : 0;
+  if (modeEl) {
+    modeEl.textContent = HALDEX_MODE_NAMES[lm] || "?";
+    modeEl.className = (lm === 0) ? "value-big" : "value-big mode-BOOST";
+  }
+  // Highlight the active mode button
+  document.querySelectorAll('[data-haldex-mode]').forEach(b => {
+    b.classList.toggle("active", parseInt(b.dataset.haldexMode, 10) === lm);
+  });
+
+  const online = !!hx.online;
+  if (statusEl) {
+    statusEl.textContent = online ? "✓ connecté" : "✗ déconnecté";
+    statusEl.className = online ? "value-big mode-SILENT" : "value-big inactive";
+  }
+  if (ageEl) {
+    ageEl.textContent = (hx.age_ms !== undefined && hx.age_ms < 4294967295)
+      ? ("il y a " + (hx.age_ms / 1000).toFixed(1) + "s") : "aucun paquet reçu";
   }
 
-  if (modeEl)   { modeEl.textContent   = (hx.current_mode_name || "?") + " (" + hx.current_mode + ")"; modeEl.className = "value-big"; }
-  if (pumpEl)   { pumpEl.textContent   = hx.pump_engagement_pct + "%"; pumpEl.className = "value-big"; }
-  if (targetEl) { targetEl.textContent = hx.lock_target_pct + "%"; targetEl.className = "value-big"; }
-  if (speedEl)  { speedEl.textContent  = hx.vehicle_kmh; speedEl.className = "value-big"; }
-  if (pedalEl)  { pedalEl.textContent  = hx.pedal_pct + "%"; pedalEl.className = "value-big"; }
-  if (statusEl) { statusEl.textContent = "✓ alive"; statusEl.className = "value-big mode-SILENT"; }
-  if (ageEl) {
-    const sec = (hx.age_ms / 1000).toFixed(1);
-    ageEl.textContent = "il y a " + sec + "s";
-  }
-  if (rawEl && hx.raw) {
-    const hex = hx.raw.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-    rawEl.textContent = hex;
+  const setCell = (el, val) => {
+    if (!el) return;
+    if (online) { el.textContent = val; el.className = "value-big"; }
+    else { el.textContent = "—"; el.className = "value-big inactive"; }
+  };
+  setCell(pumpEl,   hx.pump_engagement_pct + "%");
+  setCell(targetEl, hx.lock_target_pct + "%");
+  setCell(speedEl,  hx.vehicle_kmh);
+  setCell(pedalEl,  hx.pedal_pct + "%");
+
+  if (rawEl) {
+    rawEl.textContent = (online && hx.raw)
+      ? hx.raw.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ') : "—";
   }
 }
 
@@ -634,17 +628,24 @@ if (btnClearEng) {
 
 // v2.3.3: Clear All DTCs button removed entirely from UI.
 
-// Haldex mode buttons — send set_haldex_mode command via socketio
+// Haldex mode buttons — send set_haldex_mode command via socketio.
+// v3.1.0: confirm before engaging a race mode (FWD / 50-50); STOCK is instant.
 document.querySelectorAll('[data-haldex-mode]').forEach(btn => {
   btn.addEventListener('click', (e) => {
     const mode = parseInt(e.currentTarget.dataset.haldexMode, 10);
     if (isNaN(mode)) return;
+    if (mode === 1 && !confirm(
+        "🔥 FWD (traction avant)\n\n" +
+        "MOTORSPORT — circuit fermé seulement.\n" +
+        "Force la pompe Haldex à 0% (traction avant). Engager FWD ?")) return;
+    if (mode === 2 && !confirm(
+        "🚀 50/50 (lock max)\n\n" +
+        "MOTORSPORT — circuit fermé seulement.\n" +
+        "Force le verrouillage Haldex à 100%. Engager 50/50 ?")) return;
     socket.emit("cmd", { cmd: "set_haldex_mode", mode: mode });
-    // Visual feedback
     const status = $("haldex-cmd-status");
     if (status) {
-      const labels = ["STOCK", "FWD (burnout)", "5050 (launch)", "60/40", "75/25", "Expert"];
-      status.textContent = "▶ Sent: " + labels[mode] + " (mode " + mode + ")";
+      status.textContent = "▶ Envoyé : " + (HALDEX_MODE_NAMES[mode] || ("mode " + mode));
       status.style.color = "var(--accent)";
       setTimeout(() => { status.style.color = ""; }, 2000);
     }

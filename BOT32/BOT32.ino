@@ -1,5 +1,5 @@
 /*
- * Version: v3.0.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v3.0.0
+ * Version: v3.1.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v3.1.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -37,6 +37,7 @@
 #include "haldex_link.h"
 #include "wifi_ui.h"
 #include "button_sniffer.h"
+#include "haldex_modes.h"
 
 // =============================================================
 //  State
@@ -94,6 +95,7 @@ void setup() {
     wifi_ui_init();           // v2.6: WiFi AP for phone access (toggleable)
     wifi_ui_apply();          // starts AP if wifi_enabled = true in settings
     button_sniffer_init();    // v2.8+: hand brake + OK + Hazard + TC sniffers
+    haldex_modes_init();      // v3.1: Haldex mode logic (combo FWD + app modes)
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));
@@ -263,6 +265,10 @@ void loop() {
 
   // 6b. v2.6: WiFi UI tick (serves HTTP requests from phone)
   wifi_ui_tick();
+
+  // 6c. v3.1: Haldex mode logic — physical combo (Hazard ON + TC) arms FWD,
+  // hazards-OFF releases it; app/USB sets STOCK/FWD/5050. Pushes to the MITM.
+  haldex_modes_tick(now);
 
   // 7. Status LED
   update_led(now);

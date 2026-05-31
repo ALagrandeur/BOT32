@@ -77,15 +77,11 @@ void haldex_link_init() {
   g_state.current_mode        = 0;
   g_state.pedal_pct           = 0;
 
-  const Settings& s = settings_get();
-  if (s.haldex_transport == 1) {
-    // ESP-NOW transport — wireless link to the MITM ESP32
-    haldex_espnow_init();
-  } else {
-    // CAN transport — listener on both buses, filtered inside callback
-    can_register_listener(CAN_CLUSTER, on_haldex_can_rx);
-    can_register_listener(CAN_OBD2,    on_haldex_can_rx);
-  }
+  // v3.1.0: ESP-NOW is now the ONLY transport (CAN transport removed from UI).
+  // The legacy CAN listener (on_haldex_can_rx) is retained in this file for
+  // reference but is no longer registered.
+  (void)on_haldex_can_rx;
+  haldex_espnow_init();
 }
 
 bool haldex_link_set_mode(uint8_t mode) {
@@ -93,32 +89,13 @@ bool haldex_link_set_mode(uint8_t mode) {
   if (!s.haldex_enabled) return false;
   if (mode > 5) return false;   // sanity bound
 
-  bool ok;
-  if (s.haldex_transport == 1) {
-    // ESP-NOW transport
-    ok = haldex_espnow_send_mode(mode);
-    if (ok) {
-      Serial.print("[haldex/espnow] sent set_mode=");
-      Serial.println(mode);
-    } else {
-      Serial.println("[haldex/espnow] set_mode TX failed");
-    }
+  // v3.1.0: ESP-NOW only.
+  bool ok = haldex_espnow_send_mode(mode);
+  if (ok) {
+    Serial.print("[haldex/espnow] sent set_mode=");
+    Serial.println(mode);
   } else {
-    // CAN transport
-    CanChannel ch = (s.haldex_bus == 1) ? CAN_OBD2 : CAN_CLUSTER;
-    CanFrame f;
-    f.id  = s.haldex_cmd_id;
-    f.len = 8;
-    f.data[0] = mode;
-    for (uint8_t i = 1; i < 8; i++) f.data[i] = 0;
-    ok = can_send(ch, f);
-    if (ok) {
-      serial_proto_report_tx(ch, f);
-      Serial.print("[haldex/can] sent set_mode=");
-      Serial.println(mode);
-    } else {
-      Serial.println("[haldex/can] set_mode TX failed");
-    }
+    Serial.println("[haldex/espnow] set_mode TX failed");
   }
   return ok;
 }

@@ -108,6 +108,19 @@ extern const uint8_t MOTOR_09_TAIL[7];   // defined in vw_mqb.cpp
 #define MAP_STALE_TIMEOUT_MS    1500   // if no MAP for 1.5s -> fall back to min
 
 // =============================================================
+//  WiFi / ESP-NOW coexistence (v3.1.0)
+//  The phone AP and the Haldex ESP-NOW link run SIMULTANEOUSLY. ESP-NOW must
+//  share the AP's radio channel, so we LOCK the AP to a fixed channel and the
+//  MITM (ESP32-CAN-X2) locks its radio to the same channel.
+// =============================================================
+#define WIFI_AP_CHANNEL   1
+#define ESPNOW_CHANNEL    1   // must equal WIFI_AP_CHANNEL and the X2's channel
+
+// Haldex link stale timeout — STATE packets arrive at 5 Hz, so anything older
+// than this means the link to the MITM is down.
+#define HALDEX_LINK_STALE_MS  1500
+
+// =============================================================
 //  Pins — Hardware: WaveShare 2-CH CAN HAT (2x MCP2515 + 2x SIT65HVD230)
 //  wired to ESP32 via Dupont jumpers on shared SPI bus.
 //  See docs/wiring_waveshare_hat.md for the schema.
