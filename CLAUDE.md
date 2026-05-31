@@ -142,6 +142,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 - Lien **ESP-NOW uniquement**, AP téléphone + ESP-NOW coexistent sur **canal 1**.
 - 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC** (ou app), sort si warnings OFF. 50-50 = app, sort via STOCK. **Pas d'auto-revert.**
 - **Passthrough** = armement : OFF = MITM armé (réécrit 0x08A/0x0A7/0x0A8 + CRC AUTOSAR). **v0.3.0 : le X2 PERSISTE `mode` + `passthrough` en NVS et les restaure au boot** (1er boot = STOCK + passthrough ON). ⚠ s'il est coupé ARMÉ, il revient ARMÉ. L'UI principale affiche le **mode réel rapporté par le X2** (current_mode) quand le lien est en ligne.
+- **Burnout FWD (v0.4.0)** : en FWD armé, le X2 falsifie aussi **ESP_19 (0x0B2)** = les 4 vitesses de roue (présente les 4 à la vitesse réelle véhicule, lue sur ESP_21 0x0FD, `roue=veh*4/3`) → le Haldex (embrayage ouvert) voit une voiture cohérente, pas de défaut. ESP_19 est full-packed → pas de CRC à recalculer. ⚠ ne trompe que le Haldex ; l'ESP/ABS amont se neutralise par le bouton TC/ESP.
 - Côté principal : module `haldex_modes` (logique modes + passthrough), `haldex_link`/`haldex_espnow` (transport ESP-NOW).
 - Témoin frein à main pour indiquer le mode = **abandonné** (frein mécanique → pas de trame CAN d'entrée). Le mode se lit dans l'UI web.
 

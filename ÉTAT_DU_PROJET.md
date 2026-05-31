@@ -14,6 +14,11 @@ v3.3.0 / v0.3.0 : le X2 **persiste son état** (mode + passthrough) en NVS et le
 restaure au boot (1er boot = STOCK + passthrough ON). ⚠ s'il est coupé ARMÉ il
 revient ARMÉ. L'UI principale affiche le **mode réel rapporté par le X2**.
 
+v0.4.0 (X2) : **spoof des vitesses de roue** en FWD burnout — réécrit ESP_19
+(0x0B2) pour présenter les 4 roues à la vitesse réelle véhicule → le Haldex
+(embrayage ouvert) ne lève pas de défaut. Ne trompe que le Haldex (l'ESP/ABS
+amont se neutralise au bouton TC/ESP).
+
 `SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
 
 ### Haldex (v3.1.0 → v3.2.0)
