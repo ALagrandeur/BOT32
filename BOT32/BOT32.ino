@@ -1,5 +1,5 @@
 /*
- * Version: v3.4.1 — https://github.com/ALagrandeur/BOT32/releases/tag/v3.4.1
+ * Version: v3.5.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v3.5.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -189,6 +189,28 @@ static void update_mode(uint32_t now) {
 //  LED indicator (status)
 // =============================================================
 static void update_led(uint32_t now) {
+  // v3.5.0: when the Haldex link is enabled, the onboard LED reports the X2
+  // ESP-NOW connection instead of the mode:
+  //   solid ON   = connected (STATE packets fresh from the X2)
+  //   slow blink = searching / disconnected
+  // (When Haldex is disabled, the LED keeps showing the operating mode below.)
+  if (settings_get().haldex_enabled) {
+    bool x2_online = haldex_link_get_state().valid &&
+                     (haldex_link_get_age_ms() < HALDEX_LINK_STALE_MS);
+    if (x2_online) {
+      digitalWrite(PIN_LED_STATUS, HIGH);          // solid = connected
+    } else {
+      static uint32_t hlToggle = 0;
+      static bool     hlState  = HIGH;
+      if (now - hlToggle >= 400) {                 // slow blink = searching
+        hlState = !hlState;
+        digitalWrite(PIN_LED_STATUS, hlState);
+        hlToggle = now;
+      }
+    }
+    return;
+  }
+
   // BOOT: solid ON
   // SILENT: slow blink (1 Hz)
   // BOOST: fast blink (5 Hz)

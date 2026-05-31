@@ -785,19 +785,22 @@ socket.on("connection", (c) => {
   function ensureCard() {
     let card = document.getElementById("lampkiller-card");
     if (card) return card;
-    card = document.createElement("section");
+    // v3.5.0: nested INSIDE the bench-test card (the two work together).
+    card = document.createElement("div");
     card.id = "lampkiller-card";
-    card.className = "card";
-    card.style.cssText = "margin-top:16px;border-left:4px solid #ffd000;";
+    card.style.cssText = "margin-top:14px;padding-top:10px;border-top:2px solid #ffd000;";
     card.innerHTML =
-      '<h3 class="card-title">🔦 Test voyants — injecteur de trames (bench)</h3>' +
+      '<h4 class="subtitle">🔦 Test voyants — injecteur de trames</h4>' +
       '<p class="muted small">Active une trame à la fois et observe quel voyant s\'éteint. ' +
-      'N\'émet QUE si le <b>bench test mode</b> est actif. Au reboot, tout revient à OFF.</p>' +
+      'N\'émet QUE si le <b>bench test mode</b> ci-dessus est activé. Au reboot, tout revient à OFF.</p>' +
       '<div style="margin:8px 0"><button id="lk-alloff" class="secondary">⏹ Tout désactiver</button> ' +
       '<span id="lk-count" class="muted small"></span></div>' +
       '<div id="lk-groups"></div>';
-    const main = document.querySelector("main") || document.body;
-    main.appendChild(card);
+    // Place it inside the bench card body (fallback to main if not found).
+    const benchHost = document.querySelector(".card-bench .collapsible-body")
+                   || document.querySelector(".card-bench")
+                   || document.querySelector("main") || document.body;
+    benchHost.appendChild(card);
     card.querySelector("#lk-alloff").addEventListener("click", () => {
       socket.emit("cmd", { cmd: "bench_frames_all_off" });
       card.querySelectorAll('input[data-lk]').forEach(cb => { cb.checked = false; });
