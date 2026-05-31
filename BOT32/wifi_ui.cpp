@@ -367,7 +367,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "2.10.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "3.0.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();

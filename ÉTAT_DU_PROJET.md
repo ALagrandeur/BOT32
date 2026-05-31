@@ -7,8 +7,9 @@
 
 ## Version actuelle
 
-**v2.10.0** — taggé `v2.10.0` et poussé sur GitHub (`ALagrandeur/BOT32`, `master`).
-Release : https://github.com/ALagrandeur/BOT32/releases/tag/v2.10.0
+**v3.0.0** — version stable, taggée `v3.0.0` et poussée sur GitHub (`ALagrandeur/BOT32`, `master`).
+Release : https://github.com/ALagrandeur/BOT32/releases/tag/v3.0.0
+Toutes les fonctions sont **confirmées fonctionnelles sur banc** (incl. bouton OK).
 
 `SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
 
@@ -57,7 +58,8 @@ Bouton OK · Hazard · Traction Control (ON/OFF). (+ statut WiFi.)
 | v2.7.1 | Bench mode : auto-toggle TX + avertissements jumpers |
 | v2.8.0 | **Huile DSG / EGT / huile moteur** + sniffers frein à main & bouton OK |
 | v2.9.0 | + sniffers Hazard & Traction Control, − cluster display override |
-| **v2.10.0** | **− huile moteur (live data)**, TC affiché **ON/OFF**, **fix décodage bouton OK** (0x5BF), retrait doublon cellule TC |
+| v2.10.0 | − huile moteur (live data), TC affiché ON/OFF, fix décodage bouton OK (0x5BF) |
+| **v3.0.0** | **Version stable** — toutes les fonctions confirmées sur banc (bouton OK validé) |
 
 ---
 
@@ -79,7 +81,5 @@ Bouton OK · Hazard · Traction Control (ON/OFF). (+ statut WiFi.)
   (voir `CLAUDE.md` §10).
 - Dernier incident résolu (2026-05-30) : erreur de compilation « fantôme » sur
   `cluster_override.cpp` → c'était un **cache Arduino périmé**, pas le code source.
-- v2.10.0 : le décodage du bouton OK (0x5BF) a été corrigé (repos = 0x00, pressé = non-zéro).
-  À **vérifier sur l'établi** : la capture OK3X.csv ne montrait que les codes 0x01/0x02 ;
-  si un autre bouton du volant déclenche la cellule « OK », refaire une capture propre
-  (appuyer UNIQUEMENT sur OK, plusieurs fois avec des pauses) pour figer le code exact.
+- v2.10.0 → v3.0.0 : décodage du bouton OK (0x5BF) corrigé (repos = 0x00, pressé = non-zéro)
+  et **confirmé fonctionnel sur banc** (v3.0.0). Tous les sniffers et live data validés.
