@@ -1,44 +1,25 @@
 /*
- * haldex_link.h — BOT32 client for a Haldex AWD MITM module
+ * haldex_link.h — BOT32 main-side CLIENT for the Haldex AWD MITM module (X2)
  *
- * BOT32 dialogues with a SEPARATE MITM device (running on a 2nd ESP32 with
- * 2 CAN modules, or on dedicated OpenHaldex-C6 hardware) over the chassis
- * CAN bus. The MITM device handles the actual Haldex bus man-in-the-middle
- * and broadcasts its state. BOT32 is the CLIENT — it reads the broadcasts
- * and sends mode commands.
+ * BOT32 main dialogues with a SEPARATE MITM device — the ESP32-CAN-X2 running
+ * the BOT32-HALDEX firmware (private repo) — installed in series on the Haldex
+ * bus. BOT32 main is the CLIENT: it reads the MITM's STATE and sends mode +
+ * passthrough commands.
  *
- * Protocol (publicly documented facts):
- *   - State broadcast on a configurable CAN ID (default 0x6B0), 8 bytes,
- *     containing: current Haldex pump engagement %, lock target %, vehicle
- *     speed, mode flags, current mode number, throttle pedal %.
- *   - Mode command on a configurable CAN ID (default 0x6B1), 8 bytes,
- *     with the requested mode number in byte 0.
+ * Transport: ESP-NOW ONLY (v3.2.0; the legacy CAN transport was removed).
+ * Wire format lives in haldex_espnow.cpp / docs/haldex_integration.md:
+ *   magic 0xBA 0xB0; 0x01 STATE (10B), 0x02 SET_MODE (4B), 0x03 SET_PASSTHROUGH (4B).
  *
- * Mode numbers (matches the publicly documented convention):
+ * Mode numbers (3 supported — STOCK/FWD/5050; 6040/7525/Expert removed v3.2.0):
  *   0 = Stock     — pass-through, normal OEM Haldex behavior
  *   1 = FWD       — force front-wheel-drive (pump 0%) — race burnout mode
  *   2 = 5050      — force 50/50 split (pump 100%) — race launch mode
- *   3 = 6040
- *   4 = 7525
- *   5 = Expert    — user-defined behavior in the MITM module
  *
  * ─────────────────────────────────────────────────────────────────────────
- * IMPORTANT — Attribution / origin of the protocol facts:
- *
- * The CAN-based broadcast/command protocol used here was originally designed
- * and publicly documented by Forbes Automotive for their OpenHaldex-C6
- * project (https://github.com/Forbes-Automotive/OpenHaldex-C6).
- *
- * BOT32 does NOT include any source code, PCB designs, or compiled binaries
- * from OpenHaldex-C6. This file contains only freshly-written code that
- * speaks to that publicly documented protocol. OpenHaldex-C6 is distributed
- * under the Forbes Automotive Source-Available License (FASL v1.0); users
- * who want a working Haldex MITM device should either purchase the official
- * hardware or run OpenHaldex-C6 firmware on their own ESP32 (permitted by
- * FASL for personal/non-commercial use).
- *
- * Big thanks to Forbes Automotive for their open reverse-engineering work
- * on the VW MQB Haldex platform.
+ * Attribution: the MQB Haldex protocol knowledge was openly reverse-engineered
+ * by the OpenHaldex community (Forbes Automotive — OpenHaldex-C6, FASL v1.0).
+ * BOT32 includes NO OpenHaldex source — only freshly-written code using the
+ * public protocol facts. Thanks to Forbes Automotive for the open RE work.
  * ─────────────────────────────────────────────────────────────────────────
  */
 #ifndef BOT32_HALDEX_LINK_H
