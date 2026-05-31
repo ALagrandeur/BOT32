@@ -18,7 +18,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.2.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.3.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam

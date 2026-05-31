@@ -7,8 +7,12 @@
 
 ## Version actuelle
 
-**v3.2.0** (principal) + **BOT32-HALDEX v0.2.0** (module MITM privé, ESP32-CAN-X2).
+**v3.3.0** (principal) + **BOT32-HALDEX v0.3.0** (module MITM privé, ESP32-CAN-X2).
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
+
+v3.3.0 / v0.3.0 : le X2 **persiste son état** (mode + passthrough) en NVS et le
+restaure au boot (1er boot = STOCK + passthrough ON). ⚠ s'il est coupé ARMÉ il
+revient ARMÉ. L'UI principale affiche le **mode réel rapporté par le X2**.
 
 `SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
 

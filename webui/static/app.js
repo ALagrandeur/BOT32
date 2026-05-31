@@ -569,9 +569,12 @@ function updateHaldexLive(hx) {
   const ageEl    = $("haldex-live-age");
   const rawEl    = $("haldex-live-raw");
 
-  // v3.1.0: mode shown is the LOCALLY-decided mode (immediate feedback),
-  // connection comes from the explicit "online" flag (STATE heartbeat).
-  const lm = (hx.local_mode !== undefined) ? hx.local_mode : 0;
+  // v3.3.0: show the mode actually REPORTED by the X2 (source of truth — the
+  // X2 persists mode across its own reboots). Fall back to the locally-
+  // commanded mode only when the link is offline.
+  const online = !!hx.online;
+  const lm = (online && hx.current_mode !== undefined) ? hx.current_mode
+           : ((hx.local_mode !== undefined) ? hx.local_mode : 0);
   if (modeEl) {
     modeEl.textContent = HALDEX_MODE_NAMES[lm] || "?";
     modeEl.className = (lm === 0) ? "value-big" : "value-big mode-BOOST";
@@ -581,7 +584,6 @@ function updateHaldexLive(hx) {
     b.classList.toggle("active", parseInt(b.dataset.haldexMode, 10) === lm);
   });
 
-  const online = !!hx.online;
   if (statusEl) {
     statusEl.textContent = online ? "✓ connecté" : "✗ déconnecté";
     statusEl.className = online ? "value-big mode-SILENT" : "value-big inactive";

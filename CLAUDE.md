@@ -141,7 +141,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 - Module MITM = **dépôt privé `BOT32-HALDEX`** sur carte **ESP32-CAN-X2** (CAN1 TWAI = côté voiture, CAN2 MCP2515 = côté Haldex, 120 Ω retirés, 500 kbps).
 - Lien **ESP-NOW uniquement**, AP téléphone + ESP-NOW coexistent sur **canal 1**.
 - 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC** (ou app), sort si warnings OFF. 50-50 = app, sort via STOCK. **Pas d'auto-revert.**
-- **Passthrough** = armement : le X2 démarre toujours **ON** (transparent/sûr) ; OFF = MITM armé (réécrit 0x08A/0x0A7/0x0A8 + CRC AUTOSAR). Commande live (pas NVS).
+- **Passthrough** = armement : OFF = MITM armé (réécrit 0x08A/0x0A7/0x0A8 + CRC AUTOSAR). **v0.3.0 : le X2 PERSISTE `mode` + `passthrough` en NVS et les restaure au boot** (1er boot = STOCK + passthrough ON). ⚠ s'il est coupé ARMÉ, il revient ARMÉ. L'UI principale affiche le **mode réel rapporté par le X2** (current_mode) quand le lien est en ligne.
 - Côté principal : module `haldex_modes` (logique modes + passthrough), `haldex_link`/`haldex_espnow` (transport ESP-NOW).
 - Témoin frein à main pour indiquer le mode = **abandonné** (frein mécanique → pas de trame CAN d'entrée). Le mode se lit dans l'UI web.
 

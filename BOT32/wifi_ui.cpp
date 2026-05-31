@@ -167,9 +167,11 @@ async function poll(){
     // v3.1.0 — Haldex (MITM)
     const hx = s.haldex || {};
     const names = ['STOCK','FWD','50/50'];
-    const lm = (hx.local_mode !== undefined) ? hx.local_mode : 0;
-    setVal('hx-mode', names[lm] || '—');
     const online = !!hx.online;
+    // v3.3.0: prefer the mode REPORTED by the X2 (persisted) when online
+    const lm = (online && hx.current_mode !== undefined) ? hx.current_mode
+             : ((hx.local_mode !== undefined) ? hx.local_mode : 0);
+    setVal('hx-mode', names[lm] || '—');
     setVal('hx-conn', online ? '✓ OK' : '✗ off', !online);
     setVal('hx-spd',  online ? hx.vehicle_kmh : null);
     setVal('hx-ped',  online ? (hx.pedal_pct + '%') : null);
@@ -419,7 +421,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "3.2.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "3.3.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -456,6 +458,7 @@ static void handle_status() {
     hxo["online"]              = hx.valid && (hx_age < HALDEX_LINK_STALE_MS);
     hxo["age_ms"]              = hx_age;
     hxo["local_mode"]          = haldex_modes_get();
+    hxo["current_mode"]        = hx.current_mode;   // v3.3.0: actual mode from the X2
     hxo["vehicle_kmh"]         = hx.vehicle_kmh;
     hxo["pedal_pct"]           = hx.pedal_pct;
     hxo["lock_target_pct"]     = hx.lock_target_pct;
