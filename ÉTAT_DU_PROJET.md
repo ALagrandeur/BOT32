@@ -7,20 +7,20 @@
 
 ## Version actuelle
 
-**v2.9.0** — commit `167f1ca`, taggé et poussé sur GitHub (`ALagrandeur/BOT32`, `master`).
-Release : https://github.com/ALagrandeur/BOT32/releases/tag/v2.9.0
+**v2.10.0** — taggé `v2.10.0` et poussé sur GitHub (`ALagrandeur/BOT32`, `master`).
+Release : https://github.com/ALagrandeur/BOT32/releases/tag/v2.10.0
 
-`SETTINGS_VERSION = 18` · `obd2_poll_hz` défaut = 30 Hz (6 slots round-robin).
+`SETTINGS_VERSION = 18` (inchangé — réglages préservés) · `obd2_poll_hz` défaut = 30 Hz (5 slots round-robin).
 
 ---
 
 ## Ce qui fonctionne (livré)
 
 - ✅ **Boost-on-coolant** : override de Motor_09 (0x647), mapping linéaire MAP→température.
-- ✅ **Polling UDS multi-DID** (round-robin 6 slots) : MAP, éthanol, blocage Haldex,
-  huile DSG, EGT, huile moteur.
+- ✅ **Polling UDS multi-DID** (round-robin 5 slots) : MAP, éthanol, blocage Haldex,
+  huile DSG, EGT.
 - ✅ **4 sniffers passifs** de boutons/états : frein à main, bouton OK volant, Hazard,
-  Traction Control (affichage seul, aucune action firmware).
+  Traction Control (affichage seul, aucune action firmware). TC affiché ON/OFF.
 - ✅ **Clear Engine Fault** : OBD-II Mode 04 broadcast (0x700) — manuel depuis l'UI.
   Détecteur de déclenchement **automatique** (Hazard ×3 en 4 s) : config persistée,
   détection firmware = **roadmap (pas encore implémentée)**.
@@ -35,11 +35,11 @@ Release : https://github.com/ALagrandeur/BOT32/releases/tag/v2.9.0
 
 ---
 
-## Données live affichées (PC + mobile) — 13 cellules
+## Données live affichées (PC + mobile) — 12 cellules
 
 Levier · MAP (mbar) · Coolant override (TX) · Coolant réel (sniff) · Éthanol % ·
-Haldex blocage % · Huile DSG °C · Huile moteur °C · EGT °C · Frein à main ·
-Bouton OK · Hazard · Traction Control. (+ statut WiFi.)
+Haldex blocage % · Huile DSG °C · EGT °C · Frein à main ·
+Bouton OK · Hazard · Traction Control (ON/OFF). (+ statut WiFi.)
 
 ---
 
@@ -56,7 +56,8 @@ Bouton OK · Hazard · Traction Control. (+ statut WiFi.)
 | v2.7.0 | Éthanol + Haldex pollés en permanence (pas seulement en BOOST) |
 | v2.7.1 | Bench mode : auto-toggle TX + avertissements jumpers |
 | v2.8.0 | **Huile DSG / EGT / huile moteur** + sniffers frein à main & bouton OK |
-| **v2.9.0** | **+ sniffers Hazard & Traction Control**, **− cluster display override** |
+| v2.9.0 | + sniffers Hazard & Traction Control, − cluster display override |
+| **v2.10.0** | **− huile moteur (live data)**, TC affiché **ON/OFF**, **fix décodage bouton OK** (0x5BF), retrait doublon cellule TC |
 
 ---
 
@@ -78,3 +79,7 @@ Bouton OK · Hazard · Traction Control. (+ statut WiFi.)
   (voir `CLAUDE.md` §10).
 - Dernier incident résolu (2026-05-30) : erreur de compilation « fantôme » sur
   `cluster_override.cpp` → c'était un **cache Arduino périmé**, pas le code source.
+- v2.10.0 : le décodage du bouton OK (0x5BF) a été corrigé (repos = 0x00, pressé = non-zéro).
+  À **vérifier sur l'établi** : la capture OK3X.csv ne montrait que les codes 0x01/0x02 ;
+  si un autre bouton du volant déclenche la cellule « OK », refaire une capture propre
+  (appuyer UNIQUEMENT sur OK, plusieurs fois avec des pauses) pour figer le code exact.

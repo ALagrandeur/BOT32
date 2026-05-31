@@ -87,10 +87,6 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
     <div class="can">DID 0x2104</div>
   </div>
   <div class="card">
-    <div class="lbl">🛢 Engine oil °C</div><div class="val" id="eoil">—</div>
-    <div class="can">DID 0xF43C</div>
-  </div>
-  <div class="card">
     <div class="lbl">🔥 EGT °C</div><div class="val" id="egt">—</div>
     <div class="can">DID 0x40D5</div>
   </div>
@@ -138,7 +134,6 @@ async function poll(){
     setVal('hdx', s.haldex_blockage_pct>=0 ? s.haldex_blockage_pct.toFixed(1)+'%' : null);
     // v2.8.0 — 3 temps + 2 sniffers (sentinel -1000 = no data for temps)
     setVal('dsg',  (s.dsg_oil_c    !== undefined && s.dsg_oil_c    > -999) ? s.dsg_oil_c.toFixed(0)    + '°' : null);
-    setVal('eoil', (s.engine_oil_c !== undefined && s.engine_oil_c > -999) ? s.engine_oil_c.toFixed(0) + '°' : null);
     setVal('egt',  (s.egt_c        !== undefined && s.egt_c        > -999) ? s.egt_c.toFixed(0)        + '°' : null);
     const hbFresh = (s.handbrake_age_ms !== undefined && s.handbrake_age_ms < 5000);
     setVal('hbr', hbFresh ? (s.handbrake_active ? '✓ ON' : 'OFF') : null);
@@ -148,7 +143,8 @@ async function poll(){
     const hzFresh = (s.hazard_age_ms !== undefined && s.hazard_age_ms < 5000);
     setVal('hz', hzFresh ? (s.hazard_active ? '✓ ON' : 'OFF') : null);
     const tcFresh = (s.tc_button_age_ms !== undefined && s.tc_button_age_ms < 5000);
-    setVal('tc', tcFresh ? (s.tc_button_pressed ? '✓ PRESS' : 'rel.') : null);
+    // v2.10.0: bouton tenu = traction control OFF ; relâché = ON (normal)
+    setVal('tc', tcFresh ? (s.tc_button_pressed ? 'OFF' : 'ON') : null);
     $('conn').classList.remove('off');
     $('conn').textContent='●';
   }catch(e){
@@ -371,7 +367,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "2.9.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "2.10.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -386,10 +382,10 @@ static void handle_status() {
   doc["real_coolant_c"]    = coolant_get_real_temp_c();
   doc["ethanol_pct"]       = obd2_get_last_ethanol_pct();
   doc["haldex_blockage_pct"] = obd2_get_last_haldex_blockage_pct();
-  // v2.8.0 — 3 new temps + 2 sniffer flags for mobile live grid
+  // v2.10.0 — 2 temps (DSG + EGT) + sniffer flags for mobile live grid
   doc["dsg_oil_c"]       = obd2_get_last_dsg_oil_c();
   doc["egt_c"]           = obd2_get_last_egt_c();
-  doc["engine_oil_c"]    = obd2_get_last_engine_oil_c();
+  // v2.10.0: engine oil temp removed from mobile status.
   doc["handbrake_active"]  = button_sniffer_handbrake_active();
   doc["handbrake_age_ms"]  = button_sniffer_handbrake_age_ms();
   doc["ok_button_pressed"] = button_sniffer_ok_pressed();

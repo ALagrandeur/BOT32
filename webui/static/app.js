@@ -450,17 +450,7 @@ socket.on("status", (s) => {
     }
   }
 
-  // v2.8.0 — Engine oil temp (sentinel -1000 = no data)
-  const oilEl = $("live-engine-oil");
-  if (oilEl) {
-    if (s.engine_oil_c !== undefined && s.engine_oil_c > -999) {
-      oilEl.textContent = s.engine_oil_c.toFixed(0) + "°C";
-      oilEl.className = "value-big";
-    } else {
-      oilEl.textContent = "—";
-      oilEl.className = "value-big inactive";
-    }
-  }
+  // v2.10.0: Engine oil temp removed completely from live data.
 
   // v2.8.0 — Exhaust gas temp (EGT, sentinel -1000 = no data)
   const egtEl = $("live-egt");
@@ -538,11 +528,12 @@ socket.on("status", (s) => {
     const age = s.tc_button_age_ms;
     const fresh = (age !== undefined && age < 5000);
     if (fresh) {
+      // v2.10.0: bouton tenu = traction control OFF ; relâché = ON (normal)
       if (s.tc_button_pressed === true) {
-        tcEl.textContent = "✓ PRESSED";
+        tcEl.textContent = "OFF";
         tcEl.className = "value-big mode-BOOST";
       } else {
-        tcEl.textContent = "released";
+        tcEl.textContent = "ON";
         tcEl.className = "value-big";
       }
     } else {

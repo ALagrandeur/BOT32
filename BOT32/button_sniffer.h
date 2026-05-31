@@ -7,9 +7,9 @@
  *       0x80 = engaged (ON), 0x00 = released (OFF)
  *       Confirmed via HB5x.csv: 10 transitions for 5 pulls.
  *
- *   - MFSW OK button (0x5BF byte[0])                          — v2.8.0
- *       0x07 = released, 0x00 = pressed
- *       Confirmed via OK3X.csv: 5 transitions for 3 press/release cycles.
+ *   - MFSW OK button (0x5BF byte[0])               — v2.8.0 / décodage corrigé v2.10.0
+ *       0x00 = repos (released), non-zéro = pressé (codes 0x01 / 0x02 observés)
+ *       OK3X.csv : le repos est tout-à-zéro ; un appui met byte[0] != 0.
  *
  *   - Hazard button (Blinkmodi_01 0x366 byte[2] bit 4 = 0x10) — v2.9.0
  *       0x10 = Hazard ON, 0x00 = Hazard OFF

@@ -52,8 +52,7 @@
                                            //   formula: temp_C = data[4]
 #define UDS_DID_EGT                0x40D5  // Exhaust gas temp (bank 1, sensor 1) — engine ECU
                                            //   formula: temp_C = ((data[4]<<8)|data[5]) - 250
-#define UDS_DID_ENGINE_OIL         0xF43C  // Engine oil temperature — engine ECU
-                                           //   formula: temp_C = data[5] - 8
+// v2.10.0: UDS_DID_ENGINE_OIL (0xF43C) removed — engine oil temp dropped from live data.
 #define UDS_OBD2_MODE_CLEAR_DTC    0x04    // OBD-II Mode 04 (clear emissions DTCs, broadcast)
 
 // Stale timeouts for cached UDS read values
@@ -62,7 +61,7 @@
 // v2.8.0 — temp values change slowly, keep generous timeouts
 #define DSG_OIL_STALE_TIMEOUT_MS         5000
 #define EGT_STALE_TIMEOUT_MS             5000
-#define ENGINE_OIL_STALE_TIMEOUT_MS      5000
+// v2.10.0: ENGINE_OIL_STALE_TIMEOUT_MS removed (engine oil temp dropped).
 // v2.8.0 — sniffer staleness (cluster bus broadcasts these IDs at ~10-20 Hz)
 #define HANDBRAKE_STALE_TIMEOUT_MS       2000
 #define MFSW_STALE_TIMEOUT_MS            2000

@@ -34,9 +34,12 @@ static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
   }
 
   if (f.id == CAN_ID_MFSW && f.len >= 1) {
-    // 0x00 = pressed; any non-zero (typically 0x07) = released.
-    // Be lenient — only the "pressed" state is 0x00.
-    ok_pressed = (f.data[0] == 0x00);
+    // v2.10.0 FIX: the IDLE/rest state of 0x5BF byte[0] is 0x00 — confirmed in
+    // OK3X.csv (123604 / 123772 frames are all-zero). A pressed button shows a
+    // NON-ZERO code in byte[0] (0x01 and 0x02 observed; D2..D8 always 0x00).
+    // The previous code tested == 0x00, so it reported "pressed" while idle.
+    // Correct logic: pressed = byte[0] != 0x00.
+    ok_pressed = (f.data[0] != 0x00);
     ok_ms      = millis();
     return;
   }

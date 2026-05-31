@@ -129,21 +129,23 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 | `0x7E0`→`0x7E8` | Moteur | `0x39C0` | MAP (mbar, 16-bit) |
 | `0x7E0`→`0x7E8` | Moteur | `0xF452` | Éthanol (raw·100/255 = %) |
 | `0x7E0`→`0x7E8` | Moteur | `0x40D5` | EGT °C = `((d4<<8)|d5) − 250` |
-| `0x7E0`→`0x7E8` | Moteur | `0xF43C` | Huile moteur °C = `d5 − 8` |
 | `0x7E1`→`0x7E9` | DSG (TCM) | `0x2104` | Huile DSG °C = `d4` |
 | `0x70F`→`0x779` | Haldex | `0x2BF3` | Degré de blocage (16-bit) |
 | `0x700` (broadcast) | tous OBD-II | Mode 04 | Clear DTC émissions |
 
-- Polling **round-robin 6 slots** (`obd2.cpp`), défaut `obd2_poll_hz = 30` (~5 Hz/slot).
+- Polling **round-robin 5 slots** (`obd2.cpp`), défaut `obd2_poll_hz = 30` (~6 Hz/slot).
 - Sentinelle des températures = **-1000.0f** (les vraies temps peuvent être négatives).
+- Sniffer OK (0x5BF) : repos = `byte[0] == 0x00`, **pressé = `byte[0] != 0x00`** (fix v2.10.0).
 
 ---
 
-## 9. Données live exposées (PC + mobile) — 13 cellules
+## 9. Données live exposées (PC + mobile) — 12 cellules
 
 Levier · MAP · Coolant override (TX) · Coolant réel (sniff) · Éthanol % · Haldex blocage % ·
-Huile DSG °C · Huile moteur °C · EGT °C · Frein à main · Bouton OK · Hazard · Traction Control.
+Huile DSG °C · EGT °C · Frein à main · Bouton OK · Hazard · Traction Control.
 (+ statut WiFi.) Les sniffers sont **passifs** (lecture seule, aucune action firmware).
+Le Traction Control est affiché **ON** (relâché = TC actif) / **OFF** (bouton tenu = TC désactivé).
+(Huile moteur retirée en v2.10.0.)
 
 ---
 

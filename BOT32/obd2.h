@@ -84,13 +84,7 @@ uint32_t obd2_get_dsg_oil_age_ms();
 float    obd2_get_last_egt_c();
 uint32_t obd2_get_egt_age_ms();
 
-// Engine oil temperature (Celsius) — v2.8.0
-//   DID 0xF43C from Engine ECU (request 0x7E0, response 0x7E8).
-//   Formula (chosen hypothesis): temp_C = data[5] - 8.
-//   Validated from oil72_exhaust480.csv at ~72 C reading.
-//   Returns -1000 if no recent data.
-float    obd2_get_last_engine_oil_c();
-uint32_t obd2_get_engine_oil_age_ms();
+// v2.10.0: engine oil temp (DID 0xF43C) removed entirely from BOT32.
 
 // =============================================================
 //  Action commands (one-shot, user-triggered from UI)
