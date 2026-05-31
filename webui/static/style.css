@@ -289,8 +289,7 @@ details.collapsible[open] > summary {
 /* Haldex AWD link card (functional, in Configuration section) */
 .card-haldex { border-left: 4px solid #ff8c00; background: #1a1820; }
 
-/* Race-btn-other for secondary modes (60/40, 75/25, Expert) */
-.race-btn-other { background: #2a313d; color: var(--text); }
+/* v3.2.0: .race-btn-other removed with the 60/40 / 75/25 / Expert modes. */
 
 /* Attribution box for 3rd-party project credits */
 .attribution-box {
@@ -384,49 +383,10 @@ details.collapsible[open] > summary {
   cursor: not-allowed;
 }
 
-/* =========================================================
-   RACE MODES PREVIEW (3-card layout for Haldex future feature)
-   ========================================================= */
-.race-modes-preview {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: 12px 0;
-}
-@media (max-width: 600px) {
-  .race-modes-preview { grid-template-columns: 1fr; }
-}
-.race-mode-card {
-  background: #131820;
-  border-radius: 8px;
-  padding: 12px;
-  border-top: 4px solid var(--border);
-  text-align: center;
-}
-.race-mode-card .race-mode-icon {
-  font-size: 32px;
-  line-height: 1;
-  margin-bottom: 6px;
-}
-.race-mode-card .race-mode-label {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin-bottom: 6px;
-}
-.race-mode-card .race-mode-desc {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-.race-mode-off     { border-top-color: var(--muted); }
-.race-mode-off .race-mode-label { color: var(--muted); }
-.race-mode-burnout { border-top-color: #ff8c00; }
-.race-mode-burnout .race-mode-label { color: #ff8c00; }
-.race-mode-launch  { border-top-color: var(--temp); }
-.race-mode-launch .race-mode-label { color: var(--temp); }
+/* v3.2.0: the .race-modes-preview / .race-mode-card preview layout was removed
+   (unused). The live mode controls use .race-buttons-preview + .race-btn below. */
 
-/* Race buttons */
+/* Race buttons (Haldex mode controls: STOCK / FWD / 50-50) */
 .race-buttons-preview {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
