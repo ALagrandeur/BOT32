@@ -20,7 +20,8 @@ TINV = [0]*256
 for i in range(256): TINV[T[i]] = i
 
 EXCLUDE = {0x3C0,0x641,0x107,0x647,0x040,0x106,0x116,0x65D,0x31E,0x32A,0x30B,0x5BF,0x366,
-           0x0FD}  # v3.6.0: 0x0FD is now the dedicated bench speedo frame (bench_test.cpp)
+           0x0FD,   # v3.6.0: 0x0FD is the dedicated bench speedo frame (bench_test.cpp)
+           0x31B}   # v3.6.2: 0x31B (ESP_24) is sent by the speedo too -> avoid double sender
 NAMES = {0x0FD:"ESP_21",0x101:"ESP_02",0x12B:"ESP/Getr",0x147:"Motor",0x31B:"status",
          0x32F:"status",0x394:"WBA_03",0x320:"steer",0x324:"steer",0x3BE:"Motor_14?"}
 
@@ -93,6 +94,9 @@ total_span = max(all_ts) - min(all_ts)
 magic_tables={}; table=[]
 for cid in sorted(rows):
     if cid in EXCLUDE: continue
+    # v3.6.2: keep ONLY identified telltales — unidentified frames did nothing
+    # to the cluster lamps on the bench, so they're dropped to keep the UI clean.
+    if cid not in KNOWN: continue
     fr=rows[cid]
     # v3.4.1: include SLOW status frames too (Check Engine, EPS, TPMS, yellow
     # triangle live in ~1-2 Hz 0x5xx/0x6xx frames -> only ~7-30 hits in a 15 s

@@ -151,20 +151,37 @@ bool bench_test_tick() {
     last_lh_eps_ms = now;
   }
 
-  // ───── 0x0FD ESP_21 (speedometer) — 50 Hz, MQB CRC — v3.6.0 ─────
-  // Vehicle speed in bytes 4-5 (little-endian, x0.01 km/h). Driven by the
-  // bench_speed_kmh slider. Template bytes 2-3 from the real capture; byte 0
-  // (CRC) + byte 1 (counter) are overwritten by mqb_apply().
-  if (now - last_esp21_ms >= 20) {
-    uint16_t spd_raw = (uint16_t)s.bench_speed_kmh * 100;   // km/h -> x0.01
-    // Template from the real capture steady-state: byte0=CRC (recomputed),
-    // byte1=0xD0 (high nibble 0xD = status, low nibble = counter via mqb_apply),
-    // bytes2-3 fixed, bytes4-5 = speed, bytes6-7 = 0.
-    uint8_t payload[8] = { 0x0B, 0xD0, 0x1F, 0x80,
-                           (uint8_t)(spd_raw & 0xFF),
-                           (uint8_t)((spd_raw >> 8) & 0xFF),
-                           0x00, 0x00 };
-    bench_send_crc(0x0FD, payload, 8, counter_esp21);
+  // ───── Speedometer — 20 Hz, MQB CRC — v3.6.2 ─────
+  // PROVEN recipe from mk7-cluster-bench-controller (r00li): the needle needs
+  // TWO frames sent IN PARALLEL, sharing one rolling counter:
+  //   0x0FD ESP_21 : bytes 4-5 LE = vSpeed = round(km/h * 98.5)   (template 00 D0 1F 80 D8 0D 00 00)
+  //   0x31B ESP_24 : bytes 2-3 LE = round(km/h * 1.35 * 100)      (template 00 00 00 00 00 01 00 00)
+  // Without the parallel 0x31B the needle does NOT move (this was the v3.6.0 bug).
+  if (now - last_esp21_ms >= 50) {
+    uint16_t spd = (s.bench_speed_kmh > 260) ? 260 : s.bench_speed_kmh;
+    uint16_t v_speed     = (uint16_t)((spd * 985UL + 5) / 10);          // km/h * 98.5
+    uint16_t esp24_speed = (uint16_t)((spd * 135UL * 100UL + 50) / 100);// km/h * 1.35 * 100
+
+    uint8_t esp21[8] = { 0x00, 0xD0, 0x1F, 0x80,
+                         (uint8_t)(v_speed & 0xFF),
+                         (uint8_t)((v_speed >> 8) & 0xFF),
+                         0x00, 0x00 };
+    // ESP_24 template uses THIS car's real captured steady-state (the same
+    // 0x31B payload that cleared TC/ABS/brake on the bench) with bytes 2-3
+    // overwritten by the kombi speed. So 0x31B drives the needle AND keeps
+    // those 3 lamps off. byte0=CRC + byte1 low-nibble=counter (mqb_apply).
+    uint8_t esp24[8] = { 0x67, 0x06,
+                         (uint8_t)(esp24_speed & 0xFF),
+                         (uint8_t)((esp24_speed >> 8) & 0xFF),
+                         0x00, 0x00, 0x00, 0x7E };
+
+    // Both frames share the same counter value this cycle (mqb_apply writes the
+    // counter into byte1 low nibble + the CRC into byte0 for each ID).
+    uint8_t shared = counter_esp21;
+    bench_send_crc(0x0FD, esp21, 8, shared);
+    shared = counter_esp21;                 // reuse same counter for the partner frame
+    bench_send_crc(0x31B, esp24, 8, shared);
+    counter_esp21 = (counter_esp21 + 1) & 0x0F;
     last_esp21_ms = now;
   }
 

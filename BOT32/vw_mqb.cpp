@@ -59,18 +59,26 @@ static const uint8_t MQB_CONST_0x040[16] = {
   0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
 };
 
-// ESP_21 (0x0FD) — vehicle speed (bytes 4-5 LE x0.01 km/h) — v3.6.0 bench speedo.
+// ESP_21 (0x0FD) — vehicle speed (bytes 4-5 LE) — v3.6.0 bench speedo.
 // Magic table derived from the real "OFF to start cluster.csv" capture.
 static const uint8_t MQB_CONST_0x0FD[16] = {
   0xB4, 0xEF, 0xF8, 0x49, 0x1E, 0xE5, 0xC2, 0xC0,
   0x97, 0x19, 0x3C, 0xC9, 0xF1, 0x98, 0xD6, 0x61,
 };
 
+// ESP_24 (0x31B) — kombi speed + distance, sent in parallel with 0x0FD to drive
+// the speedometer needle (r00li recipe). v3.6.2. Source: mk7-cluster-bench-controller.
+static const uint8_t MQB_CONST_0x31B[16] = {
+  0x67, 0x8A, 0xAE, 0x22, 0x4D, 0xD0, 0x51, 0x80,
+  0x5C, 0xB9, 0xCE, 0x1E, 0xDF, 0x02, 0x2D, 0xD4,
+};
+
 const uint8_t* mqb_const_for_addr(uint16_t addr) {
   switch (addr) {
     case 0x040: return MQB_CONST_0x040;
-    case 0x0FD: return MQB_CONST_0x0FD;   // v3.6.0: bench speedometer
+    case 0x0FD: return MQB_CONST_0x0FD;   // v3.6.0: bench speedometer (ESP_21)
     case 0x116: return MQB_CONST_0x116;
+    case 0x31B: return MQB_CONST_0x31B;   // v3.6.2: bench speedometer partner (ESP_24)
     case 0x31E: return MQB_CONST_0x31E;
     case 0x32A: return MQB_CONST_0x32A;
     case 0x394: return MQB_CONST_0x394;
