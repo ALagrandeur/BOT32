@@ -26,6 +26,7 @@ uint16_t bench_frames_id(uint8_t idx);      // CAN ID of frame idx
 uint16_t bench_frames_period(uint8_t idx);  // TX period (ms)
 bool     bench_frames_needs_crc(uint8_t idx);
 const char* bench_frames_group(uint8_t idx);// UI group label
+const char* bench_frames_label(uint8_t idx);// human description (identified telltales)
 bool     bench_frames_enabled(uint8_t idx); // current live enable state
 
 bool     bench_frames_set_enabled(uint8_t idx, bool on);  // live toggle

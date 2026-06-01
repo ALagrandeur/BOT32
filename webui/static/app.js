@@ -90,7 +90,7 @@ const SETTING_KEYS = [
   // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
   "tx_enabled", "force_tx_always",
   // Bench test (v2.9.0: bench_display_value_pct + bench_force_override removed)
-  "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar",
+  "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar", "bench_speed_kmh",
   // Haldex link (v3.1.0: ESP-NOW only — transport/bus/state_id/cmd_id removed)
   "haldex_enabled", "haldex_espnow_peer_mac",
 ];
@@ -110,6 +110,7 @@ function applySettings(s) {
   // Update slider displays (sliders need their displayed value updated)
   if (s.bench_rpm !== undefined) $("bench-rpm-display").textContent = s.bench_rpm;
   if (s.bench_map_mbar !== undefined) $("bench-map-display").textContent = s.bench_map_mbar;
+  if (s.bench_speed_kmh !== undefined && $("bench-speed-display")) $("bench-speed-display").textContent = s.bench_speed_kmh;
   // v2.9.0: bench-dvp-display removed with the cluster_override feature.
   // Highlight airbag line in bench list if block_airbag is OFF
   const airbagLine = $("bench-airbag-line");
@@ -190,6 +191,7 @@ document.querySelectorAll('input[type="range"]').forEach(slider => {
     // Update visible display immediately
     if (key === "bench_rpm") $("bench-rpm-display").textContent = value;
     if (key === "bench_map_mbar") $("bench-map-display").textContent = value;
+    if (key === "bench_speed_kmh" && $("bench-speed-display")) $("bench-speed-display").textContent = value;
     // v2.9.0: bench_display_value_pct slider removed with cluster_override.
     // Send to ESP32 (throttled to 10/sec)
     throttledSliderSend(key, value);
@@ -847,8 +849,12 @@ socket.on("connection", (c) => {
           updateCount();
         });
         lbl.appendChild(cb);
-        lbl.appendChild(document.createTextNode(
-          id + "  ·  " + fr.period + " ms" + (fr.crc ? "  ·  CRC" : "")));
+        const desc = id + "  ·  " + fr.period + " ms" + (fr.crc ? "  ·  CRC" : "")
+                     + (fr.label ? "  —  " + fr.label : "");
+        const txt = document.createElement("span");
+        txt.textContent = desc;
+        if (fr.label) txt.style.color = "#ffd000";   // highlight identified telltales
+        lbl.appendChild(txt);
         fs.appendChild(lbl);
       });
       host.appendChild(fs);

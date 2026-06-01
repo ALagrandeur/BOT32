@@ -49,6 +49,7 @@ static Settings make_defaults() {
   s.bench_test_enabled = false;  // default: bench mode OFF
   s.bench_rpm          = 1500;
   s.bench_map_mbar     = 1500;
+  s.bench_speed_kmh    = 0;      // v3.6.0: default 0 km/h (needle at rest)
   s.bench_test_bus     = 0;      // default: CAN_CLUSTER
   // v2.9.0: bench_display_value_pct + bench_force_override removed.
   s.tx_enabled_before_bench = true;  // v2.7.1: default safe (TX restored ON if no bench transition)
@@ -109,6 +110,7 @@ void settings_init() {
   current.bench_test_enabled = prefs.getBool("bch_en", false);
   current.bench_rpm          = prefs.getUShort("bch_rpm", 1500);
   current.bench_map_mbar     = prefs.getUShort("bch_map", 1500);
+  current.bench_speed_kmh    = prefs.getUShort("bch_spd", 0);   // v3.6.0
   current.bench_test_bus     = prefs.getUChar("bch_bus", 0);
   // v2.9.0: bench_display_value_pct + bench_force_override NVS load removed.
   current.tx_enabled_before_bench = prefs.getBool("tx_pre_bch", true);  // v2.7.1
@@ -291,6 +293,10 @@ bool settings_set_bench_map_mbar(uint16_t v) {
   current.bench_map_mbar = (v > 3000) ? 3000 : v;
   return save_ushort("bch_map", current.bench_map_mbar);
 }
+bool settings_set_bench_speed_kmh(uint16_t v) {
+  current.bench_speed_kmh = (v > 300) ? 300 : v;
+  return save_ushort("bch_spd", current.bench_speed_kmh);
+}
 bool settings_set_bench_test_bus(uint8_t v) {
   current.bench_test_bus = (v > 1) ? 0 : v;
   return prefs.putUChar("bch_bus", current.bench_test_bus) > 0;
@@ -340,6 +346,7 @@ void settings_reset_to_defaults() {
   prefs.putBool("bch_en", current.bench_test_enabled);
   prefs.putUShort("bch_rpm", current.bench_rpm);
   prefs.putUShort("bch_map", current.bench_map_mbar);
+  prefs.putUShort("bch_spd", current.bench_speed_kmh);   // v3.6.0
   prefs.putUChar("bch_bus", current.bench_test_bus);
   // v2.9.0: bench_display_value_pct + bench_force_override NVS writes removed.
   prefs.putBool("tx_pre_bch", current.tx_enabled_before_bench);

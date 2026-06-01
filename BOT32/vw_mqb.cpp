@@ -59,9 +59,17 @@ static const uint8_t MQB_CONST_0x040[16] = {
   0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40,
 };
 
+// ESP_21 (0x0FD) — vehicle speed (bytes 4-5 LE x0.01 km/h) — v3.6.0 bench speedo.
+// Magic table derived from the real "OFF to start cluster.csv" capture.
+static const uint8_t MQB_CONST_0x0FD[16] = {
+  0xB4, 0xEF, 0xF8, 0x49, 0x1E, 0xE5, 0xC2, 0xC0,
+  0x97, 0x19, 0x3C, 0xC9, 0xF1, 0x98, 0xD6, 0x61,
+};
+
 const uint8_t* mqb_const_for_addr(uint16_t addr) {
   switch (addr) {
     case 0x040: return MQB_CONST_0x040;
+    case 0x0FD: return MQB_CONST_0x0FD;   // v3.6.0: bench speedometer
     case 0x116: return MQB_CONST_0x116;
     case 0x31E: return MQB_CONST_0x31E;
     case 0x32A: return MQB_CONST_0x32A;

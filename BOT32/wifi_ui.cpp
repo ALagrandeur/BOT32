@@ -421,7 +421,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "3.5.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "3.6.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -498,6 +498,7 @@ static void handle_api_get_settings() {
   doc["bench_test_bus"]            = s.bench_test_bus;
   doc["bench_rpm"]                 = s.bench_rpm;
   doc["bench_map_mbar"]            = s.bench_map_mbar;
+  doc["bench_speed_kmh"]           = s.bench_speed_kmh;
   // v2.9.0: bench_display_value_pct + bench_force_override removed.
   // v2.9.0: 7 cluster_override / display_* settings removed.
   doc["cef_auto_enabled"]              = s.cef_auto_enabled;

@@ -69,6 +69,7 @@ struct Settings {
   bool     bench_test_enabled;   // master toggle, default false
   uint16_t bench_rpm;            // 0..8000 RPM (Motor_04 bytes 3-4)
   uint16_t bench_map_mbar;       // 0..3000 mbar (Motor_09 byte 0 via coolant mapping)
+  uint16_t bench_speed_kmh;      // 0..300 km/h (ESP_21 0x0FD bytes 4-5) — v3.6.0 speedo
   uint8_t  bench_test_bus;       // 0 = TX on CAN_CLUSTER, 1 = TX on CAN_OBD2
 
   // v2.9.0: bench_display_value_pct + bench_force_override removed
@@ -131,6 +132,7 @@ bool settings_set_obd2_resp_id(uint16_t v);
 bool settings_set_bench_test_enabled(bool v);
 bool settings_set_bench_rpm(uint16_t v);
 bool settings_set_bench_map_mbar(uint16_t v);
+bool settings_set_bench_speed_kmh(uint16_t v);
 bool settings_set_bench_test_bus(uint8_t v);
 // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
 bool settings_set_haldex_enabled(bool v);

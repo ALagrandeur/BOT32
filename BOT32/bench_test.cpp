@@ -17,6 +17,7 @@ static uint8_t  counter_airbag   = 0;   // 0x040
 static uint8_t  counter_esp10    = 0;   // 0x116
 static uint8_t  counter_tsk07    = 0;   // 0x31E
 static uint8_t  counter_lh_eps   = 0;   // 0x32A
+static uint8_t  counter_esp21    = 0;   // 0x0FD (v3.6.0 bench speedo)
 
 // Per-frame last TX timestamp (ms)
 static uint32_t last_wake_ms      = 0;
@@ -29,6 +30,7 @@ static uint32_t last_esp10_ms     = 0;
 static uint32_t last_esp20_ms     = 0;
 static uint32_t last_tsk07_ms     = 0;
 static uint32_t last_lh_eps_ms    = 0;
+static uint32_t last_esp21_ms     = 0;   // 0x0FD (v3.6.0 bench speedo)
 
 void bench_test_init() {
   bench_frames_init();   // v3.4.0: all candidate lamp frames default OFF
@@ -147,6 +149,23 @@ bool bench_test_tick() {
     static const uint8_t LH_EPS_TEMPLATE[8] = { 0x4B, 0x08, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00 };
     bench_send_crc(0x32A, LH_EPS_TEMPLATE, 8, counter_lh_eps);
     last_lh_eps_ms = now;
+  }
+
+  // ───── 0x0FD ESP_21 (speedometer) — 50 Hz, MQB CRC — v3.6.0 ─────
+  // Vehicle speed in bytes 4-5 (little-endian, x0.01 km/h). Driven by the
+  // bench_speed_kmh slider. Template bytes 2-3 from the real capture; byte 0
+  // (CRC) + byte 1 (counter) are overwritten by mqb_apply().
+  if (now - last_esp21_ms >= 20) {
+    uint16_t spd_raw = (uint16_t)s.bench_speed_kmh * 100;   // km/h -> x0.01
+    // Template from the real capture steady-state: byte0=CRC (recomputed),
+    // byte1=0xD0 (high nibble 0xD = status, low nibble = counter via mqb_apply),
+    // bytes2-3 fixed, bytes4-5 = speed, bytes6-7 = 0.
+    uint8_t payload[8] = { 0x0B, 0xD0, 0x1F, 0x80,
+                           (uint8_t)(spd_raw & 0xFF),
+                           (uint8_t)((spd_raw >> 8) & 0xFF),
+                           0x00, 0x00 };
+    bench_send_crc(0x0FD, payload, 8, counter_esp21);
+    last_esp21_ms = now;
   }
 
   // ───── v3.4.0: user-toggled "lamp killer" candidate frames ─────

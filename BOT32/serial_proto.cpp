@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.5.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.6.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -78,6 +78,7 @@ static void emit_settings() {
   doc["bench_test_enabled"] = s.bench_test_enabled;
   doc["bench_rpm"]          = s.bench_rpm;
   doc["bench_map_mbar"]     = s.bench_map_mbar;
+  doc["bench_speed_kmh"]    = s.bench_speed_kmh;
   doc["bench_test_bus"]     = s.bench_test_bus;
   // v2.9.0: bench_display_value_pct + bench_force_override removed.
   doc["tx_enabled_before_bench"] = s.tx_enabled_before_bench;  // v2.7.1 diag (read-only)
@@ -338,6 +339,7 @@ static void handle_cmd(const char* line) {
       o["period"] = bench_frames_period(i);
       o["crc"]    = bench_frames_needs_crc(i);
       o["group"]  = bench_frames_group(i);
+      o["label"]  = bench_frames_label(i);
       o["on"]     = bench_frames_enabled(i);
     }
     serializeJson(r, Serial);
@@ -423,6 +425,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "bench_test_enabled") == 0) ok = settings_set_bench_test_enabled(v | false);
   else if (strcmp(key, "bench_rpm")          == 0) ok = settings_set_bench_rpm(v          | 0);
   else if (strcmp(key, "bench_map_mbar")     == 0) ok = settings_set_bench_map_mbar(v     | 0);
+  else if (strcmp(key, "bench_speed_kmh")    == 0) ok = settings_set_bench_speed_kmh(v    | 0);
   else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(v     | 0);
   // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
   else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(v     | false);

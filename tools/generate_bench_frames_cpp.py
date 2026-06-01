@@ -19,11 +19,24 @@ for i in range(256):
 TINV = [0]*256
 for i in range(256): TINV[T[i]] = i
 
-EXCLUDE = {0x3C0,0x641,0x107,0x647,0x040,0x106,0x116,0x65D,0x31E,0x32A,0x30B,0x5BF,0x366}
+EXCLUDE = {0x3C0,0x641,0x107,0x647,0x040,0x106,0x116,0x65D,0x31E,0x32A,0x30B,0x5BF,0x366,
+           0x0FD}  # v3.6.0: 0x0FD is now the dedicated bench speedo frame (bench_test.cpp)
 NAMES = {0x0FD:"ESP_21",0x101:"ESP_02",0x12B:"ESP/Getr",0x147:"Motor",0x31B:"status",
          0x32F:"status",0x394:"WBA_03",0x320:"steer",0x324:"steer",0x3BE:"Motor_14?"}
 
+# v3.6.0: telltales identified on the bench by the user (frame -> human label).
+# Any frame listed here is shown in the dedicated "Voyants identifies" group with
+# its description, so they're easy to find. (Descriptions kept ASCII-safe for the
+# C string; the UI is the place for accents.)
+KNOWN = {
+  0x656: "Defaillance direction (cadran RPM)",
+  0x31B: "Traction control + ABS + frein rouge (cadran RPM)",
+  0x64A: "TPMS (cadran RPM)",
+  0x394: "Shift lock - appuyer sur le frein (cadran km/h)",
+}
+
 def group(cid, per):
+    if cid in KNOWN: return "Voyants identifies"   # v3.6.0: identified telltales first
     if cid in (0x0FD,0x101,0x12B,0x147) or per <= 30: return "ESP/ABS (rapide)"
     if per <= 60: return "Statut 50ms"
     if per >= 400: return "Lent (>=400ms) - Check Engine/EPS/TPMS?"
@@ -154,14 +167,20 @@ L.append('')
 L.append('// ---- Candidate frame table (DERIVED) ----')
 L.append('struct BenchFrame {')
 L.append('  uint16_t id; uint16_t period_ms; uint8_t dlc;')
-L.append('  uint8_t  tmpl[8]; bool needs_crc; const char* group;')
+L.append('  uint8_t  tmpl[8]; bool needs_crc; const char* group; const char* label;')
 L.append('};')
+L.append('// Identified telltales first (sorted), then the rest by period.')
+def sortkey(r):
+    cid,per = r[0], r[1]
+    return (0 if cid in KNOWN else 1, per, cid)
+table.sort(key=sortkey)
 L.append('static const BenchFrame FRAMES[] = {')
 for cid,per,dlc,sample,crc in table:
     pl=", ".join("0x%02X"%b for b in sample)
     nm=NAMES.get(cid,"")
-    L.append('  { 0x%03X, %3d, %d, {%s}, %s, "%s" },%s'%(
-        cid,per,dlc,pl,"true" if crc else "false",group(cid,per),
+    label=KNOWN.get(cid,"")
+    L.append('  { 0x%03X, %3d, %d, {%s}, %s, "%s", "%s" },%s'%(
+        cid,per,dlc,pl,"true" if crc else "false",group(cid,per),label,
         ("  // "+nm) if nm else ""))
 L.append('};')
 L.append('static const uint8_t N_FRAMES = sizeof(FRAMES)/sizeof(FRAMES[0]);')
@@ -180,6 +199,7 @@ L.append('uint16_t bench_frames_id(uint8_t idx)        { return idx<N_FRAMES?FRA
 L.append('uint16_t bench_frames_period(uint8_t idx)     { return idx<N_FRAMES?FRAMES[idx].period_ms:0; }')
 L.append('bool     bench_frames_needs_crc(uint8_t idx)  { return idx<N_FRAMES?FRAMES[idx].needs_crc:false; }')
 L.append('const char* bench_frames_group(uint8_t idx)   { return idx<N_FRAMES?FRAMES[idx].group:""; }')
+L.append('const char* bench_frames_label(uint8_t idx)   { return idx<N_FRAMES?FRAMES[idx].label:""; }')
 L.append('bool     bench_frames_enabled(uint8_t idx)    { return idx<N_FRAMES?g_enabled[idx]:false; }')
 L.append('')
 L.append('bool bench_frames_set_enabled(uint8_t idx, bool on) {')
