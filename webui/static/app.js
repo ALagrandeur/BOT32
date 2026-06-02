@@ -764,6 +764,86 @@ socket.on("raw", (l) => appendLog(`(raw) ${l.line}`));
 socket.on("ack", (a) => appendLog(`ack ${a.for} ok=${a.ok}${a.msg ? ' '+a.msg : ''}`));
 
 // ===========================================================
+//  v3.7.0 — DEV: direct USB-C link to the X2 (PC only)
+//  A connection-source selector in the Haldex card. "espnow" = normal (via
+//  main, unchanged). "usbc" = the server routes Haldex cmds straight to the X2
+//  over a 2nd serial port, and injects the X2's state into status.haldex.
+//  The browser keeps reading s.haldex exactly as before — only the source changes.
+// ===========================================================
+(function () {
+  const sel   = $("haldex-source");
+  const usbRow = $("x2-usb-row");
+  const banner = $("x2-usb-banner");
+  const portSel = $("x2-port");
+  if (!sel) return;   // card not present -> nothing to do
+
+  function refreshUsbVisibility(source) {
+    const usbc = (source === "usbc");
+    if (usbRow) usbRow.style.display = usbc ? "" : "none";
+    if (banner) banner.style.display = usbc ? "block" : "none";
+  }
+
+  async function loadX2Ports() {
+    if (!portSel) return;
+    try {
+      const r = await fetch("/api/ports");
+      const ports = await r.json();
+      portSel.innerHTML = '<option value="">(auto-détecter)</option>';
+      for (const p of ports) {
+        const opt = document.createElement("option");
+        opt.value = p.device;
+        opt.textContent = `${p.device} — ${p.desc}`;
+        portSel.appendChild(opt);
+      }
+    } catch (e) { console.error("x2 ports:", e); }
+  }
+
+  sel.addEventListener("change", () => {
+    const src = sel.value;
+    socket.emit("set_haldex_source", { source: src });
+    refreshUsbVisibility(src);
+    if (src === "usbc") loadX2Ports();
+  });
+
+  const rb = $("x2-refresh");   if (rb) rb.addEventListener("click", loadX2Ports);
+  const cb = $("x2-connect");   if (cb) cb.addEventListener("click", () =>
+    socket.emit("connect_x2", { port: portSel ? portSel.value || null : null }));
+  const db = $("x2-disconnect"); if (db) db.addEventListener("click", () =>
+    socket.emit("disconnect_x2", {}));
+
+  // Server tells us the current source + X2 link status.
+  socket.on("x2_link", (d) => {
+    if (d.source && sel.value !== d.source) sel.value = d.source;
+    refreshUsbVisibility(d.source);
+    const cs = $("x2-conn-state");
+    if (cs) cs.textContent = d.x2_connected
+      ? ("X2 connecté sur " + (d.x2_port || "?"))
+      : "X2 NON connecté" + (d.error ? " (" + d.error + ")" : "");
+  });
+
+  socket.on("x2_hello", (h) => {
+    const cs = $("x2-conn-state");
+    if (cs) cs.textContent = "X2 connecté — firmware v" + (h.version || "?");
+  });
+
+  // Direct X2 state (only emitted by the server when source == usbc): feed the
+  // SAME live renderer the ESP-NOW path uses, so the UI is identical.
+  socket.on("haldex_state", (st) => {
+    updateHaldexLive({
+      online: true,
+      local_mode: st.mode,
+      current_mode: st.mode,
+      pump_engagement_pct: st.pump,
+      lock_target_pct: st.target,
+      vehicle_kmh: st.kmh,
+      pedal_pct: st.pedal,
+      passthrough: st.passthrough,
+      age_ms: 0,
+    });
+  });
+})();
+
+// ===========================================================
 //  Init
 // ===========================================================
 loadPorts();

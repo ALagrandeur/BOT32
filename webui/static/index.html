@@ -370,6 +370,35 @@
         <b>Ne pas utiliser sur la route publique.</b>
       </div>
 
+      <!-- v3.7.0: DEV connection-source selector (PC only) -->
+      <h4 class="subtitle">🔌 Connexion au module X2 (dev)</h4>
+      <div class="row">
+        <label>Mode de connexion Haldex<br>
+          <select id="haldex-source">
+            <option value="espnow">ESP-NOW (normal — via ESP32 principal)</option>
+            <option value="usbc">USB-C (direct au X2 — développement)</option>
+          </select>
+          <span class="muted small">PC seulement. « USB-C » dialogue DIRECTEMENT avec le X2 (court-circuite l'ESP-NOW) pour tester son firmware.</span>
+        </label>
+      </div>
+      <div class="row" id="x2-usb-row" style="display:none">
+        <label>Port USB du module X2<br>
+          <span style="display:flex; gap:6px; align-items:center">
+            <select id="x2-port" style="flex:1"></select>
+            <button id="x2-refresh" class="secondary" title="Rafraîchir la liste des ports">↻</button>
+            <button id="x2-connect">Connect X2</button>
+            <button id="x2-disconnect" class="secondary">Disconnect</button>
+          </span>
+          <span class="muted small">Laisse vide pour auto-détecter (le port qui n'est PAS le principal). Le X2 s'annonce au boot.</span>
+        </label>
+      </div>
+      <div class="warning-box" id="x2-usb-banner"
+           style="display:none; background:#3a2a00; border-color:#ffd000; color:#ffe680;">
+        ⚙️ <b>MODE DÉVELOPPEMENT USB-C ACTIF</b> — le menu Haldex parle DIRECTEMENT au
+        module X2 (pas via l'ESP32 principal). <span id="x2-conn-state">X2 : —</span>.
+        Repasse sur <b>ESP-NOW</b> pour revenir au fonctionnement normal.
+      </div>
+
       <h4 class="subtitle">⚙️ Configuration (lien ESP-NOW)</h4>
       <div class="row">
         <label class="checkbox">
