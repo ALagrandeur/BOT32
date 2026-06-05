@@ -336,6 +336,7 @@ def _x2_haldex_block_locked() -> dict:
         "passthrough": st.get("passthrough", 1),
         "car_rx": st.get("car_rx"), "car_txf": st.get("car_txf"),
         "hdx_rx": st.get("hdx_rx"), "hdx_txf": st.get("hdx_txf"),
+        "hdx_eflg": st.get("hdx_eflg"), "hdx_tec": st.get("hdx_tec"),
         "age_ms": int((time.monotonic() - state.get("x2_state_ms", 0)) * 1000),
     }
 

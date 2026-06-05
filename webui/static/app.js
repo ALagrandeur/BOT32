@@ -610,10 +610,16 @@ function updateHaldexLive(hx) {
   const carEl = $("haldex-live-carcan");
   const hdxEl = $("haldex-live-hdxcan");
   setCell(carEl, fmtCan(hx.car_rx, hx.car_txf));
-  setCell(hdxEl, fmtCan(hx.hdx_rx, hx.hdx_txf));
-  // Flag dropped frames in red even when online.
+  // Haldex side also shows the MCP2515 TX error counter (TEC) — an EARLY warning:
+  // it climbs on accumulating bit errors (marginal termination) before bus-off.
+  let hdxTxt = fmtCan(hx.hdx_rx, hx.hdx_txf);
+  if (hx.hdx_tec !== undefined && hx.hdx_tec !== null) hdxTxt += " · TEC " + hx.hdx_tec;
+  setCell(hdxEl, hdxTxt);
+  // Flag in red on dropped frames, a climbing TEC (>96 ~ error-passive soon), or
+  // a non-zero MCP error flag (bus-off etc.).
   if (online && carEl && hx.car_txf) carEl.className = "value-big mode-SAFE_FAULT";
-  if (online && hdxEl && hx.hdx_txf) hdxEl.className = "value-big mode-SAFE_FAULT";
+  if (online && hdxEl && (hx.hdx_txf || hx.hdx_eflg || (hx.hdx_tec | 0) > 96))
+    hdxEl.className = "value-big mode-SAFE_FAULT";
 
   // v3.2.0 — passthrough (actual state reported by the X2)
   const ptEl = $("haldex-live-passthrough");
@@ -850,6 +856,7 @@ socket.on("ack", (a) => appendLog(`ack ${a.for} ok=${a.ok}${a.msg ? ' '+a.msg : 
       passthrough: st.passthrough,
       car_rx: st.car_rx, car_txf: st.car_txf,
       hdx_rx: st.hdx_rx, hdx_txf: st.hdx_txf,
+      hdx_eflg: st.hdx_eflg, hdx_tec: st.hdx_tec,
       age_ms: 0,
     });
   });
