@@ -22,9 +22,13 @@
 #include "button_sniffer.h"
 #include "haldex_link.h"
 #include "settings.h"
+#include "config.h"        // CAN_ID_WBA_03
+#include "can_handler.h"   // can_send on the cluster bus
+#include "vw_mqb.h"        // mqb_apply (counter + CRC for 0x394)
 
 #define COMBO_FRESH_MS    2000   // sniffer values older than this are ignored
 #define TELLTALE_BLINK_MS 500    // 0.5 s blink phase while non-STOCK
+#define TELLTALE_TX_MS    25     // v3.10.0: 40 Hz TX to dominate the gateway's ~20 Hz
 
 static uint8_t  g_mode          = HALDEX_M_STOCK;
 static bool     g_fwd_from_combo = false;   // FWD currently held by the combo
@@ -32,6 +36,8 @@ static bool     g_prev_combo     = false;   // rising-edge detector
 static bool     g_telltale_phase = false;
 static uint32_t g_last_blink_ms  = 0;
 static bool     g_passthrough_desired = true;  // safe default (X2 boots ON too)
+static uint32_t g_last_tt_tx_ms  = 0;          // v3.10.0: FWD telltale TX rate-limit
+static uint8_t  g_tt_counter     = 0;          // v3.10.0: WBA_03 rolling counter
 
 void haldex_modes_init() {
   g_mode           = HALDEX_M_STOCK;
@@ -95,12 +101,38 @@ void haldex_modes_tick(uint32_t now) {
     apply_mode(HALDEX_M_STOCK);
   }
 
-  // ---- Telltale blink phase (exposed only; no CAN emit here) ----
+  // ---- Telltale blink phase ----
   if (g_mode == HALDEX_M_STOCK) {
     g_telltale_phase = false;
   } else if (now - g_last_blink_ms >= TELLTALE_BLINK_MS) {
     g_telltale_phase = !g_telltale_phase;
     g_last_blink_ms = now;
+  }
+
+  // ---- v3.10.0: optional FWD cluster telltale (opt-in) ----
+  // When haldex_fwd_telltale is ON and mode == FWD, blink the WBA_03 (0x394)
+  // "shift lock — press brake" message on the km/h dial as a visual FWD
+  // indicator. We TX at ~40 Hz during the blink-ON phase to DOMINATE the
+  // gateway's ~20 Hz (same technique the old cluster display override used),
+  // and stay silent during the OFF phase so the gateway's normal gear display
+  // resumes → the message blinks. Default OFF (TXing on the cluster bus contends
+  // with the gateway → closed-course / bench only). Honours the safety rule:
+  // nothing fires unless the user explicitly enables this setting.
+  if (s.haldex_fwd_telltale && g_mode == HALDEX_M_FWD && g_telltale_phase) {
+    if (now - g_last_tt_tx_ms >= TELLTALE_TX_MS) {
+      g_last_tt_tx_ms = now;
+      // Data bytes from the bench capture that lights the message. byte0 (CRC)
+      // and byte1 low nibble (rolling counter) are filled by mqb_apply().
+      uint8_t p[8] = { 0x00, 0x10, 0x00, 0x1A, 0x00, 0x00, 0x00, 0x00 };
+      mqb_apply(CAN_ID_WBA_03, p, 8, g_tt_counter);
+      g_tt_counter = (uint8_t)((g_tt_counter + 1) & 0x0F);
+      CanFrame f;
+      f.id = CAN_ID_WBA_03;
+      f.len = 8;
+      f.timestamp = now;
+      for (uint8_t b = 0; b < 8; b++) f.data[b] = p[b];
+      can_send(CAN_CLUSTER, f);
+    }
   }
 }
 

@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.9.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.10.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -83,6 +83,7 @@ static void emit_settings() {
   // v2.9.0: bench_display_value_pct + bench_force_override removed.
   doc["tx_enabled_before_bench"] = s.tx_enabled_before_bench;  // v2.7.1 diag (read-only)
   doc["haldex_enabled"]     = s.haldex_enabled;
+  doc["haldex_fwd_telltale"] = s.haldex_fwd_telltale;   // v3.10.0
   // v3.2.0: haldex_bus/state_id/cmd_id/transport removed (ESP-NOW only).
   doc["haldex_espnow_peer_mac"] = s.haldex_espnow_peer_mac;
   doc["bot32_mac"]          = haldex_espnow_get_my_mac();   // for user pairing
@@ -432,6 +433,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(v     | 0);
   // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
   else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(v     | false);
+  else if (strcmp(key, "haldex_fwd_telltale")   == 0) ok = settings_set_haldex_fwd_telltale(v | false);
   // v3.2.0: haldex_bus/state_id/cmd_id/transport setters removed (ESP-NOW only).
   else if (strcmp(key, "haldex_espnow_peer_mac") == 0) ok = settings_set_haldex_espnow_peer_mac(v | "");
   return ok;

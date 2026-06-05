@@ -99,6 +99,7 @@ const SETTING_KEYS = [
   "bench_test_enabled", "bench_test_bus", "bench_rpm", "bench_map_mbar", "bench_speed_kmh",
   // Haldex link (v3.1.0: ESP-NOW only — transport/bus/state_id/cmd_id removed)
   "haldex_enabled", "haldex_espnow_peer_mac",
+  "haldex_fwd_telltale",   // v3.10.0: blink 0x394 shift-lock as FWD indicator
 ];
 
 function applySettings(s) {
@@ -227,6 +228,15 @@ document.addEventListener("change", (e) => {
     const ok2 = confirm("Final confirmation: REALLY disable airbag block ?");
     if (!ok2) {
       e.target.checked = true;
+      return;
+    }
+  }
+
+  // v3.10.0: confirm before enabling the FWD cluster telltale (it TXes 0x394 on
+  // the cluster bus, contending with the gateway — closed-course / bench only).
+  if (key === "haldex_fwd_telltale" && e.target.checked) {
+    if (!confirm("⚠ Voyant FWD au combiné\n\nBOT32 va émettre 0x394 (message « shift lock ») sur le bus du combiné pour le faire clignoter en mode FWD. Cela entre en conflit avec la passerelle (comme l'ancien override d'affichage) → circuit fermé / banc seulement.\n\nActiver ?")) {
+      e.target.checked = false;
       return;
     }
   }
