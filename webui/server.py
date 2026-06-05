@@ -356,6 +356,8 @@ def handle_x2_event(obj: dict):
             active = state["haldex_source"] == "usbc"
         if active:
             socketio.emit("haldex_state", obj)
+    elif evt == "ack" or evt == "pong":
+        socketio.emit(evt, obj)   # forward the X2's command ack/pong to the browser
 
 
 # ============================================================

@@ -777,7 +777,18 @@ function appendLog(line) {
 }
 socket.on("log", (l) => appendLog(`[${l.level}] ${l.msg}`));
 socket.on("raw", (l) => appendLog(`(raw) ${l.line}`));
-socket.on("ack", (a) => appendLog(`ack ${a.for} ok=${a.ok}${a.msg ? ' '+a.msg : ''}`));
+socket.on("ack", (a) => {
+  appendLog(`ack ${a.for} ok=${a.ok}${a.msg ? ' ' + a.msg : ''}`);
+  // Show Haldex command acks prominently next to the buttons.
+  if (a.for === "set_haldex_mode" || a.for === "set_haldex_passthrough") {
+    const status = $("haldex-cmd-status");
+    if (status) {
+      status.textContent = a.ok ? "✓ appliqué par le X2" : ("✗ " + (a.msg || "échec"));
+      status.style.color = a.ok ? "#4caf50" : "#e74c3c";
+      setTimeout(() => { status.style.color = ""; status.textContent = ""; }, 3000);
+    }
+  }
+});
 
 // ===========================================================
 //  v3.7.0 — DEV: direct USB-C link to the X2 (PC only)
