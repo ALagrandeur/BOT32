@@ -604,6 +604,16 @@ function updateHaldexLive(hx) {
   setCell(targetEl, hx.lock_target_pct + "%");
   setCell(speedEl,  hx.vehicle_kmh);
   setCell(pedalEl,  hx.pedal_pct + "%");
+  // CAN bridge health per side: "rx · tx✗ N". A non-zero tx✗ = frames dropped.
+  const fmtCan = (rx, txf) => (rx === undefined || rx === null)
+    ? "—" : (rx + " · tx✗ " + (txf || 0));
+  const carEl = $("haldex-live-carcan");
+  const hdxEl = $("haldex-live-hdxcan");
+  setCell(carEl, fmtCan(hx.car_rx, hx.car_txf));
+  setCell(hdxEl, fmtCan(hx.hdx_rx, hx.hdx_txf));
+  // Flag dropped frames in red even when online.
+  if (online && carEl && hx.car_txf) carEl.className = "value-big mode-SAFE_FAULT";
+  if (online && hdxEl && hx.hdx_txf) hdxEl.className = "value-big mode-SAFE_FAULT";
 
   // v3.2.0 — passthrough (actual state reported by the X2)
   const ptEl = $("haldex-live-passthrough");
@@ -838,6 +848,8 @@ socket.on("ack", (a) => appendLog(`ack ${a.for} ok=${a.ok}${a.msg ? ' '+a.msg : 
       vehicle_kmh: st.kmh,
       pedal_pct: st.pedal,
       passthrough: st.passthrough,
+      car_rx: st.car_rx, car_txf: st.car_txf,
+      hdx_rx: st.hdx_rx, hdx_txf: st.hdx_txf,
       age_ms: 0,
     });
   });
