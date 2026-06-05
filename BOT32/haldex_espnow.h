@@ -32,4 +32,8 @@ bool haldex_espnow_send_passthrough(bool passthrough);
 // to configure on the MITM ESP32 side).
 String haldex_espnow_get_my_mac();
 
+// v3.8.0: number of STATE packets received from the X2 since boot. 0 = the
+// ESP-NOW link is DOWN (wrong channel, X2 off/asleep, or out of range).
+uint32_t haldex_espnow_get_rx_count();
+
 #endif // BOT32_HALDEX_ESPNOW_H

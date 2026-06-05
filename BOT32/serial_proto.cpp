@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "3.7.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "3.8.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -191,6 +191,9 @@ static void emit_status() {
   hx_obj["age_ms"]              = hx_age;
   // v3.1.0: explicit online flag (STATE arrives at 5 Hz; stale => link down)
   hx_obj["online"]              = hx.valid && (hx_age < HALDEX_LINK_STALE_MS);
+  // v3.8.0: ESP-NOW RX counter — 0 means the X2 has never been heard (link down:
+  // wrong channel / X2 off or asleep / out of range). Lets the UI diagnose.
+  hx_obj["espnow_rx"]           = haldex_espnow_get_rx_count();
   // v3.1.0: the mode decided locally by haldex_modes (immediate UI feedback,
   // independent of the MITM's echoed mode) + the desired telltale blink phase.
   hx_obj["local_mode"]          = haldex_modes_get();

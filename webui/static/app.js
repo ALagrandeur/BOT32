@@ -591,8 +591,16 @@ function updateHaldexLive(hx) {
     statusEl.className = online ? "value-big mode-SILENT" : "value-big inactive";
   }
   if (ageEl) {
-    ageEl.textContent = (hx.age_ms !== undefined && hx.age_ms < 4294967295)
-      ? ("il y a " + (hx.age_ms / 1000).toFixed(1) + "s") : "aucun paquet reçu";
+    if (hx.age_ms !== undefined && hx.age_ms < 4294967295) {
+      ageEl.textContent = "il y a " + (hx.age_ms / 1000).toFixed(1) + "s";
+    } else if (hx.espnow_rx !== undefined) {
+      // v3.8.0: never-received => show the ESP-NOW RX counter so the user can
+      // tell "main never heard the X2" (0) apart from a transient stale gap.
+      ageEl.textContent = "ESP-NOW reçus : " + hx.espnow_rx
+        + (hx.espnow_rx ? "" : " — vérifie alim/canal du X2");
+    } else {
+      ageEl.textContent = "aucun paquet reçu";
+    }
   }
 
   const setCell = (el, val) => {

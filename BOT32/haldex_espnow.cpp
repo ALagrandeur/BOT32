@@ -26,8 +26,10 @@
 #include "haldex_espnow.h"
 #include "haldex_link.h"
 #include "settings.h"
+#include "config.h"        // ESPNOW_CHANNEL — must match the X2's locked channel
 #include <WiFi.h>
 #include <esp_now.h>
+#include <esp_wifi.h>      // esp_wifi_set_channel — lock the radio like the X2 does
 #include <esp_idf_version.h>
 
 // Arduino-ESP32 Core 3.x (ESP-IDF 5.x) changed the ESP-NOW callback signatures.
@@ -55,6 +57,7 @@ static const uint8_t MAGIC_1 = 0xB0;
 // =============================================================
 static bool   g_initialized = false;
 static uint8_t g_peer_mac[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+static volatile uint32_t g_rx_state_count = 0;   // v3.8.0: STATE packets received from the X2
 
 // =============================================================
 //  Helpers
@@ -101,6 +104,10 @@ static void on_data_recv_impl(const uint8_t* data, int len) {
       s.raw[i] = (i < s.len) ? data[3 + i] : 0;
     }
     haldex_link_update_state(s);
+    g_rx_state_count++;                       // v3.8.0: diagnostics
+    if (g_rx_state_count == 1) {
+      Serial.println("[espnow] first STATE received from X2 — link UP");
+    }
   }
   // Future packet types handled here
 }
@@ -133,6 +140,14 @@ void haldex_espnow_init() {
   // WiFi must be in STA mode for ESP-NOW (no AP connection needed)
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
+
+  // v3.8.0 FIX: lock the radio to ESPNOW_CHANNEL explicitly, exactly like the X2.
+  // Previously this relied on the phone AP (started later) to pin the channel —
+  // so if the AP was OFF, the main could sit on a different channel than the X2
+  // (which hard-locks channel 1) and NEVER receive its broadcast STATE. The AP,
+  // when enabled, also uses WIFI_AP_CHANNEL == ESPNOW_CHANNEL, so this is
+  // consistent in every case (AP on or off).
+  esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
 
   if (esp_now_init() != ESP_OK) {
     Serial.println("[espnow] init FAILED");
@@ -218,4 +233,8 @@ bool haldex_espnow_send_passthrough(bool passthrough) {
 
 String haldex_espnow_get_my_mac() {
   return WiFi.macAddress();
+}
+
+uint32_t haldex_espnow_get_rx_count() {
+  return g_rx_state_count;
 }
