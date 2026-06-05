@@ -416,8 +416,12 @@ def on_cmd(data):
     with state_lock:
         usbc = state["haldex_source"] == "usbc"
     if usbc and cmd in HALDEX_CMDS:
-        if not send_cmd_x2(data):
-            socketio.emit("ack", {"evt": "ack", "for": cmd, "ok": False, "msg": "X2 not connected"})
+        # Prefer the dedicated X2 dev link; if it isn't open, fall back to the
+        # MAIN serial — the X2 may be connected there (e.g. auto-detected as MAIN
+        # when launched without --x2-port). Either way the command reaches the X2.
+        if send_cmd_x2(data) or send_cmd(data):
+            return
+        socketio.emit("ack", {"evt": "ack", "for": cmd, "ok": False, "msg": "X2 not connected"})
         return
     if not send_cmd(data):
         socketio.emit("ack", {"evt": "ack", "for": cmd, "ok": False, "msg": "not connected"})
