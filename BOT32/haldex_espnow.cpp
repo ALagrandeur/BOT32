@@ -141,6 +141,13 @@ void haldex_espnow_init() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
 
+  // v3.9.0 CRITICAL: disable WiFi modem power-save. With the phone AP OFF the
+  // main is STA-only and the radio otherwise naps between beacons, DROPPING the
+  // X2's broadcast STATE (the classic "ESP-NOW not receiving" bug). Harmless
+  // when the AP is on. wifi_ui_apply() re-asserts this after it changes mode.
+  WiFi.setSleep(false);
+  esp_wifi_set_ps(WIFI_PS_NONE);
+
   // v3.8.0 FIX: lock the radio to ESPNOW_CHANNEL explicitly, exactly like the X2.
   // Previously this relied on the phone AP (started later) to pin the channel —
   // so if the AP was OFF, the main could sit on a different channel than the X2
@@ -189,9 +196,13 @@ void haldex_espnow_init() {
 
   char mac_str[18];
   mac_to_string(g_peer_mac, mac_str, sizeof(mac_str));
+  uint8_t actual_ch = 0; wifi_second_chan_t sec;
+  esp_wifi_get_channel(&actual_ch, &sec);
   Serial.print("[espnow] init OK, peer=");
   Serial.print(mac_str);
-  Serial.print(", my MAC=");
+  Serial.print(", ACTUAL channel=");
+  Serial.print(actual_ch);
+  Serial.print(", PS=OFF, my MAC=");
   Serial.println(WiFi.macAddress());
 
   g_initialized = true;

@@ -421,7 +421,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "3.8.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "3.9.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -635,8 +635,12 @@ void wifi_ui_apply() {
     Serial.println("[wifi_ui] softAP FAILED");
     return;
   }
+  // v3.9.0: WIFI_AP_STA re-enables modem power-save by default, which would
+  // drop the X2's ESP-NOW broadcasts. Re-assert PS OFF after the mode change.
+  WiFi.setSleep(false);
   Serial.print("[wifi_ui] AP locked to channel ");
   Serial.print(WIFI_AP_CHANNEL);
+  Serial.print(", PS=OFF");
   Serial.println(need_sta ? " (AP+STA for ESP-NOW coexistence)" : " (AP only)");
   g_curr_ssid = String(s.wifi_ap_ssid);
 
