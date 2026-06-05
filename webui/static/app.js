@@ -64,6 +64,12 @@ socket.on("connection", (data) => {
   } else {
     pill.textContent = "disconnected";
     pill.className = "pill pill-fail";
+    // v3.8.0: main is gone -> no status events will arrive, so the Haldex link
+    // banner would freeze. In ESP-NOW mode the main IS the data path; say so.
+    const srcEl = $("haldex-source");
+    if (!srcEl || srcEl.value !== "usbc") {
+      setHaldexLinkBanner("down", "❌ Module principal non connecté au PC — en mode ESP-NOW, branche le PRINCIPAL au PC (c'est lui qui relaie le X2).");
+    }
   }
 });
 
@@ -560,7 +566,64 @@ socket.on("status", (s) => {
 
 const HALDEX_MODE_NAMES = ["STOCK", "FWD", "50/50"];
 
+// v3.8.0: prominent main <-> X2 ESP-NOW link banner. Tells the user, in plain
+// language, whether the two ESP32s actually see each other.
+//   kind: "up" (green) | "down" (red) | "warn" (orange) | "wait" (grey)
+function setHaldexLinkBanner(kind, text) {
+  const el = $("haldex-link-banner");
+  if (!el) return;
+  const palette = {
+    up:   { bg: "#143d14", border: "#2e7d32", fg: "#7CFC7C" },
+    down: { bg: "#3d1414", border: "#c0392b", fg: "#ff7b7b" },
+    warn: { bg: "#3d3414", border: "#c08a2e", fg: "#ffd166" },
+    wait: { bg: "#222222", border: "#444444", fg: "#aaaaaa" },
+  };
+  const p = palette[kind] || palette.wait;
+  el.style.background = p.bg;
+  el.style.borderColor = p.border;
+  el.style.color = p.fg;
+  el.textContent = text;
+}
+
+// Decide the banner state from the current source + the latest haldex object.
+function updateHaldexLinkBanner(hx) {
+  const srcEl = $("haldex-source");
+  const source = (srcEl && srcEl.value) || "espnow";
+
+  if (source === "usbc") {
+    // PC talks straight to the X2 over USB-C; ESP-NOW is bypassed entirely.
+    if (hx && hx.online) {
+      setHaldexLinkBanner("up", "🔌 X2 branché en direct (USB-C) — ESP-NOW non utilisé dans ce mode");
+    } else {
+      setHaldexLinkBanner("wait", "🔌 Mode USB-C direct — en attente du X2 sur le port série…");
+    }
+    return;
+  }
+
+  // ESP-NOW source: this is the real main <-> X2 wireless link.
+  if (!hx) {
+    setHaldexLinkBanner("wait", "⏳ En attente du module principal (PC non connecté au principal ?)");
+    return;
+  }
+  if (hx.espnow_rx === undefined) {
+    setHaldexLinkBanner("warn", "⚠ Principal sur ancien firmware — reflashe-le en v3.8.0 pour voir l'état du lien ESP-NOW");
+    return;
+  }
+  if (hx.espnow_rx > 0) {
+    if (hx.online) {
+      setHaldexLinkBanner("up", "✅ Les 2 ESP32 sont connectés (ESP-NOW) — " + hx.espnow_rx + " trames reçues du X2");
+    } else {
+      setHaldexLinkBanner("warn", "⚠ Lien perdu — le principal a déjà vu le X2 (" + hx.espnow_rx
+        + " trames) mais ne reçoit plus rien. X2 endormi (>15 min) ou hors portée ?");
+    }
+  } else {
+    setHaldexLinkBanner("down", "❌ Les 2 ESP32 ne se voient PAS — le principal n'a jamais entendu le X2 (0 trame). "
+      + "Vérifie : X2 alimenté + réveillé (sur USB-C sur banc), principal reflashé en v3.8.0, les deux sur canal 1.");
+  }
+}
+
 function updateHaldexLive(hx) {
+  updateHaldexLinkBanner(hx);
   if (!hx) return;
   const modeEl   = $("haldex-live-mode");
   const pumpEl   = $("haldex-live-pump");
