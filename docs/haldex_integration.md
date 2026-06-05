@@ -85,8 +85,15 @@ The live UI shows the **actual** passthrough state reported by the X2.
 
 ## 📡 ESP-NOW wire protocol (BOT32-specific)
 
-Channel: both devices locked to **WiFi channel 1** (so the phone AP and the link
-coexist). Pairing: broadcast by default; set the peer MAC on each side to lock.
+Channel: both devices **hard-lock the radio to WiFi channel 1** via
+`esp_wifi_set_channel()` (so the phone AP and the link coexist). Pairing:
+broadcast by default; set the peer MAC on each side to lock.
+
+> **Reliability (v3.9.0 / v1.5.0):** both ends MUST disable WiFi modem power-save
+> (`WiFi.setSleep(false)` + `esp_wifi_set_ps(WIFI_PS_NONE)`). In STA mode the radio
+> otherwise naps between beacons and DROPS incoming ESP-NOW packets — this was the
+> root cause of a dead link even with channels matched. The main re-asserts PS-off
+> after switching to AP+STA (which silently re-enables it).
 
 ```
    Magic: 0xBA 0xB0     (filter)
@@ -111,20 +118,32 @@ coexist). Pairing: broadcast by default; set the peer MAC on each side to lock.
 
 MQB Gen5 has no single "lock" frame — the Haldex (0CQ) derives its lock from the
 powertrain/ESP torque-vectoring frames. When armed, the X2 rewrites the AWD-demand
-byte and recomputes the **E2E CRC** (AUTOSAR CRC8, poly 0x2F, init/xorout 0xFF),
-keeping the sender's 4-bit alive counter:
+bytes and recomputes the **E2E CRC** (AUTOSAR CRC8, poly 0x2F, init/xorout 0xFF).
+
+> **CRC construction (confirmed 100 % on 5 real Haldex-bus logs):** computed over
+> `[D2,D3,D4,D5,D6,D7,D8, DataID]` — the **DataID is APPENDED**, not prepended
+> (prepend matched only ~1 %). Alive counter = `D2 & 0x0F`. Per-ID DataID tables:
+> 0x08A=all 0xD4, **0x116=all 0xAC**, 0x106=all 0x07, plus the 0x0A7/0x0A8 tables.
+
+Full frame set (each extra frame behind its own flag, default ON):
 
 | Frame | ID | Byte(s) rewritten |
 |---|---|---|
-| ESP_14   | `0x08A` | data[7] (BR_Vorg_Allrad_Max) — primary |
-| MOTOR_11 | `0x0A7` | data[6], data[7] (torque request) |
-| MOTOR_12 | `0x0A8` | data[7] |
+| ESP_14   | `0x08A` | D8 (BR_Vorg_Allrad_Max) — primary |
+| MOTOR_11 | `0x0A7` | D6, D7 (torque request) |
+| MOTOR_12 | `0x0A8` | D8 |
+| ESP_10   | `0x116` | D8 |
+| ESP_05   | `0x106` | D4 = 0xC0, D8 = 0x00 |
+| ESP_19   | `0x0B2` | wheel speeds (no CRC/counter) |
 
-Demand byte: FWD → `0x00` (lock 0%), 50/50 → `0xFE` (lock 100%).
+Demand byte: **FWD → `0x00`** (lock 0 %) + wheels = 0 ; **50/50 → `0xFA`** (lock
+~100 %) + wheels = real vehicle speed.
 
-> The exact byte that drives a given controller variant is empirically tuned in
-> the OpenHaldex community; this implementation follows the documented Gen5
-> strategy. Validate on a closed course, starting from passthrough ON.
+> ⚠ 50/50 uses **`0xFA`, not `0xFE`/`0xFF`** — those are SNA/reserved and get
+> discarded by the controller. The exact byte is empirically tuned in the
+> OpenHaldex community; validate on a closed course, starting from passthrough ON.
+> Confirmed in-vehicle: FWD spins the front wheels only; 50/50 holds lock target
+> 100 % (actual pump engagement varies at standstill — normal, it ramps under load).
 
 ---
 
@@ -144,10 +163,15 @@ Demand byte: FWD → `0x00` (lock 0%), 50/50 → `0xFE` (lock 100%).
 
 | Symptom | Likely cause |
 |---|---|
-| Live state shows "déconnecté" | X2 not powered, not paired, or not on WiFi channel 1 |
-| Modes/passthrough don't take effect | `haldex_enabled` is OFF, or peer MAC mismatch |
+| Link banner red, `espnow_rx = 0` | WiFi power-save still on (flash v3.9.0/v1.5.0), wrong channel, or X2 off/asleep |
+| Live state shows "déconnecté" | X2 not powered, asleep (>15 min parked, no USB), or main not connected to PC |
+| Modes/passthrough don't take effect | `haldex_enabled` is OFF, or in ESP-NOW mode the main isn't connected to the PC |
 | Armed but no AWD change | passthrough still ON, or this controller variant uses a different demand byte (validate on bench) |
-| CAN errors on the X2 | termination: disable both on-board 120 Ω (TERM1/TERM2) — OEM terminators remain at each cut end |
+| TC/TPMS faults at boot or after idle | in-series boot gap (fixed by FreeRTOS bridge), or marginal termination — enable **TERM2 (120 Ω)** on the Haldex side and watch the MCP TEC stay 0 |
+
+> **Bench diagnostics:** read the X2 serial `[5s]` line — `espnow ch=` must be `1`,
+> `tx=` should climb (X2 radiating), `rxcmd=` climbs when you click a mode (X2 hears
+> the main). Keep the X2 on **USB-C** on the bench so it never light-sleeps.
 
 ---
 

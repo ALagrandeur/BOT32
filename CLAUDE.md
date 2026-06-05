@@ -137,11 +137,12 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 - Sentinelle des températures = **-1000.0f** (les vraies temps peuvent être négatives).
 - Sniffer OK (0x5BF) : repos = `byte[0] == 0x00`, **pressé = `byte[0] != 0x00`** (fix v2.10.0).
 
-**Haldex (MITM) — v3.2.0+ :**
-- Module MITM = **dépôt privé `BOT32-HALDEX`** sur carte **ESP32-CAN-X2** (CAN1 TWAI = côté voiture, CAN2 MCP2515 = côté Haldex, 120 Ω retirés, 500 kbps).
-- Lien **ESP-NOW uniquement**, AP téléphone + ESP-NOW coexistent sur **canal 1**.
-- 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC** (ou app), sort si warnings OFF. 50-50 = app, sort via STOCK. **Pas d'auto-revert.**
-- **Passthrough** = armement : OFF = MITM armé (réécrit 0x08A/0x0A7/0x0A8 + CRC AUTOSAR). **v0.3.0 : le X2 PERSISTE `mode` + `passthrough` en NVS et les restaure au boot** (1er boot = STOCK + passthrough ON). ⚠ s'il est coupé ARMÉ, il revient ARMÉ. L'UI principale affiche le **mode réel rapporté par le X2** (current_mode) quand le lien est en ligne.
+**Haldex (MITM) — principal v3.9.0 / X2 v1.5.0 — CONFIRMÉ EN VOITURE :**
+- Module MITM = **dépôt privé `BOT32-HALDEX`** sur carte **ESP32-CAN-X2** (CAN1 TWAI natif = côté voiture, CAN2 MCP2515 = côté Haldex, **TERM2 120 Ω activée côté Haldex**, 500 kbps). Pont CAR↔Haldex dans une **tâche FreeRTOS avant WiFi** (évite l'écart de boot). **12 V permanent** + light-sleep 15 min + wake-on-CAN (jamais de sommeil tant qu'un hôte USB est branché).
+- Lien **ESP-NOW uniquement**. **Fiabilité (v3.9.0/v1.5.0)** : les deux côtés **verrouillent le canal 1** (`esp_wifi_set_channel`) ET **désactivent le power-save WiFi** (`WiFi.setSleep(false)` + `esp_wifi_set_ps(WIFI_PS_NONE)`) — sans ça la radio STA dort et jette les paquets reçus (c'était LA cause d'un lien mort). Diagnostics : `espnow_rx` (JSON + bandeau UI), ligne X2 `[5s] espnow ch= tx= rxcmd=`.
+- 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC** (ou app), sort si warnings OFF. 50-50 = app, sort via STOCK. **Pas d'auto-revert, pas de seuil de pédale.**
+- **CRC E2E AUTOSAR** sur `[D2..D8, DataID]` — **DataID APPENDÉ** (confirmé 100 % sur 5 logs). Jeu de trames complet (FWD ET 50-50) : 0x08A/0x0A7/0x0A8 (couple) + 0x116/0x106 (ESP) + 0x0B2 (roues). **FWD → demande 0x00 + roues 0 ; 50-50 → demande 0xFA** (0xFE/0xFF = SNA/réservé, écartés) + roues = vitesse réelle.
+- **Passthrough** = armement : OFF = MITM armé. **Le X2 PERSISTE `passthrough` en NVS** ; le **mode boot TOUJOURS STOCK** (sécurité). 1er boot = STOCK + passthrough ON. ⚠ s'il est coupé ARMÉ, il revient ARMÉ (mais en STOCK = inerte). L'UI affiche le **mode réel rapporté par le X2** + l'**ack** des commandes.
 - **Burnout FWD (v0.4.0)** : en FWD armé, le X2 falsifie aussi **ESP_19 (0x0B2)** = les 4 vitesses de roue (présente les 4 à la vitesse réelle véhicule, lue sur ESP_21 0x0FD, `roue=veh*4/3`) → le Haldex (embrayage ouvert) voit une voiture cohérente, pas de défaut. ESP_19 est full-packed → pas de CRC à recalculer. ⚠ ne trompe que le Haldex ; l'ESP/ABS amont se neutralise par le bouton TC/ESP.
 - Côté principal : module `haldex_modes` (logique modes + passthrough), `haldex_link`/`haldex_espnow` (transport ESP-NOW).
 - Témoin frein à main pour indiquer le mode = **abandonné** (frein mécanique → pas de trame CAN d'entrée). Le mode se lit dans l'UI web.
