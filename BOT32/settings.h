@@ -92,12 +92,6 @@ struct Settings {
   // broadcast (FF:FF:FF:FF:FF:FF). Recommended: set to the MITM X2 MAC for
   // production to avoid receiving from other ESP-NOW devices nearby.
   char     haldex_espnow_peer_mac[18];
-  // v3.10.0: optional cluster telltale for FWD mode. When ON, BOT32 main blinks
-  // the WBA_03 (0x394) "shift lock — press brake" message on the km/h dial while
-  // mode == FWD, as a visual mode indicator. Default OFF (safety: it TXes on the
-  // cluster bus, contending with the gateway like the old display override did —
-  // closed-course / bench only). NVS key "hdx_tt" (added WITHOUT a version bump).
-  bool     haldex_fwd_telltale;
 
   uint8_t  version;              // settings struct version (for migration)
 };
@@ -116,7 +110,6 @@ bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
 bool settings_set_poll_ethanol(bool v);
 bool settings_set_poll_haldex_blockage(bool v);
-bool settings_set_haldex_fwd_telltale(bool v);   // v3.10.0
 // v2.9.0: 7 cluster_override setters removed (feature deleted).
 bool settings_set_cef_auto_enabled(bool v);
 bool settings_set_cef_trigger_can_id(uint16_t v);

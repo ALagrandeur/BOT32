@@ -497,19 +497,6 @@
       </div>
       <p class="muted small" id="haldex-passthrough-status">État réel rapporté par le X2 : —</p>
 
-      <h4 class="subtitle">💡 Voyant FWD au combiné (expérimental)</h4>
-      <div class="row">
-        <label class="checkbox">
-          <input type="checkbox" id="set-haldex_fwd_telltale">
-          <span>🟠 <b>Faire clignoter un voyant en FWD</b> — BOT32 émet
-            <code>0x394</code> (message « shift lock — appuyer sur le frein »,
-            cadran km/h) en clignotant 0,5 s tant que le mode est <b>FWD</b>.
-            <br><b>⚠ Circuit fermé / banc seulement</b> : émet sur le bus du combiné
-            (conflit avec la passerelle, comme l'ancien override d'affichage).
-            En voiture il clignote entre le message et l'affichage normal du rapport.</span>
-        </label>
-      </div>
-
       <h4 class="subtitle">📋 Raw payload du dernier broadcast</h4>
       <div class="frame-preview">
         <code id="haldex-live-raw">—</code>
