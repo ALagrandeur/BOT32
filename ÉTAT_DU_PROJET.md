@@ -56,7 +56,7 @@ Le **lien ESP-NOW principal ↔ X2 est solide** et le contrôle se fait depuis l
   (mode AP+STA quand le lien est activé). Le PC en **USB-C** peut aussi parler
   directement au X2 (dev/diagnostic) — ESP-NOW court-circuité dans ce mode.
 - **3 modes** : STOCK / FWD / 50-50.
-- **FWD** = combo **Hazards ON + bouton TC** (ou app) ; sort quand les warnings s'éteignent.
+- **FWD** = combo **Hazards ON + TC OFF** (ou app) ; **v3.10.0 : sort quand le TC repasse à ON** (plus quand les warnings s'éteignent → on peut couper les Hazards et garder FWD).
   **50-50** = app/USB ; sort via STOCK. **Pas d'auto-revert. Pas de seuil de pédale.**
 - **Passthrough ON/OFF** (commande live) : le X2 démarre toujours **ON** (transparent/sûr) ;
   OFF = MITM **armé**. Affiché en live + confirmation modale avant d'armer + **ack** du X2 dans l'UI.

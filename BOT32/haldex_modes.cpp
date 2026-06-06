@@ -4,17 +4,19 @@
  * Decides the active mode (STOCK/FWD/5050) from two sources and pushes it to
  * the external MITM (ESP32-CAN-X2) via the ESP-NOW link:
  *
- *   - FWD  : PHYSICAL combo = Hazards ON + Traction-Control button, detected
- *            via the existing cluster sniffers. Exits (-> STOCK) when the
- *            hazards are turned OFF. Also settable from app/USB.
+ *   - FWD  : PHYSICAL combo = Hazards ON + Traction-Control OFF, detected via
+ *            the existing cluster sniffers. v3.10.0: exits (-> STOCK) when
+ *            traction control is turned back ON (NOT when the hazards go off),
+ *            so the hazards can be switched off while FWD stays armed. Also
+ *            settable from app/USB.
  *   - 5050 : app/USB button only. Exits via the app/USB STOCK button.
- *   - STOCK: default; app/USB button; or hazards-OFF after a combo FWD.
+ *   - STOCK: default; app/USB button; or TC-back-ON after a combo FWD.
  *
- * NOTE on "TC OFF": the true "traction control disabled" latched state lives
- * in ESP_21 (0x0FD) byte6 flag bits. For now we use the TC *button* press
- * (the sniffer we already validated) while hazards are ON as the arming
- * gesture — easy and deliberate. We can switch to the latched ESP flag after
- * bench confirmation without changing the public API.
+ * NOTE on "TC OFF": confirmed on the live data that ESP_21 (0x0FD) byte6 == 0x03
+ * is the LATCHED "traction control disabled" state — it stays set after the
+ * button is released, and clears (0x00) when TC is re-enabled. So we use it as
+ * BOTH the arming gesture (with hazards ON) and the FWD hold/release condition:
+ * FWD is held while TC is OFF and released when TC is turned back ON.
  *
  * No timed auto-revert (a timed mechanical revert was judged too dangerous).
  */
@@ -75,22 +77,28 @@ void haldex_modes_tick(uint32_t now) {
     return;
   }
 
-  // ---- Physical combo: Hazards ON + TC button (both fresh) ----
+  // ---- Physical combo: Hazards ON + TC OFF (both fresh) ----
+  // button_sniffer_tc_pressed() == the LATCHED traction-control-disabled state
+  // (0x0FD byte6==0x03 stays set while TC is off), so tc_off is a stable signal.
   bool hazard_on = button_sniffer_hazard_active() &&
                    (button_sniffer_hazard_age_ms() < COMBO_FRESH_MS);
-  bool tc_press  = button_sniffer_tc_pressed() &&
+  bool tc_off    = button_sniffer_tc_pressed() &&
                    (button_sniffer_tc_age_ms() < COMBO_FRESH_MS);
-  bool combo     = hazard_on && tc_press;
+  bool combo     = hazard_on && tc_off;
 
-  // Rising edge of the combo arms FWD.
+  // Rising edge of the combo arms FWD. Hazards ON is the deliberate gate, so
+  // disabling TC alone (no hazards) never arms FWD.
   if (combo && !g_prev_combo) {
     g_fwd_from_combo = true;
     apply_mode(HALDEX_M_FWD);
   }
   g_prev_combo = combo;
 
-  // Hazards OFF releases a combo-armed FWD back to STOCK.
-  if (g_fwd_from_combo && !hazard_on) {
+  // v3.10.0: TC turned back ON releases a combo-armed FWD back to STOCK (was
+  // "hazards OFF"). So the hazards can be switched off while FWD stays armed;
+  // FWD drops only when traction control is re-enabled. Losing the TC frame
+  // (stale -> tc_off=false) also drops to STOCK, a safe default.
+  if (g_fwd_from_combo && !tc_off) {
     g_fwd_from_combo = false;
     apply_mode(HALDEX_M_STOCK);
   }

@@ -8,7 +8,9 @@
  * Mode sources (per user spec):
  *   - FWD  : armed by a PHYSICAL combo — Hazards ON + Traction Control OFF
  *            (detected by the existing cluster sniffers), OR by the app/USB
- *            button. It EXITS (back to STOCK) when the hazards are turned OFF.
+ *            button. v3.10.0: it EXITS (back to STOCK) when Traction Control is
+ *            turned back ON (NOT when the hazards go off) — so the hazards can
+ *            be switched off while FWD stays armed.
  *   - 5050 : app/USB button only. It EXITS via the app/USB STOCK button.
  *   - STOCK: default; app/USB button.
  *
