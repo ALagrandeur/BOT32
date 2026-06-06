@@ -1,30 +1,30 @@
 # État du projet BOT32
 
-> Photo lisible de l'état du projet. Mise à jour : **2026-06-05**.
+> Photo lisible de l'état du projet. Mise à jour : **2026-06-06**.
 > Pour les règles et conventions techniques, voir **`CLAUDE.md`**.
 
 ---
 
 ## Version actuelle
 
-**v3.9.0** (principal) + **BOT32-HALDEX v1.5.0** (module MITM privé, ESP32-CAN-X2).
+🏁 **v4.0.0** (principal) + **BOT32-HALDEX v2.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable.**
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 
-🏁 **Jalon majeur : le MITM Haldex fonctionne en voiture.** Les 3 modes sont
-confirmés sur le véhicule : **STOCK** (normal), **FWD** (roues avant seulement —
-le burnout fonctionne), **50-50** (lock target 100 % ; le `pump %` varie à
-l'arrêt = normal, l'engagement réel dépend du couple/glissement en roulant).
-Le **lien ESP-NOW principal ↔ X2 est solide** et le contrôle se fait depuis l'UI.
+**Tout fonctionne en voiture, confirmé par le pilote.** Les 3 modes sont validés :
+**STOCK** (normal), **FWD** (roues avant seulement — le burnout fonctionne), **50-50**
+(lock target 100 %). Le **lien ESP-NOW principal ↔ X2 est solide**, le contrôle se fait
+depuis l'UI (modes + passthrough + ack), et le **combo FWD** marche au volant.
 
-### Ce qui a rendu le lien ESP-NOW fiable (v3.8.0 → v3.9.0 / v1.5.0)
-1. **Canal radio verrouillé** explicitement (`esp_wifi_set_channel`) sur le **canal 1**
-   des **deux** côtés — avant, le principal dépendait de son AP pour fixer le canal.
-2. **Power-save WiFi DÉSACTIVÉ** des deux côtés (`WiFi.setSleep(false)` +
-   `esp_wifi_set_ps(WIFI_PS_NONE)`) — c'était **LA** cause racine : en STA, la radio
-   dormait entre les beacons et jetait les paquets ESP-NOW reçus. Réaffirmé après
-   le passage en AP+STA (qui réactive le power-save).
-3. **Diagnostics** : compteur `espnow_rx` côté principal (exposé dans le JSON +
-   bandeau coloré dans l'UI), et côté X2 la ligne `[5s]` montre `espnow ch= tx= txf= rxcmd=`.
+### Nouveautés de ce jalon (v3.9.0/v1.5.0 → v4.0.0/v2.0.0)
+- **Lien ESP-NOW fiabilisé** : canal 1 verrouillé (`esp_wifi_set_channel`) **+ power-save WiFi OFF**
+  des deux côtés (c'était LA cause d'un lien mort). Diagnostics `espnow_rx` (UI) + `[5s]` (X2).
+- **FWD — coupure inversée (v3.10.0)** : le FWD se coupe quand on **remet le TC à ON** (plus
+  quand les Hazards s'éteignent → on peut couper les warnings et garder FWD). Utilise l'état
+  **latché** du TC (0x0FD byte6==0x03, stable, confirmé sur la donnée live).
+- **50-50 — fix 0x0A8 (v1.6.0)** : on ne **force plus 0x0A8** (son byte[7] = signal **RPM**
+  moteur confirmé sur run3, PAS la demande de lock). La demande vit uniquement dans
+  **0x08A D8 + 0x0A7 D6/D7**. On garde **0x08A D8 = 0xFA** (vérifié : la voiture ne dépasse
+  jamais 0xFA, 0xFE serait jeté en SNA — contredit la valeur 0xFE d'OpenHaldex).
 
 ---
 
@@ -95,7 +95,9 @@ Le **lien ESP-NOW principal ↔ X2 est solide** et le contrôle se fait depuis l
 | v3.4.0 | Lamp killer (test voyants au banc, trames live depuis l'UI) |
 | v3.7.0 | Source de lien Haldex sélectionnable (ESP-NOW / USB-C direct vers le X2) |
 | v3.8.0 | **Verrou de canal ESP-NOW explicite** côté principal + compteur RX + bandeau de lien dans l'UI |
-| **v3.9.0** | **Power-save WiFi OFF** (lien ESP-NOW fiable) + lecture du canal réel |
+| v3.9.0 | **Power-save WiFi OFF** (lien ESP-NOW fiable) + lecture du canal réel |
+| v3.10.0 | **FWD sort quand le TC repasse à ON** (plus quand Hazards OFF) — état TC latché |
+| **v4.0.0** | 🏁 **Jalon stable** — tout confirmé en voiture (STOCK/FWD/50-50, lien solide, UI complète) |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -105,16 +107,21 @@ Le **lien ESP-NOW principal ↔ X2 est solide** et le contrôle se fait depuis l
 | v1.1.0 | Jeu de trames complet (0x116/0x106/0x0B2) sur FWD ET 50-50, sans seuil pédale |
 | v1.3.0 | Pont en **tâche FreeRTOS avant WiFi** (fix défauts TC/TPMS au boot) |
 | v1.4.x | **12 V permanent** + light-sleep 15 min + wake-on-CAN + récup bus-off MCP/TWAI + TEC |
-| **v1.5.0** | **Power-save WiFi OFF** + diagnostics ESP-NOW (canal/tx/rxcmd) |
+| v1.5.0 | **Power-save WiFi OFF** + diagnostics ESP-NOW (canal/tx/rxcmd) |
+| v1.6.0 | **Fix 50-50** : 0x0A8 en passthrough (D8 = RPM, pas la demande de lock) |
+| **v2.0.0** | 🏁 **Jalon stable** — MITM confirmé en voiture (STOCK/FWD/50-50), lien ESP-NOW solide |
 
 ---
 
-## Pistes / roadmap (non démarrées)
+## Pistes / roadmap (à faire — captures en attente)
 
-- ⏳ Affiner les valeurs **50-50** en roulant si l'engagement ne tient pas (log pump/pédale/vitesse).
+- 📌 **Log Haldex 50-50 en roulant** (côté Haldex) : confirmer que l'engagement (0x118)
+  tient sous charge, et tester **0x116** haut/bas/off (seul octet ESP incertain). Comparer
+  à un run STOCK. → décide s'il faut affiner le 50-50.
+- 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
+  pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
 - ⏳ Implémenter la **détection firmware** du déclenchement auto du Clear Engine Fault (Hazard ×3 / 4 s).
 - ⏳ **Valider Clear Engine Fault** avec une capture fraîche.
-- ⏳ Identifier les **témoins individuels** du combiné (lamp killer).
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---
@@ -130,5 +137,6 @@ Le **lien ESP-NOW principal ↔ X2 est solide** et le contrôle se fait depuis l
   **power-save OFF** (fait en v3.9.0 / v1.5.0). Vérif : bandeau vert dans l'UI, ou
   ligne `[5s]` du X2 `espnow ch=1 tx=… rxcmd=…`.
 - **Sur banc** : garder le **X2 sur USB-C** (sinon sommeil après 15 min → ESP-NOW coupé).
-- Dernier jalon (2026-06-05) : MITM **confirmé en voiture** (FWD/STOCK/50-50) + lien
-  ESP-NOW rendu fiable (canal verrouillé + power-save OFF). Point de sauvegarde complet.
+- **Jalon v4.0.0 / v2.0.0 (2026-06-06)** : version **stable**, tout confirmé en voiture par le
+  pilote. Inclut le fix FWD-sort-sur-TC (v3.10.0) et le fix 50-50 0x0A8 (v1.6.0). Prochaines
+  étapes = les 2 captures en attente (log Haldex 50-50 + log cluster voyant).

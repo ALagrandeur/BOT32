@@ -64,9 +64,11 @@ are not copyrightable. The BOT32-HALDEX firmware is kept private (personal use).
 | **50/50** | 2 | force lock **100%** (max lock / launch) |
 
 **How modes are set (BOT32 main side, `haldex_modes`):**
-- **FWD** arms on the physical combo **Hazards ON + TC button** (existing cluster
-  sniffers), or from the app/USB button. It **exits to STOCK when the hazards
-  turn OFF**.
+- **FWD** arms on the physical combo **Hazards ON + TC OFF** (existing cluster
+  sniffers), or from the app/USB button. **v3.10.0:** it **exits to STOCK when
+  traction control is turned back ON** (not when the hazards turn off) — so the
+  hazards can be switched off while FWD stays armed. Uses the latched TC state
+  (0x0FD byte6 == 0x03, stays set while TC is disabled).
 - **50/50** is app/USB only; exits via the STOCK button.
 - **No timed auto-revert** (a timed mechanical revert was judged unsafe).
 
@@ -129,15 +131,19 @@ Full frame set (each extra frame behind its own flag, default ON):
 
 | Frame | ID | Byte(s) rewritten |
 |---|---|---|
-| ESP_14   | `0x08A` | D8 (BR_Vorg_Allrad_Max) — primary |
-| MOTOR_11 | `0x0A7` | D6, D7 (torque request) |
-| MOTOR_12 | `0x0A8` | D8 |
+| ESP_14   | `0x08A` | D8 (BR_Vorg_Allrad_Max) — **the lock demand (primary)** |
+| MOTOR_11 | `0x0A7` | D6, D7 (torque request) — the lock demand |
 | ESP_10   | `0x116` | D8 |
 | ESP_05   | `0x106` | D4 = 0xC0, D8 = 0x00 |
 | ESP_19   | `0x0B2` | wheel speeds (no CRC/counter) |
+| ~~MOTOR_12~~ | `0x0A8` | **PASSTHROUGH (v1.6.0)** — D8 is the engine-RPM signal, NOT the lock demand (confirmed on run3). Was wrongly forced before. |
 
 Demand byte: **FWD → `0x00`** (lock 0 %) + wheels = 0 ; **50/50 → `0xFA`** (lock
 ~100 %) + wheels = real vehicle speed.
+
+> ⚠️ This car's `0x08A D8` is a **constant `0xFA`** on the real bus (confirmed on
+> run3, 133 frames, never `0xFE`). `0xFE` is SNA here and would likely be discarded,
+> so we keep `0xFA` — NOT OpenHaldex's `0xFE` for ESP_14.
 
 > ⚠ 50/50 uses **`0xFA`, not `0xFE`/`0xFF`** — those are SNA/reserved and get
 > discarded by the controller. The exact byte is empirically tuned in the
