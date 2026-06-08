@@ -54,6 +54,11 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   .status{margin-top:10px;font-size:12px;color:#7af;text-align:center;min-height:18px}
   .conn{position:fixed;top:0;right:0;padding:4px 10px;font-size:10px;background:#0a4;color:#fff;border-radius:0 0 0 8px}
   .conn.off{background:#a33}
+  .hx-btns{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .hxb{flex:1 1 0;min-width:90px;background:#3a3a5a}
+  .hxb.active{outline:2px solid #7df;background:#2a3a6a}
+  .card.tap{cursor:pointer}
+  .card.armed{border-color:#a33;background:#3a2530}
 </style></head>
 <body>
 <div class="conn" id="conn">●</div>
@@ -112,23 +117,22 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 
 <h2 style="font-size:14px;color:#7df;margin:16px 0 8px">🏁 Haldex (MITM)</h2>
 <div class="grid" id="hx-grid">
-  <div class="card"><div class="lbl">Mode</div><div class="val" id="hx-mode">—</div></div>
-  <div class="card"><div class="lbl">Connexion</div><div class="val" id="hx-conn">—</div></div>
-  <div class="card"><div class="lbl">MITM</div><div class="val" id="hx-pt">—</div></div>
-  <div class="card"><div class="lbl">Vitesse km/h</div><div class="val" id="hx-spd">—</div></div>
-  <div class="card"><div class="lbl">Pédale %</div><div class="val" id="hx-ped">—</div></div>
-  <div class="card"><div class="lbl">Lock target %</div><div class="val" id="hx-tgt">—</div></div>
-  <div class="card"><div class="lbl">Pump eng. %</div><div class="val" id="hx-pump">—</div></div>
+  <div class="card"><div class="lbl">Mode</div><div class="val" id="hx-mode">—</div><div class="can">MITM · ESP-NOW</div></div>
+  <div class="card"><div class="lbl">Connexion</div><div class="val" id="hx-conn">—</div><div class="can">ESP-NOW</div></div>
+  <div class="card tap" id="hx-pt-card" onclick="hpass()"><div class="lbl">Passthrough</div><div class="val" id="hx-pt">—</div><div class="can">toucher pour armer</div></div>
+  <div class="card"><div class="lbl">Vitesse km/h</div><div class="val" id="hx-spd">—</div><div class="can">0x0FD ESP_21</div></div>
+  <div class="card"><div class="lbl">Pédale %</div><div class="val" id="hx-ped">—</div><div class="can">0x121 MOTOR_20 D3</div></div>
+  <div class="card"><div class="lbl">Lock target %</div><div class="val" id="hx-tgt">—</div><div class="can">consigne (mode)</div></div>
+  <div class="card"><div class="lbl">Pump eng. %</div><div class="val" id="hx-pump">—</div><div class="can">0x118 D3</div></div>
+  <div class="card"><div class="lbl">Dernier paquet</div><div class="val" id="hx-age">—</div><div class="can">fraîcheur du lien</div></div>
 </div>
 <div class="hx-btns">
   <button class="hxb hxb-off" onclick="hmode(0)">🅾 STOCK</button>
   <button class="hxb hxb-fwd" onclick="hmode(1)">🔥 FWD</button>
   <button class="hxb hxb-5050" onclick="hmode(2)">🚀 50/50</button>
 </div>
-<button class="hxpt" id="hx-pt-btn" onclick="hpass()">Passthrough : —</button>
 
 <div class="actions">
-  <button class="primary" onclick="cmd('clear_engine_fault')">🔧 Clear Engine Fault</button>
   <button onclick="location.href='/settings'">⚙ Tous les réglages</button>
 </div>
 
@@ -179,11 +183,13 @@ async function poll(){
     setVal('hx-pump', online ? (hx.pump_engagement_pct + '%') : null);
     // passthrough (actual reported by the X2): ON = transparent/safe, OFF = MITM armed
     const pt = online ? (hx.passthrough ? 1 : 0) : null;
-    if(pt!==null) g_pt = pt;   // remember for the toggle button
-    setVal('hx-pt', pt===null ? null : (pt ? 'ON' : 'ARMÉ'));
-    const ptBtn = $('hx-pt-btn');
-    if(ptBtn){ ptBtn.textContent = 'Passthrough : ' + (pt===null?'—':(pt?'ON (sûr)':'OFF — MITM ARMÉ'));
-               ptBtn.classList.toggle('armed', pt===0); }
+    if(pt!==null) g_pt = pt;   // remember for the passthrough card toggle
+    setVal('hx-pt', pt===null ? null : (pt ? 'ON (sûr)' : '🔴 ARMÉ'));
+    const ptCard = $('hx-pt-card');
+    if(ptCard) ptCard.classList.toggle('armed', pt===0);
+    // 8th card: link freshness (last STATE packet age)
+    setVal('hx-age', (online && hx.age_ms!==undefined && hx.age_ms<4294967295)
+                     ? ('il y a '+(hx.age_ms/1000).toFixed(1)+'s') : null);
     // highlight the active mode button
     document.querySelectorAll('.hxb').forEach((b,i)=>b.classList.toggle('active', i===lm));
     $('conn').classList.remove('off');
@@ -307,7 +313,8 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div><label>Bench MAP mbar</label><input type="number" data-k="bench_map_mbar" min="0" max="3000" step="20"></div>
 </div>
 
-<h2>🔧 Clear Engine Fault auto-trigger</h2>
+<h2>🔧 Clear Engine Fault</h2>
+<button onclick="if(confirm('Effacer les defauts moteur (Clear Engine Fault) ?')){fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'clear_engine_fault'})}).then(r=>r.json()).then(j=>alert(j.ok?'✓ Clear Engine Fault envoye':'✗ '+(j.msg||'echec'))).catch(()=>alert('✗ erreur reseau'))}" style="width:100%;margin:6px 0 12px;padding:13px;background:#0a4;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600">🔧 Clear Engine Fault (manuel)</button>
 <label class="cb"><input type="checkbox" data-k="cef_auto_enabled"> 🟢 Auto-trigger enabled</label>
 <div class="row">
   <div><label>Trigger CAN ID</label><input type="text" data-k="cef_trigger_can_id" data-hex="1"></div>
@@ -421,7 +428,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.0.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.1.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
