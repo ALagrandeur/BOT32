@@ -150,8 +150,11 @@ live in the private BOT32-HALDEX firmware.)
 > speeds** — confirmed in-vehicle. Only steering angle still sheds some lock (the
 > Haldex's own corner behaviour, **kept on purpose** — a fully-locked coupling binds
 > the driveline in a turn). ⚠️ This bypasses the Haldex's speed-based thermal
-> protection — **closed course, short sessions**; a Haldex oil-temp auto-revert to
-> STOCK is planned (DID not yet captured). Validate starting from passthrough ON.
+> protection, so v4.3.0 adds our own: the main polls the clutch oil temp (UDS
+> **0x2BF1**, shown in the mobile UI) and **auto-reverts to STOCK** above an
+> adjustable limit (default **150 °C**), latching until it cools 10 °C below. Still:
+> **closed course, short sessions**; calibrate the temp scale before relying on it.
+> Validate starting from passthrough ON.
 
 ---
 

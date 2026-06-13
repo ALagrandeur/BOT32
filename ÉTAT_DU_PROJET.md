@@ -7,7 +7,7 @@
 
 ## Version actuelle
 
-🏁 **v4.x** (principal) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable.**
+🏁 **v4.3.0** (principal) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable.**
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 
 **Les 3 modes fonctionnent en voiture, confirmés par le pilote.** **STOCK** (normal),
@@ -24,8 +24,18 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   *(Recette détaillée dans le dépôt privé.)*
 - **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
   (un accouplement 100 % verrouillé bloque la transmission en virage).
-- **À venir** : DID UDS de **température d'huile Haldex** + retour STOCK auto (limite
-  thermique), car on contourne la protection vitesse du Haldex.
+
+### Ajouts principal v4.0.0 → v4.3.0
+- **v4.2.0 — Temp embrayage Haldex** : DID UDS **0x2BF1** (poll via le Haldex, à travers
+  le pont X2) affichée dans l'UI mobile à la place de « Dernier paquet ». Statut **armé**
+  déplacé dans un badge d'en-tête 🟢/🔴 (carte Passthrough retirée ; bouton d'armement
+  dans « Tous les réglages »).
+- **v4.3.0 — Coupure thermique** : limite ajustable (défaut **150 °C**) dans les réglages ;
+  si la temp embrayage atteint la limite → **retour STOCK auto + verrou** (bloque le ré-armement
+  jusqu'à refroidir de 10 °C). Nécessaire car le 50-50 speed-spoof contourne la protection
+  vitesse du Haldex. *(Échelle temp `×0.75−48` encore à calibrer vs température réelle.)*
+- **Voyant shift-lock (0x394) abandonné** : émis par le Gateway + porte le rapport P/R/N/D
+  → l'injection parallèle le ferait clignoter / glitcherait l'affichage du rapport. Mode dans l'app.
 
 ---
 

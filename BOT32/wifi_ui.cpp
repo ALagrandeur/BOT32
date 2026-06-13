@@ -518,6 +518,7 @@ static void handle_api_get_settings() {
   doc["force_tx_always"]           = s.force_tx_always;
   doc["poll_ethanol"]              = s.poll_ethanol;
   doc["poll_haldex_blockage"]      = s.poll_haldex_blockage;
+  doc["haldex_clutch_temp_limit_c"] = s.haldex_clutch_temp_limit_c;   // v4.3.0
   doc["bench_test_enabled"]        = s.bench_test_enabled;
   doc["bench_test_bus"]            = s.bench_test_bus;
   doc["bench_rpm"]                 = s.bench_rpm;
