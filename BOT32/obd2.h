@@ -69,6 +69,13 @@ float obd2_get_last_haldex_blockage_pct();
 uint16_t obd2_get_last_haldex_blockage_raw();
 uint32_t obd2_get_haldex_blockage_age_ms();
 
+// Haldex clutch oil temperature (Celsius) — v4.2.0
+//   DID 0x2BF1 from Haldex ECU (request 0x70F, response 0x779).
+//   Formula: temp_C = data[5]*0.75-48 (standard VAG temp scale; calibrate vs VCDS).
+//   Returns -1000.0 if no recent data.
+float obd2_get_last_haldex_clutch_temp_c();
+uint32_t obd2_get_haldex_clutch_temp_age_ms();
+
 // DSG transmission oil temperature (Celsius) — v2.8.0
 //   DID 0x2104 from Transmission ECU (request 0x7E1, response 0x7E9).
 //   Formula: temp_C = data[4] (direct byte value, validated from trans 71.csv).

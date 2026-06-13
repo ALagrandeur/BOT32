@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "4.1.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "4.2.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -146,6 +146,11 @@ static void emit_status() {
   doc["haldex_blockage_pct"]    = hdx_blk >= 0 ? hdx_blk : (float)-1;
   doc["haldex_blockage_raw"]    = obd2_get_last_haldex_blockage_raw();
   doc["haldex_blockage_age_ms"] = obd2_get_haldex_blockage_age_ms();
+
+  // v4.2.0 — Haldex clutch oil temp (UDS 0x2BF1). Sentinel -1000 = no data.
+  float hdx_temp = obd2_get_last_haldex_clutch_temp_c();
+  doc["haldex_clutch_temp_c"]      = hdx_temp > -999.0f ? hdx_temp : (float)-1000;
+  doc["haldex_clutch_temp_age_ms"] = obd2_get_haldex_clutch_temp_age_ms();
 
   // v2.8.0 — three new temperatures (UDS polled, round-robin)
   // Sentinel -1000 means "no data yet". UI must check for this.

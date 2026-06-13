@@ -115,16 +115,15 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   </div>
 </div>
 
-<h2 style="font-size:14px;color:#7df;margin:16px 0 8px">🏁 Haldex (MITM)</h2>
+<h2 style="font-size:14px;color:#7df;margin:16px 0 8px">🏁 Haldex (MITM) <span id="hx-arm" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#444;color:#fff;vertical-align:middle">—</span></h2>
 <div class="grid" id="hx-grid">
   <div class="card"><div class="lbl">Mode</div><div class="val" id="hx-mode">—</div><div class="can">MITM · ESP-NOW</div></div>
   <div class="card"><div class="lbl">Connexion</div><div class="val" id="hx-conn">—</div><div class="can">ESP-NOW</div></div>
-  <div class="card tap" id="hx-pt-card" onclick="hpass()"><div class="lbl">Passthrough</div><div class="val" id="hx-pt">—</div><div class="can">toucher pour armer</div></div>
   <div class="card"><div class="lbl">Vitesse km/h</div><div class="val" id="hx-spd">—</div><div class="can">0x0FD ESP_21</div></div>
   <div class="card"><div class="lbl">Pédale %</div><div class="val" id="hx-ped">—</div><div class="can">0x121 MOTOR_20 D3</div></div>
   <div class="card"><div class="lbl">Lock target %</div><div class="val" id="hx-tgt">—</div><div class="can">consigne (mode)</div></div>
   <div class="card"><div class="lbl">Pump eng. %</div><div class="val" id="hx-pump">—</div><div class="can">0x118 D3</div></div>
-  <div class="card"><div class="lbl">Dernier paquet</div><div class="val" id="hx-age">—</div><div class="can">fraîcheur du lien</div></div>
+  <div class="card"><div class="lbl">Temp embrayage</div><div class="val" id="hx-temp">—</div><div class="can">0x2BF1 Haldex</div></div>
 </div>
 <div class="hx-btns">
   <button class="hxb hxb-off" onclick="hmode(0)">🅾 STOCK</button>
@@ -181,15 +180,19 @@ async function poll(){
     setVal('hx-ped',  online ? (hx.pedal_pct + '%') : null);
     setVal('hx-tgt',  online ? (hx.lock_target_pct + '%') : null);
     setVal('hx-pump', online ? (hx.pump_engagement_pct + '%') : null);
-    // passthrough (actual reported by the X2): ON = transparent/safe, OFF = MITM armed
+    // armed status -> header badge. passthrough ON = transparent/safe (Pas armé, green);
+    // OFF = MITM armed (Armé, red). Arm/disarm itself lives in the settings page.
     const pt = online ? (hx.passthrough ? 1 : 0) : null;
-    if(pt!==null) g_pt = pt;   // remember for the passthrough card toggle
-    setVal('hx-pt', pt===null ? null : (pt ? 'ON (sûr)' : '🔴 ARMÉ'));
-    const ptCard = $('hx-pt-card');
-    if(ptCard) ptCard.classList.toggle('armed', pt===0);
-    // 8th card: link freshness (last STATE packet age)
-    setVal('hx-age', (online && hx.age_ms!==undefined && hx.age_ms<4294967295)
-                     ? ('il y a '+(hx.age_ms/1000).toFixed(1)+'s') : null);
+    if(pt!==null) g_pt = pt;   // remember for the arm/disarm button in settings
+    const arm = $('hx-arm');
+    if(arm){
+      if(pt===null){ arm.textContent='— hors-ligne'; arm.style.background='#444'; }
+      else if(pt){ arm.textContent='🟢 Pas armé'; arm.style.background='#2a7d46'; }
+      else { arm.textContent='🔴 ARMÉ'; arm.style.background='#a33'; }
+    }
+    // clutch oil temp (Main UDS poll 0x2BF1) — sentinel -1000 = no data
+    setVal('hx-temp', (s.haldex_clutch_temp_c!==undefined && s.haldex_clutch_temp_c>-999)
+                      ? s.haldex_clutch_temp_c.toFixed(0)+'°' : null);
     // highlight the active mode button
     document.querySelectorAll('.hxb').forEach((b,i)=>b.classList.toggle('active', i===lm));
     $('conn').classList.remove('off');
@@ -342,6 +345,11 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div><label>ESP-NOW peer MAC (MITM X2)</label><input type="text" data-k="haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF (broadcast)">
     <div class="hint">Vide = broadcast. Mets le MAC du module X2 pour verrouiller l'appairage.</div></div>
 </div>
+<div class="row full">
+  <div><label>Armement MITM (passthrough)</label>
+    <button type="button" onclick="hpass()" style="width:100%;padding:12px;border-radius:8px;border:1px solid #a33;background:#3a2530;color:#fff;font-weight:700">🔓 Armer / 🔒 Désarmer le X2</button>
+    <div class="hint">Bascule l'armement. <b>Désarmer</b> = le X2 MODIFIE les trames Haldex (FWD/50-50 deviennent actifs, action mécanique réelle) — circuit fermé seulement. Le statut 🟢 Pas armé / 🔴 ARMÉ s'affiche en haut de la page Live (à côté de « Haldex (MITM) »).</div></div>
+</div>
 
 <div class="save" id="save">Touche un champ pour modifier</div>
 
@@ -428,7 +436,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.1.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.2.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -446,6 +454,7 @@ static void handle_status() {
   // v2.10.0 — 2 temps (DSG + EGT) + sniffer flags for mobile live grid
   doc["dsg_oil_c"]       = obd2_get_last_dsg_oil_c();
   doc["egt_c"]           = obd2_get_last_egt_c();
+  doc["haldex_clutch_temp_c"] = obd2_get_last_haldex_clutch_temp_c();   // v4.2.0 (0x2BF1)
   // v2.10.0: engine oil temp removed from mobile status.
   doc["handbrake_active"]  = button_sniffer_handbrake_active();
   doc["handbrake_age_ms"]  = button_sniffer_handbrake_age_ms();

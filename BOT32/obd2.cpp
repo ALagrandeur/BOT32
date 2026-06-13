@@ -22,6 +22,10 @@ static uint32_t last_ethanol_ms  = 0;
 static int32_t  last_haldex_blockage_raw = -1;
 static uint32_t last_haldex_blockage_ms  = 0;
 
+// Haldex clutch oil temp (Celsius) — DID 0x2BF1, data[5]*0.75-48
+static float    last_haldex_clutch_temp_c = -1000.0f;  // sentinel = no reading
+static uint32_t last_haldex_clutch_temp_ms = 0;
+
 // v2.8.0 — three temperature readings
 // We use float with -1000.0 sentinel (instead of -1) because real temps can
 // legitimately be negative (cold start at -30 C, etc.).
@@ -37,7 +41,7 @@ static uint8_t  poll_slot     = 0;   // round-robin index across enabled DIDs
 
 // v2.10.0 — round-robin slot count: MAP, Ethanol, Haldex, DSG oil, EGT
 // (engine oil temp removed in v2.10.0, was slot 5)
-static const uint8_t N_POLL_SLOTS = 5;
+static const uint8_t N_POLL_SLOTS = 6;
 
 // Stats
 static uint32_t queries_sent      = 0;
@@ -151,6 +155,16 @@ static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
       return;
     }
 
+    // === Haldex clutch oil temp (Haldex ECU, DID 0x2BF1) ===
+    //   resp 05 62 2B F1 <status> <temp>; data[4]=status (toggles), data[5]=temp.
+    //   temp_C = data[5]*0.75-48 (standard VAG temp scale; calibrate vs VCDS).
+    if (f.id == CAN_ID_HALDEX_RESP && did == UDS_DID_HALDEX_CLUTCH_TEMP) {
+      last_haldex_clutch_temp_c  = (float)f.data[5] * 0.75f - 48.0f;
+      last_haldex_clutch_temp_ms = millis();
+      responses_ok++;
+      return;
+    }
+
     // === DSG oil temp (Transmission ECU 0x7E9, DID 0x2104) — v2.8.0 ===
     //   Formula: temp_C = data[4] (validated trans 71.csv: 0x47=71)
     if (f.id == CAN_ID_TCM_RESP && did == UDS_DID_DSG_OIL) {
@@ -252,6 +266,13 @@ uint16_t obd2_get_last_haldex_blockage_raw() {
 uint32_t obd2_get_haldex_blockage_age_ms() {
   if (last_haldex_blockage_ms == 0) return UINT32_MAX;
   return millis() - last_haldex_blockage_ms;
+}
+
+// Haldex clutch oil temp (Celsius); -1000 sentinel = no reading
+float obd2_get_last_haldex_clutch_temp_c() { return last_haldex_clutch_temp_c; }
+uint32_t obd2_get_haldex_clutch_temp_age_ms() {
+  if (last_haldex_clutch_temp_ms == 0) return UINT32_MAX;
+  return millis() - last_haldex_clutch_temp_ms;
 }
 
 // v2.8.0 — DSG oil temp
@@ -390,6 +411,7 @@ void obd2_tick(bool active) {
   // slot 2 = Haldex blockage (if s.poll_haldex_blockage)
   // slot 3 = DSG oil temp    (always on, no UI toggle — Live grid only)
   // slot 4 = EGT             (always on)
+  // slot 5 = Haldex clutch temp (if s.poll_haldex_blockage — same Haldex ECU)
   // Tries all N_POLL_SLOTS so we don't skip a tick if only some are enabled.
   for (uint8_t attempt = 0; attempt < N_POLL_SLOTS; attempt++) {
     uint8_t slot = (poll_slot + attempt) % N_POLL_SLOTS;
@@ -421,6 +443,13 @@ void obd2_tick(bool active) {
         obd2_send_uds_read(UDS_DID_EGT, s.obd2_req_id);
         sent = true;
         break;
+      case 5:
+        // v4.2.0 — Haldex clutch oil temp (same Haldex ECU as the blockage)
+        if (s.poll_haldex_blockage) {
+          obd2_send_uds_read(UDS_DID_HALDEX_CLUTCH_TEMP, CAN_ID_HALDEX_REQ);
+          sent = true;
+        }
+        break;
     }
     if (sent) {
       poll_slot = (slot + 1) % N_POLL_SLOTS;
@@ -438,6 +467,9 @@ void obd2_tick(bool active) {
   }
   if (obd2_get_haldex_blockage_age_ms() > HALDEX_BLOCKAGE_STALE_TIMEOUT_MS) {
     last_haldex_blockage_raw = -1;
+  }
+  if (obd2_get_haldex_clutch_temp_age_ms() > HALDEX_CLUTCH_TEMP_STALE_TIMEOUT_MS) {
+    last_haldex_clutch_temp_c = -1000.0f;
   }
   // v2.8.0 — temp staleness
   if (obd2_get_dsg_oil_age_ms() > DSG_OIL_STALE_TIMEOUT_MS) {
