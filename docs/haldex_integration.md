@@ -127,29 +127,31 @@ bytes and recomputes the **E2E CRC** (AUTOSAR CRC8, poly 0x2F, init/xorout 0xFF)
 > (prepend matched only ~1 %). Alive counter = `D2 & 0x0F`. Per-ID DataID tables:
 > 0x08A=all 0xD4, **0x116=all 0xAC**, 0x106=all 0x07, plus the 0x0A7/0x0A8 tables.
 
-Full frame set (each extra frame behind its own flag, default ON):
+The Gen5 Haldex is **feed-forward** (engine-torque-driven, not slip-reactive) AND it
+**de-rates the lock as vehicle speed rises**. So 50/50 pins the torque lever AND makes
+the Haldex believe the car is **stationary + idling** so it never de-rates. FWD is
+unchanged.
 
-| Frame | ID | Byte(s) rewritten |
+| Frame | ID | 50/50 role |
 |---|---|---|
-| ESP_14   | `0x08A` | D8 (BR_Vorg_Allrad_Max) — **the lock demand (primary)** |
-| MOTOR_11 | `0x0A7` | D6, D7 (torque request) — the lock demand |
-| ESP_10   | `0x116` | D8 |
-| ESP_05   | `0x106` | D4 = 0xC0, D8 = 0x00 |
-| ESP_19   | `0x0B2` | wheel speeds (no CRC/counter) |
-| ~~MOTOR_12~~ | `0x0A8` | **PASSTHROUGH (v1.6.0)** — D8 is the engine-RPM signal, NOT the lock demand (confirmed on run3). Was wrongly forced before. |
+| ESP_14   | `0x08A` | D8 ceiling pinned to the car's real max (`0xFA`; `0xFE` is never produced by this car) |
+| MOTOR_11 | `0x0A7` | D4 = engine torque pinned high — the lock **lever** |
+| ESP_21   | `0x0FD` | **vehicle speed → 0** — defeats the speed de-rate (**the key fix**) |
+| ESP_19   | `0x0B2` | wheel speeds → 0 (consistent "stopped"; no CRC/counter) |
+| MOTOR_12 | `0x0A8` | D7 engine-RPM → low (idle; high RPM also de-rates) |
+| MOTOR_14 | `0x3BE` | **NOT touched** — braking-while-rolling = 0 % engagement, so faking the brake would kill the lock |
 
-Demand byte: **FWD → `0x00`** (lock 0 %) + wheels = 0 ; **50/50 → `0xFA`** (lock
-~100 %) + wheels = real vehicle speed.
+(FWD → demand `0x00` + wheels 0. Exact byte values + the per-counter DataID tables
+live in the private BOT32-HALDEX firmware.)
 
-> ⚠️ This car's `0x08A D8` is a **constant `0xFA`** on the real bus (confirmed on
-> run3, 133 frames, never `0xFE`). `0xFE` is SNA here and would likely be discarded,
-> so we keep `0xFA` — NOT OpenHaldex's `0xFE` for ESP_14.
-
-> ⚠ 50/50 uses **`0xFA`, not `0xFE`/`0xFF`** — those are SNA/reserved and get
-> discarded by the controller. The exact byte is empirically tuned in the
-> OpenHaldex community; validate on a closed course, starting from passthrough ON.
-> Confirmed in-vehicle: FWD spins the front wheels only; 50/50 holds lock target
-> 100 % (actual pump engagement varies at standstill — normal, it ramps under load).
+> **The breakthrough (v3.0.0).** Earlier builds forwarded the real speed, so 50/50
+> faded from ~95 % at standstill to ~0 % by 60 km/h. Making the Haldex believe it is
+> stationary (speed/wheels/RPM neutralised, like OpenHaldex) holds **~95 % at ALL
+> speeds** — confirmed in-vehicle. Only steering angle still sheds some lock (the
+> Haldex's own corner behaviour, **kept on purpose** — a fully-locked coupling binds
+> the driveline in a turn). ⚠️ This bypasses the Haldex's speed-based thermal
+> protection — **closed course, short sessions**; a Haldex oil-temp auto-revert to
+> STOCK is planned (DID not yet captured). Validate starting from passthrough ON.
 
 ---
 

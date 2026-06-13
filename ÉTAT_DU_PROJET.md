@@ -1,30 +1,31 @@
 # État du projet BOT32
 
-> Photo lisible de l'état du projet. Mise à jour : **2026-06-06**.
+> Photo lisible de l'état du projet. Mise à jour : **2026-06-12**.
 > Pour les règles et conventions techniques, voir **`CLAUDE.md`**.
 
 ---
 
 ## Version actuelle
 
-🏁 **v4.0.0** (principal) + **BOT32-HALDEX v2.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable.**
+🏁 **v4.x** (principal) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable.**
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 
-**Tout fonctionne en voiture, confirmé par le pilote.** Les 3 modes sont validés :
-**STOCK** (normal), **FWD** (roues avant seulement — le burnout fonctionne), **50-50**
-(lock target 100 %). Le **lien ESP-NOW principal ↔ X2 est solide**, le contrôle se fait
-depuis l'UI (modes + passthrough + ack), et le **combo FWD** marche au volant.
+**Les 3 modes fonctionnent en voiture, confirmés par le pilote.** **STOCK** (normal),
+**FWD** (roues avant seulement — le burnout fonctionne), et surtout **50-50 qui TIENT
+~95 % d'engagement à TOUTES les vitesses** (le gros morceau enfin résolu). Lien ESP-NOW
+solide, contrôle depuis l'UI (modes + passthrough + ack).
 
-### Nouveautés de ce jalon (v3.9.0/v1.5.0 → v4.0.0/v2.0.0)
-- **Lien ESP-NOW fiabilisé** : canal 1 verrouillé (`esp_wifi_set_channel`) **+ power-save WiFi OFF**
-  des deux côtés (c'était LA cause d'un lien mort). Diagnostics `espnow_rx` (UI) + `[5s]` (X2).
-- **FWD — coupure inversée (v3.10.0)** : le FWD se coupe quand on **remet le TC à ON** (plus
-  quand les Hazards s'éteignent → on peut couper les warnings et garder FWD). Utilise l'état
-  **latché** du TC (0x0FD byte6==0x03, stable, confirmé sur la donnée live).
-- **50-50 — fix 0x0A8 (v1.6.0)** : on ne **force plus 0x0A8** (son byte[7] = signal **RPM**
-  moteur confirmé sur run3, PAS la demande de lock). La demande vit uniquement dans
-  **0x08A D8 + 0x0A7 D6/D7**. On garde **0x08A D8 = 0xFA** (vérifié : la voiture ne dépasse
-  jamais 0xFA, 0xFE serait jeté en SNA — contredit la valeur 0xFE d'OpenHaldex).
+### Nouveautés de ce jalon (BOT32-HALDEX v2.0.0 → v3.0.0)
+- **50-50 RÉSOLU (le gros morceau).** Découverte clé : le Haldex Gen5 est *feed-forward*
+  (piloté par le **couple**, pas le glissement) ET il **réduit l'engagement quand la
+  VITESSE monte** — et on lui transmettait la vraie vitesse, donc le lock mourait vers
+  60 km/h. Fix : faire croire au Haldex qu'il est **immobile + au ralenti** (vitesse/
+  roues/RPM neutralisés côté Haldex) → il ne réduit plus → **95 % tenu à toute vitesse**.
+  *(Recette détaillée dans le dépôt privé.)*
+- **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
+  (un accouplement 100 % verrouillé bloque la transmission en virage).
+- **À venir** : DID UDS de **température d'huile Haldex** + retour STOCK auto (limite
+  thermique), car on contourne la protection vitesse du Haldex.
 
 ---
 
@@ -36,10 +37,11 @@ depuis l'UI (modes + passthrough + ack), et le **combo FWD** marche au volant.
   écart de boot minimal (évite les défauts TC/TPMS au démarrage en série).
 - **CRC E2E AUTOSAR** (poly 0x2F, init 0xFF, xorout 0xFF) sur `[D2..D8, DataID]` —
   **DataID APPENDÉ** (confirmé 100 % sur 5 logs réels). Compteur = `D2 & 0x0F`.
-- **Jeu de trames complet** (parité OpenHaldex, chacune derrière son flag) :
-  0x08A / 0x0A7 / 0x0A8 (couple), 0x116 / 0x106 (ESP), 0x0B2 (roues).
-  **FWD** → demande 0x00 + roues à 0 ; **50-50** → demande **0xFA** (0xFE/0xFF =
-  SNA/réservé, écartés) + roues = vitesse véhicule réelle.
+- **Réécriture des trames** (FWD inchangé, ça marche) : **FWD** → demande 0x00 + roues
+  à 0. **50-50** → épingle le couple + plafond ET fait croire au Haldex qu'il est
+  **immobile + au ralenti** (vitesse/roues/RPM neutralisés côté Haldex) pour qu'il ne
+  réduise pas l'engagement à vitesse. Le **frein n'est PAS simulé** (freiner-en-roulant
+  = 0 % d'engagement, le simuler tuerait le lock). *(Valeurs exactes + table CRC : privé.)*
 - **État live lu** : engagement pompe (0x118 D3), pédale (0x121 D3), vitesse (0x0FD).
 - **12 V permanent + light-sleep** (15 min d'inactivité CAN) + **wake-on-CAN** ;
   **ne dort jamais** tant qu'un hôte USB est branché (`if (Serial)`).
