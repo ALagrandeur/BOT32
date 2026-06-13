@@ -184,15 +184,18 @@ async function poll(){
     // OFF = MITM armed (Armé, red). Arm/disarm itself lives in the settings page.
     const pt = online ? (hx.passthrough ? 1 : 0) : null;
     if(pt!==null) g_pt = pt;   // remember for the arm/disarm button in settings
+    const trip = !!s.haldex_thermal_trip;
     const arm = $('hx-arm');
     if(arm){
-      if(pt===null){ arm.textContent='— hors-ligne'; arm.style.background='#444'; }
+      if(trip){ arm.textContent='🌡 SURCHAUFFE → STOCK'; arm.style.background='#c40'; }
+      else if(pt===null){ arm.textContent='— hors-ligne'; arm.style.background='#444'; }
       else if(pt){ arm.textContent='🟢 Pas armé'; arm.style.background='#2a7d46'; }
       else { arm.textContent='🔴 ARMÉ'; arm.style.background='#a33'; }
     }
-    // clutch oil temp (Main UDS poll 0x2BF1) — sentinel -1000 = no data
+    // clutch oil temp (Main UDS poll 0x2BF1) — sentinel -1000 = no data; red if over-temp
     setVal('hx-temp', (s.haldex_clutch_temp_c!==undefined && s.haldex_clutch_temp_c>-999)
                       ? s.haldex_clutch_temp_c.toFixed(0)+'°' : null);
+    const tEl=$('hx-temp'); if(tEl) tEl.style.color = trip ? '#f55' : '';
     // highlight the active mode button
     document.querySelectorAll('.hxb').forEach((b,i)=>b.classList.toggle('active', i===lm));
     $('conn').classList.remove('off');
@@ -345,6 +348,10 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div><label>ESP-NOW peer MAC (MITM X2)</label><input type="text" data-k="haldex_espnow_peer_mac" placeholder="FF:FF:FF:FF:FF:FF (broadcast)">
     <div class="hint">Vide = broadcast. Mets le MAC du module X2 pour verrouiller l'appairage.</div></div>
 </div>
+<div class="row">
+  <div><label>🌡 Limite temp embrayage °C (→ STOCK auto)</label><input type="number" data-k="haldex_clutch_temp_limit_c" min="60" max="250" step="5">
+    <div class="hint">Sécurité : si la temp embrayage Haldex (0x2BF1) atteint cette valeur, le mode repasse en STOCK automatiquement (et y reste tant que ce n'est pas redescendu de ~10°C). Défaut 150°C.</div></div>
+</div>
 <div class="row full">
   <div><label>Armement MITM (passthrough)</label>
     <button type="button" onclick="hpass()" style="width:100%;padding:12px;border-radius:8px;border:1px solid #a33;background:#3a2530;color:#fff;font-weight:700">🔓 Armer / 🔒 Désarmer le X2</button>
@@ -436,7 +443,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.2.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.3.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -455,6 +462,7 @@ static void handle_status() {
   doc["dsg_oil_c"]       = obd2_get_last_dsg_oil_c();
   doc["egt_c"]           = obd2_get_last_egt_c();
   doc["haldex_clutch_temp_c"] = obd2_get_last_haldex_clutch_temp_c();   // v4.2.0 (0x2BF1)
+  doc["haldex_thermal_trip"]  = haldex_modes_thermal_trip();            // v4.3.0 over-temp cut-out
   // v2.10.0: engine oil temp removed from mobile status.
   doc["handbrake_active"]  = button_sniffer_handbrake_active();
   doc["handbrake_age_ms"]  = button_sniffer_handbrake_age_ms();

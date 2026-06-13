@@ -24,6 +24,7 @@ static Settings make_defaults() {
   s.obd2_poll_hz      = 30;
   s.poll_ethanol            = true;   // v2.4.0: ON by default (no UI toggle)
   s.poll_haldex_blockage    = true;   // v2.4.0: ON by default (no UI toggle)
+  s.haldex_clutch_temp_limit_c = 150; // v4.3.0: auto-revert to STOCK at/above this clutch temp
   // v2.9.0: cluster_override defaults removed (feature deleted).
   // v2.5.1: clear-engine-fault auto-trigger config — Hazard button, 3x in 4s
   s.cef_auto_enabled          = true;       // master toggle, ON by default
@@ -80,6 +81,7 @@ void settings_init() {
   current.obd2_poll_hz      = prefs.getUShort("obd_hz", 30);          // v2.8.0 default (6 slots)
   current.poll_ethanol          = prefs.getBool("p_etoh", true);       // v2.4.0 default ON
   current.poll_haldex_blockage  = prefs.getBool("p_hdxb", true);       // v2.4.0 default ON
+  current.haldex_clutch_temp_limit_c = prefs.getUShort("hdx_tlim", 150); // v4.3.0 (no VERSION bump: missing key -> 150)
   // v2.9.0: cluster_override NVS load removed (NVS keys "co_*" abandoned —
   // SETTINGS_VERSION bump 17->18 will trigger a one-time reset that clears them).
   // v2.5.1: clear-engine-fault auto-trigger config (roadmap detection)
@@ -171,6 +173,12 @@ bool settings_set_obd2_poll_hz(uint16_t v) {
 bool settings_set_poll_ethanol(bool v) {
   current.poll_ethanol = v;
   return save_bool("p_etoh", v);
+}
+bool settings_set_haldex_clutch_temp_limit_c(uint16_t v) {
+  if (v < 60)  v = 60;     // sane floor (below normal operating temp)
+  if (v > 250) v = 250;    // clutch material limit ceiling
+  current.haldex_clutch_temp_limit_c = v;
+  return prefs.putUShort("hdx_tlim", v) > 0;
 }
 bool settings_set_poll_haldex_blockage(bool v) {
   current.poll_haldex_blockage = v;
@@ -325,6 +333,7 @@ void settings_reset_to_defaults() {
   prefs.putUShort("obd_hz", current.obd2_poll_hz);
   prefs.putBool("p_etoh", current.poll_ethanol);
   prefs.putBool("p_hdxb", current.poll_haldex_blockage);
+  prefs.putUShort("hdx_tlim", current.haldex_clutch_temp_limit_c);
   // v2.9.0: cluster_override NVS writes removed.
   prefs.putBool("cef_en", current.cef_auto_enabled);
   prefs.putUShort("cef_id", current.cef_trigger_can_id);

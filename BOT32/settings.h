@@ -23,6 +23,7 @@ struct Settings {
   // v2.1: extra UDS polls (v2.4.0: now ON by default, no UI toggle)
   bool     poll_ethanol;             // DID 0xF452 from engine ECU
   bool     poll_haldex_blockage;     // DID 0x2BF3 from Haldex ECU (0x70F/0x779)
+  uint16_t haldex_clutch_temp_limit_c; // v4.3.0: clutch temp (0x2BF1) >= this -> auto STOCK (default 150)
 
   // v2.9.0: cluster display override removed entirely.
   //   (Was v2.2 — see git history v2.8.0 and earlier for the original feature.)
@@ -110,6 +111,7 @@ bool settings_set_obd2_did_map(uint16_t v);
 bool settings_set_obd2_poll_hz(uint16_t v);
 bool settings_set_poll_ethanol(bool v);
 bool settings_set_poll_haldex_blockage(bool v);
+bool settings_set_haldex_clutch_temp_limit_c(uint16_t v);  // v4.3.0
 // v2.9.0: 7 cluster_override setters removed (feature deleted).
 bool settings_set_cef_auto_enabled(bool v);
 bool settings_set_cef_trigger_can_id(uint16_t v);

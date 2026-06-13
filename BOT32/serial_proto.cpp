@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "4.2.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "4.3.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -56,6 +56,7 @@ static void emit_settings() {
   doc["obd2_poll_hz"]      = s.obd2_poll_hz;
   doc["poll_ethanol"]          = s.poll_ethanol;
   doc["poll_haldex_blockage"]  = s.poll_haldex_blockage;
+  doc["haldex_clutch_temp_limit_c"] = s.haldex_clutch_temp_limit_c;  // v4.3.0
   // v2.9.0: cluster_override settings removed.
   doc["cef_auto_enabled"]              = s.cef_auto_enabled;
   doc["cef_trigger_can_id"]            = s.cef_trigger_can_id;
@@ -151,6 +152,9 @@ static void emit_status() {
   float hdx_temp = obd2_get_last_haldex_clutch_temp_c();
   doc["haldex_clutch_temp_c"]      = hdx_temp > -999.0f ? hdx_temp : (float)-1000;
   doc["haldex_clutch_temp_age_ms"] = obd2_get_haldex_clutch_temp_age_ms();
+  doc["haldex_thermal_trip"]       = haldex_modes_thermal_trip();   // v4.3.0 over-temp cut-out
+
+
 
   // v2.8.0 — three new temperatures (UDS polled, round-robin)
   // Sentinel -1000 means "no data yet". UI must check for this.
@@ -413,6 +417,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "obd2_poll_hz")          == 0) ok = settings_set_obd2_poll_hz(v    | 5);
   else if (strcmp(key, "poll_ethanol")          == 0) ok = settings_set_poll_ethanol(v          | false);
   else if (strcmp(key, "poll_haldex_blockage")  == 0) ok = settings_set_poll_haldex_blockage(v  | false);
+  else if (strcmp(key, "haldex_clutch_temp_limit_c") == 0) ok = settings_set_haldex_clutch_temp_limit_c(v | 150);
   // v2.9.0: cluster_override + display_* setters removed (feature deleted).
   else if (strcmp(key, "cef_auto_enabled")          == 0) ok = settings_set_cef_auto_enabled(v          | true);
   else if (strcmp(key, "cef_trigger_can_id")        == 0) ok = settings_set_cef_trigger_can_id(v        | 0x366);
