@@ -123,7 +123,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div class="card"><div class="lbl">Pédale %</div><div class="val" id="hx-ped">—</div><div class="can">0x121 MOTOR_20 D3</div></div>
   <div class="card"><div class="lbl">Lock target %</div><div class="val" id="hx-tgt">—</div><div class="can">consigne (mode)</div></div>
   <div class="card"><div class="lbl">Pump eng. %</div><div class="val" id="hx-pump">—</div><div class="can">0x118 D3</div></div>
-  <div class="card"><div class="lbl">Temp embrayage</div><div class="val" id="hx-temp">—</div><div class="can">0x2BF1 Haldex</div></div>
+  <div class="card"><div class="lbl">Temp embrayage</div><div class="val" id="hx-temp">—</div><div class="can">0x2BF1 · <span id="hx-temp-raw">raw —</span></div></div>
 </div>
 <div class="hx-btns">
   <button class="hxb hxb-off" onclick="hmode(0)">🅾 STOCK</button>
@@ -196,6 +196,10 @@ async function poll(){
     setVal('hx-temp', (s.haldex_clutch_temp_c!==undefined && s.haldex_clutch_temp_c>-999)
                       ? s.haldex_clutch_temp_c.toFixed(0)+'°' : null);
     const tEl=$('hx-temp'); if(tEl) tEl.style.color = trip ? '#f55' : '';
+    // raw bytes (D4<<8|D5) shown for temp-formula calibration vs VCDS
+    const rawEl=$('hx-temp-raw');
+    if(rawEl) rawEl.textContent = (s.haldex_clutch_raw!==undefined && s.haldex_clutch_raw>0)
+              ? ('raw 0x'+s.haldex_clutch_raw.toString(16).toUpperCase().padStart(4,'0')) : 'raw —';
     // highlight the active mode button
     document.querySelectorAll('.hxb').forEach((b,i)=>b.classList.toggle('active', i===lm));
     $('conn').classList.remove('off');
@@ -284,57 +288,20 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div><label>MAP max mbar</label><input type="number" data-k="map_max_mbar" min="0" max="4000" step="10"></div>
 </div>
 
-<h2>🆔 Cluster bus IDs</h2>
+<h2>🔍 OBD2</h2>
 <div class="row">
-  <div><label>Motor_09 ID</label><input type="text" data-k="cluster_motor09_id" data-hex="1"></div>
-  <div><label>WBA_03 ID</label><input type="text" data-k="cluster_wba03_id" data-hex="1"></div>
-</div>
-
-<h2>🔍 OBD2 bus IDs</h2>
-<div class="row">
-  <div><label>Req ID</label><input type="text" data-k="obd2_req_id" data-hex="1"></div>
-  <div><label>Resp ID</label><input type="text" data-k="obd2_resp_id" data-hex="1"></div>
-</div>
-<div class="row">
-  <div><label>DID MAP</label><input type="text" data-k="obd2_did_map" data-hex="1"></div>
   <div><label>Poll Hz</label><input type="number" data-k="obd2_poll_hz" min="1" max="30"></div>
 </div>
 
-<h2>⏱ TX</h2>
+<h2>📡 Diffusion TX</h2>
 <div class="row">
   <div><label>TX rate Hz</label><input type="number" data-k="tx_rate_hz" min="5" max="50"></div>
 </div>
 <label class="cb"><input type="checkbox" data-k="tx_enabled"> 🟢 TX enabled (master)</label>
 <label class="cb"><input type="checkbox" data-k="force_tx_always"> 🔧 Force TX in ALL modes</label>
 
-<h2>🧪 Bench test</h2>
-<label class="cb"><input type="checkbox" data-k="bench_test_enabled"> Enable bench test</label>
-<div class="row">
-  <div><label>Bench bus</label>
-    <select data-k="bench_test_bus"><option value="0">CAN0 cluster</option><option value="1">CAN1 OBD2</option></select>
-  </div>
-  <div><label>Bench RPM</label><input type="number" data-k="bench_rpm" min="0" max="8000" step="50"></div>
-</div>
-<div class="row">
-  <div><label>Bench MAP mbar</label><input type="number" data-k="bench_map_mbar" min="0" max="3000" step="20"></div>
-</div>
-
 <h2>🔧 Clear Engine Fault</h2>
 <button onclick="if(confirm('Effacer les defauts moteur (Clear Engine Fault) ?')){fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'clear_engine_fault'})}).then(r=>r.json()).then(j=>alert(j.ok?'✓ Clear Engine Fault envoye':'✗ '+(j.msg||'echec'))).catch(()=>alert('✗ erreur reseau'))}" style="width:100%;margin:6px 0 12px;padding:13px;background:#0a4;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600">🔧 Clear Engine Fault (manuel)</button>
-<label class="cb"><input type="checkbox" data-k="cef_auto_enabled"> 🟢 Auto-trigger enabled</label>
-<div class="row">
-  <div><label>Trigger CAN ID</label><input type="text" data-k="cef_trigger_can_id" data-hex="1"></div>
-  <div><label>Byte idx</label><input type="number" data-k="cef_trigger_byte_idx" min="0" max="7"></div>
-</div>
-<div class="row">
-  <div><label>Rest value</label><input type="number" data-k="cef_trigger_rest_value" min="0" max="255"></div>
-  <div><label>Pressed value</label><input type="number" data-k="cef_trigger_pressed_value" min="0" max="255"></div>
-</div>
-<div class="row">
-  <div><label>Press count</label><input type="number" data-k="cef_press_count" min="1" max="10"></div>
-  <div><label>Window ms</label><input type="number" data-k="cef_press_window_ms" min="500" max="30000" step="100"></div>
-</div>
-
 <h2>📶 WiFi AP</h2>
 <label class="cb"><input type="checkbox" data-k="wifi_enabled"> 📶 WiFi AP enabled</label>
 <div class="row">
@@ -443,7 +410,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.3.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.4.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -462,6 +429,7 @@ static void handle_status() {
   doc["dsg_oil_c"]       = obd2_get_last_dsg_oil_c();
   doc["egt_c"]           = obd2_get_last_egt_c();
   doc["haldex_clutch_temp_c"] = obd2_get_last_haldex_clutch_temp_c();   // v4.2.0 (0x2BF1)
+  doc["haldex_clutch_raw"]    = obd2_get_last_haldex_clutch_raw();      // v4.4.0 calibration
   doc["haldex_thermal_trip"]  = haldex_modes_thermal_trip();            // v4.3.0 over-temp cut-out
   // v2.10.0: engine oil temp removed from mobile status.
   doc["handbrake_active"]  = button_sniffer_handbrake_active();

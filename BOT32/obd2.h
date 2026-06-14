@@ -74,6 +74,7 @@ uint32_t obd2_get_haldex_blockage_age_ms();
 //   Formula: temp_C = data[5]*0.75-48 (standard VAG temp scale; calibrate vs VCDS).
 //   Returns -1000.0 if no recent data.
 float obd2_get_last_haldex_clutch_temp_c();
+uint16_t obd2_get_last_haldex_clutch_raw();   // v4.4.0: raw (data[4]<<8)|data[5] for calibration
 uint32_t obd2_get_haldex_clutch_temp_age_ms();
 
 // DSG transmission oil temperature (Celsius) — v2.8.0

@@ -25,6 +25,7 @@ static uint32_t last_haldex_blockage_ms  = 0;
 // Haldex clutch oil temp (Celsius) — DID 0x2BF1, data[5]*0.75-48
 static float    last_haldex_clutch_temp_c = -1000.0f;  // sentinel = no reading
 static uint32_t last_haldex_clutch_temp_ms = 0;
+static uint16_t last_haldex_clutch_raw     = 0;        // (data[4]<<8)|data[5] — for calibration
 
 // v2.8.0 — three temperature readings
 // We use float with -1000.0 sentinel (instead of -1) because real temps can
@@ -159,7 +160,8 @@ static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
     //   resp 05 62 2B F1 <status> <temp>; data[4]=status (toggles), data[5]=temp.
     //   temp_C = data[5]*0.75-48 (standard VAG temp scale; calibrate vs VCDS).
     if (f.id == CAN_ID_HALDEX_RESP && did == UDS_DID_HALDEX_CLUTCH_TEMP) {
-      last_haldex_clutch_temp_c  = (float)f.data[5] * 0.75f - 48.0f;
+      last_haldex_clutch_raw     = ((uint16_t)f.data[4] << 8) | f.data[5];  // both bytes (calibration)
+      last_haldex_clutch_temp_c  = (float)f.data[5] * 0.75f - 48.0f;        // TENTATIVE scale
       last_haldex_clutch_temp_ms = millis();
       responses_ok++;
       return;
@@ -270,6 +272,7 @@ uint32_t obd2_get_haldex_blockage_age_ms() {
 
 // Haldex clutch oil temp (Celsius); -1000 sentinel = no reading
 float obd2_get_last_haldex_clutch_temp_c() { return last_haldex_clutch_temp_c; }
+uint16_t obd2_get_last_haldex_clutch_raw() { return last_haldex_clutch_raw; }  // calibration
 uint32_t obd2_get_haldex_clutch_temp_age_ms() {
   if (last_haldex_clutch_temp_ms == 0) return UINT32_MAX;
   return millis() - last_haldex_clutch_temp_ms;

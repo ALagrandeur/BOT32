@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "4.3.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "4.4.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -152,6 +152,7 @@ static void emit_status() {
   float hdx_temp = obd2_get_last_haldex_clutch_temp_c();
   doc["haldex_clutch_temp_c"]      = hdx_temp > -999.0f ? hdx_temp : (float)-1000;
   doc["haldex_clutch_temp_age_ms"] = obd2_get_haldex_clutch_temp_age_ms();
+  doc["haldex_clutch_raw"]         = obd2_get_last_haldex_clutch_raw();   // v4.4.0 calibration
   doc["haldex_thermal_trip"]       = haldex_modes_thermal_trip();   // v4.3.0 over-temp cut-out
 
 
