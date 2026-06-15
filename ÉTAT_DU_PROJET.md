@@ -84,7 +84,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 ## Ce qui fonctionne (livré)
 
 - ✅ **Boost-on-coolant** : override de Motor_09 (0x647), mapping linéaire MAP→température.
-- ✅ **Polling UDS multi-DID** (round-robin 5 slots) : MAP, éthanol, blocage Haldex, huile DSG, EGT.
+- ✅ **Polling UDS multi-DID** (round-robin 6 slots) : MAP, éthanol, blocage Haldex, huile DSG, EGT, **temp embrayage Haldex (0x2BF1)**.
 - ✅ **4 sniffers passifs** : frein à main, bouton OK volant, Hazard, Traction Control (affichage seul).
 - ✅ **Clear Engine Fault** : OBD-II Mode 04 broadcast (0x700) — manuel depuis l'UI.
 - ✅ **Clear DTC tous modules** : machine à états UDS non-bloquante (14+ ECU).
