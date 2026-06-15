@@ -197,23 +197,24 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 | **Bench cluster test — CAN1** | ✅ **passed (same behavior on second bus)** |
 | **Vehicle OBD2 listen-only — MAP via UDS DID 0x39C0** | ✅ **passed 2026-05-23 (MAP reads back live in UI)** |
 | **Vehicle lever decode (WBA_03 0x394)** | ✅ **passed 2026-05-23 (lever live in UI)** |
-| Vehicle install — Cluster Motor_09 override (full TX) | ⏳ pending coolant byte mapping fix + needle proportionality fix |
-| Long-term in-vehicle calibration | ⏳ planned after install |
+| Vehicle install — boost-on-coolant gauge (Motor_09 full TX) | ✅ working in-vehicle (gauge driven by MAP; fine calibration ongoing) |
+| Long-term in-vehicle calibration | ⏳ ongoing |
 
 ## Roadmap
 
-Planned features not yet implemented:
-
-- 🔮 **Clear DTC via MFSW button combo** — driver presses combo at steering wheel, BOT32 sends UDS Clear DTC to all ECUs. Needs MFSW frame sniff + UDS ECU list.
+- ✅ **Driver-triggered fault clear** — shipped as **Clear Engine Fault** (manual UI button + configurable auto-trigger on a CAN button-press sequence). A pure MFSW button-combo variant clearing all ECUs (UDS `0x14`) remains a possible extension.
 
 Implemented since v1.3:
 
 - 🏁 **Haldex AWD link** (race modes) — BOT32 acts as a client to an external
-  Haldex MITM module on the chassis CAN bus. Provides web UI buttons for
-  Stock / FWD (burnout) / 5050 (launch) / 6040 / 7525 / Expert modes,
-  plus live state monitoring (pump %, target %, vehicle speed, pedal). The
-  actual Haldex bus MITM happens on separate hardware — see
-  [docs/haldex_integration.md](docs/haldex_integration.md).
+  Haldex MITM module (Autosport Labs **ESP32-CAN-X2**) over **ESP-NOW**. Web UI
+  buttons for **Stock / FWD (burnout) / 50-50 (full lock)** — all three confirmed
+  in-vehicle, with **50-50 holding ~95 % engagement at all road speeds**. Live state
+  (pump %, target %, vehicle speed, pedal, **clutch oil temp**) plus a **clutch
+  over-temp auto-revert-to-STOCK** safety. The actual Haldex bus MITM happens on
+  separate hardware — see [docs/haldex_integration.md](docs/haldex_integration.md).
+
+📱 Mobile UI screenshots: [docs/screenshots/](docs/screenshots/).
 
 See [docs/future_features.md](docs/future_features.md) for the remaining
 planned features.

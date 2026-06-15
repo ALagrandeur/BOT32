@@ -153,8 +153,9 @@ live in the private BOT32-HALDEX firmware.)
 > protection, so v4.3.0 adds our own: the main polls the clutch oil temp (UDS
 > **0x2BF1**, shown in the mobile UI) and **auto-reverts to STOCK** above an
 > adjustable limit (default **150 °C**), latching until it cools 10 °C below. Still:
-> **closed course, short sessions**; calibrate the temp scale before relying on it.
-> Validate starting from passthrough ON.
+> **closed course, short sessions**; the temp scale (`data[5]*0.75-48`) is still
+> tentative — the mobile UI shows the **raw `0x2BF1` bytes** under the clutch-temp
+> cell so it can be calibrated against VCDS. Validate starting from passthrough ON.
 
 ---
 
