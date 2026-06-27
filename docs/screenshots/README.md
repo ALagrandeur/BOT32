@@ -1,6 +1,11 @@
 # BOT32 — Mobile UI screenshots
 
-Captures de l'interface web mobile (servie par l'ESP32 Main sur son AP WiFi), v4.4.0.
+Captures de l'interface web mobile (servie par l'ESP32 Main sur son AP WiFi).
+
+> ℹ️ Ces captures datent de **v4.4.0**. En **v4.5.0** (version finale), la temp
+> embrayage est en **affichage seul** : le champ « Limite temp embrayage » et le
+> « raw 0x2BF1 » visibles ici ont été **retirés** (la protection thermique native du
+> Haldex suffit). Le reste de l'UI est identique.
 
 | Capture | Description |
 |---|---|

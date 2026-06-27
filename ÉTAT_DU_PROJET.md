@@ -7,7 +7,7 @@
 
 ## Version actuelle
 
-🏁 **v4.4.0** (principal) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable.**
+🏁 **v4.5.0** (principal) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable (version finale).**
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 
 **Les 3 modes fonctionnent en voiture, confirmés par le pilote.** **STOCK** (normal),
@@ -25,21 +25,19 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
   (un accouplement 100 % verrouillé bloque la transmission en virage).
 
-### Ajouts principal v4.0.0 → v4.4.0
+### Ajouts principal v4.0.0 → v4.5.0
 - **v4.2.0 — Temp embrayage Haldex** : DID UDS **0x2BF1** (poll via le Haldex, à travers
   le pont X2) affichée dans l'UI mobile à la place de « Dernier paquet ». Statut **armé**
   déplacé dans un badge d'en-tête 🟢/🔴 (carte Passthrough retirée ; bouton d'armement
   dans « Tous les réglages »).
-- **v4.3.0 — Coupure thermique** : limite ajustable (défaut **150 °C**) dans les réglages ;
-  si la temp embrayage atteint la limite → **retour STOCK auto + verrou** (bloque le ré-armement
-  jusqu'à refroidir de 10 °C). Nécessaire car le 50-50 speed-spoof contourne la protection
-  vitesse du Haldex. *(Échelle temp `×0.75−48` encore à calibrer vs température réelle.)*
-- **Voyant shift-lock (0x394) abandonné** : émis par le Gateway + porte le rapport P/R/N/D
-  → l'injection parallèle le ferait clignoter / glitcherait l'affichage du rapport. Mode dans l'app.
 - **v4.4.0 — Ménage menu réglages (mobile)** : retiré Cluster bus IDs + Bench test ;
   OBD2 réduit à « Poll Hz » ; « TX » → « Diffusion TX » ; Clear Engine Fault = bouton seul.
-  + **affichage du raw `0x2BF1`** sous la temp (page Live) pour **calibrer la formule** vs VCDS
-  (la formule `×0.75−48` reste provisoire en attendant 2 points raw+VCDS).
+- **Voyant shift-lock (0x394) abandonné** : émis par le Gateway + porte le rapport P/R/N/D
+  → l'injection parallèle le ferait clignoter / glitcherait l'affichage du rapport. Mode dans l'app.
+- **v4.5.0 (FINALE) — Temp embrayage : AFFICHAGE SEULEMENT.** Formule calibrée vs VCDS :
+  **`temp_C = data[5]×2.7 − 241.5`** (100→28.5 °C, 104→39.3 °C). **Aucune sécurité/seuil
+  côté BOT32** : la **protection thermique native du Haldex** suffit. Le cut-out auto-STOCK
+  (ancien v4.3.0) et le raw de calibration (v4.4.0) ont été **retirés** — code épuré.
 
 ---
 

@@ -210,9 +210,10 @@ Implemented since v1.3:
   Haldex MITM module (Autosport Labs **ESP32-CAN-X2**) over **ESP-NOW**. Web UI
   buttons for **Stock / FWD (burnout) / 50-50 (full lock)** — all three confirmed
   in-vehicle, with **50-50 holding ~95 % engagement at all road speeds**. Live state
-  (pump %, target %, vehicle speed, pedal, **clutch oil temp**) plus a **clutch
-  over-temp auto-revert-to-STOCK** safety. The actual Haldex bus MITM happens on
-  separate hardware — see [docs/haldex_integration.md](docs/haldex_integration.md).
+  (pump %, target %, vehicle speed, pedal, **clutch oil temp** for awareness — the
+  Haldex runs its own thermal protection, BOT32 adds no cut-out). The actual Haldex
+  bus MITM happens on separate hardware — see
+  [docs/haldex_integration.md](docs/haldex_integration.md).
 
 📱 Mobile UI screenshots: [docs/screenshots/](docs/screenshots/).
 
