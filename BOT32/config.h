@@ -48,8 +48,9 @@
 #define UDS_DID_ETHANOL            0xF452  // Ethanol content (8-bit, raw*100/255 = %) — engine ECU
 #define UDS_DID_HALDEX_BLOCKAGE    0x2BF3  // Haldex degree of blockage (16-bit) — Haldex ECU
 #define UDS_DID_HALDEX_CLUTCH_TEMP 0x2BF1  // Haldex clutch oil temp — Haldex ECU (0x70F/0x779)
-                                           //   resp 05 62 2B F1 <status> <temp>; temp_C = data[5]*0.75-48
-                                           //   (confirmed: data[5]=0x64=100 @ ~28.5C cold; calibrate)
+                                           //   resp 05 62 2B F1 <status> <temp>; temp_C = data[5]*2.7-241.5
+                                           //   (calibrated vs VCDS: data[5]=100->28.5C, 104->39.3C). Display only —
+                                           //   the Haldex runs its own thermal protection; BOT32 adds no cut-out.
 // v2.8.0 — three temperature DIDs (validated 2026-05-26 via SavvyCAN captures)
 #define UDS_DID_DSG_OIL            0x2104  // DSG transmission oil temp — TCM (0x7E1/0x7E9)
                                            //   formula: temp_C = data[4]

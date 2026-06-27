@@ -55,10 +55,6 @@ uint8_t haldex_modes_get();
 // active; always false in STOCK.
 bool    haldex_modes_telltale_on();
 
-// v4.3.0: true while the clutch over-temp cut-out is active (mode forced to STOCK,
-// re-arm blocked until the clutch cools below the limit minus hysteresis).
-bool    haldex_modes_thermal_trip();
-
 // v3.2.0 — passthrough control (sent to the X2 over ESP-NOW).
 //   passthrough=true  -> X2 is a transparent bridge (safe; nothing modified).
 //   passthrough=false -> X2 arms the MITM (FWD/5050 actually force the lock).

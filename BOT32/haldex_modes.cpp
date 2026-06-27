@@ -24,11 +24,9 @@
 #include "button_sniffer.h"
 #include "haldex_link.h"
 #include "settings.h"
-#include "obd2.h"          // v4.3.0: Haldex clutch temp for the thermal cut-out
 
 #define COMBO_FRESH_MS    2000   // sniffer values older than this are ignored
 #define TELLTALE_BLINK_MS 500    // 0.5 s blink phase while non-STOCK
-#define THERMAL_HYSTERESIS_C 10  // v4.3.0: clear the trip once cooled this far below the limit
 
 static uint8_t  g_mode          = HALDEX_M_STOCK;
 static bool     g_fwd_from_combo = false;   // FWD currently held by the combo
@@ -36,8 +34,6 @@ static bool     g_prev_combo     = false;   // rising-edge detector
 static bool     g_telltale_phase = false;
 static uint32_t g_last_blink_ms  = 0;
 static bool     g_passthrough_desired = true;  // safe default (X2 boots ON too)
-static bool     g_thermal_trip   = false;   // v4.3.0: clutch over-temp -> forced STOCK (latched)
-static uint32_t g_thermal_trip_ms = 0;      // when the trip last fired (for the UI)
 
 void haldex_modes_init() {
   g_mode           = HALDEX_M_STOCK;
@@ -90,30 +86,6 @@ void haldex_modes_tick(uint32_t now) {
                    (button_sniffer_tc_age_ms() < COMBO_FRESH_MS);
   bool combo     = hazard_on && tc_off;
 
-  // ---- Thermal protection (v4.3.0) ----
-  // The speed-spoof 50/50 bypasses the Haldex's own speed-based protection, so we add
-  // ours: when the clutch oil temp (UDS 0x2BF1) reaches the configured limit, force
-  // STOCK and LATCH there (blocking any re-arm) until it cools by THERMAL_HYSTERESIS_C.
-  float clutch_c = obd2_get_last_haldex_clutch_temp_c();
-  if (clutch_c > -999.0f) {                       // only act on a valid (fresh) reading
-    uint16_t limit = s.haldex_clutch_temp_limit_c;
-    if (!g_thermal_trip && clutch_c >= (float)limit) {
-      g_thermal_trip = true;
-      g_thermal_trip_ms = now;
-      Serial.println("[haldex_modes] THERMAL TRIP: clutch too hot -> STOCK");
-    } else if (g_thermal_trip && clutch_c <= (float)limit - THERMAL_HYSTERESIS_C) {
-      g_thermal_trip = false;
-      Serial.println("[haldex_modes] thermal trip cleared (clutch cooled)");
-    }
-  }
-  if (g_thermal_trip) {
-    if (g_mode != HALDEX_M_STOCK) apply_mode(HALDEX_M_STOCK);
-    g_fwd_from_combo = false;
-    g_prev_combo = combo;        // avoid a false combo rising-edge when the trip clears
-    g_telltale_phase = false;
-    return;                      // block all mode logic while over-temp
-  }
-
   // Rising edge of the combo arms FWD. Hazards ON is the deliberate gate, so
   // disabling TC alone (no hazards) never arms FWD.
   if (combo && !g_prev_combo) {
@@ -142,7 +114,6 @@ void haldex_modes_tick(uint32_t now) {
 
 uint8_t haldex_modes_get()          { return g_mode; }
 bool    haldex_modes_telltale_on()  { return g_telltale_phase; }
-bool    haldex_modes_thermal_trip() { return g_thermal_trip; }   // v4.3.0
 
 bool haldex_modes_set_passthrough(bool passthrough) {
   const Settings& s = settings_get();
