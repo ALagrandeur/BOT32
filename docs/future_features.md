@@ -10,8 +10,9 @@ what's needed (hardware, reverse-engineering, code modules) to make the feature 
 >   sequence on a chosen CAN id/byte, default the Hazard switch).
 > - **Feature 2 (Haldex race modes)** → shipped on a dedicated **ESP32-CAN-X2**
 >   (private repo `BOT32-HALDEX`, in-series MITM). All 3 modes confirmed in-vehicle:
->   STOCK / FWD / **50-50 holding ~95% at all speeds**, + a clutch over-temp
->   auto-revert-to-STOCK safety. See [haldex_integration.md](haldex_integration.md).
+>   STOCK / FWD / **50-50 holding ~95% at all speeds**. Clutch oil temp is **displayed**
+>   (UDS 0x2BF1) — no BOT32 cut-out, the Haldex's own thermal protection is relied
+>   upon. See [haldex_integration.md](haldex_integration.md).
 
 ---
 
