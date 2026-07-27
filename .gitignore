@@ -31,3 +31,9 @@ venv/
 # Local config / secrets
 secrets.h
 local_config.h
+
+# Vehicle CAN captures — may contain VIN / sensitive data. Kept LOCAL only
+# (same policy as the mk7-cluster and BOT32-HALDEX repos). Back these up via
+# OneDrive / an external drive, NOT GitHub.
+*.csv
+DATA input from CAR/*.csv

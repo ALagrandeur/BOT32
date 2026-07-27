@@ -20,3 +20,21 @@ Valeur entre 0 et 40% : fichier ''haldex degree of blockage''
 Ethanol content in fuel, valeur à 11% - fichier ''ethanol''
 
 Peux tu ajouter cela au commande pour communiquer sur le CAN diagnostic (OBD2 port).
+
+1.Le fichier ''idle'' est une capture du CAN diag au Idle 
+
+2.Le fichbier ''oil 72 et exhaust 480'' est une capture de deux parametres sur le CAN diag à ajouter dans les ''live data'' (comme le % Ethanol ou le %haldex) que je peux voir en live sur mon cellulaire. La température de l'huile moteur était a 72degC tandis que la température de gaz échappement était de 480degC. 
+
+3.Le fichier ''trans 71'' est une capture sur le CANDiag de la température de l'huile DSG, à ajouter comme les autres paramètres au live data. LA température était a 71 degC lors de la capture.
+
+4.Le fichier ''read and clear'' Juste pour revalider la faction ''effacer les code moteur'' voici une deuxième lecture de ''read'' et ''clear code'' juste pour le moteur. Valide le codage actuel
+
+5.Le fichier ''HB5x'' est un pull du hand brake 5x. J'étais branché sur le CAN cluster pour cette lecture. SVP identifie le signal pour allumer la lumiere je vais en avoir besoin plus tard dans mon projet Haldex. 
+
+6.Le fichier ''OK3x'' est un press and release du bouton OK sur le volant. J'étais branché sur le CAN cluster pour cette lecture. SVP identifie le message, je vais en avoir besoin plus tard dans mon projet Haldex. 
+
+7.le fichier ''test'' est un test sur le cluster qui fait allumer toute les lumieres, peux tu trouver tous les code lumieres, j'aimerais etre en musre de toute les controler. 
+
+
+
+Fait moi une analuse profonde des fichiers, et reviens moi avec ce que tu as trouver avant de lancer le codage.
