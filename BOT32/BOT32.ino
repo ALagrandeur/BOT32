@@ -1,5 +1,5 @@
 /*
- * Version: v4.5.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v4.5.0
+ * Version: v4.6.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v4.6.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -241,6 +241,10 @@ void loop() {
 
   // 1. Drain CAN RX queues + dispatch to listeners
   can_poll();
+
+  // 1b. v4.6.0: clear-engine-codes procedure (listen-only gate + Mode 04 to
+  //     the engine). Runs in every mode, bench included.
+  obd2_clear_engine_tick(now);
 
   // 2. Bench test mode — preempts normal logic if enabled.
   //    When bench is on, we emit the full sister-project bundle to test

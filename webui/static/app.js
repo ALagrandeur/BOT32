@@ -86,11 +86,7 @@ const SETTING_KEYS = [
   "obd2_poll_hz", "tx_rate_hz",
   // v2.4.0: poll_ethanol + poll_haldex_blockage removed from UI (always ON).
   // v2.9.0: cluster_override + display_* removed from UI (feature deleted).
-  // v2.4.0+: clear-engine-fault auto-trigger config (roadmap detection)
-  "cef_auto_enabled",
-  "cef_trigger_can_id", "cef_trigger_byte_idx",
-  "cef_trigger_rest_value", "cef_trigger_pressed_value",
-  "cef_press_count", "cef_press_window_ms",
+  // v4.6.0: cef_* (Hazard x3 auto-trigger, never implemented) removed from the UI.
   // v2.6.0: WiFi AP mode for phone access
   "wifi_enabled", "wifi_ap_ssid", "wifi_ap_password",
   // Behavior flags (v2.3.3: block_airbag removed from UI — forced ON at boot)
@@ -345,7 +341,9 @@ socket.on("settings", (s) => {
 // ===========================================================
 //  Live status (NO mode display per user request)
 // ===========================================================
+let lastStatus = null;   // v4.6.0: last status object (clear-engine baseline)
 socket.on("status", (s) => {
+  lastStatus = s;
   // v2.4.1: the small text under each live value is now the static CAN address
   // (rendered in HTML). The JS only updates the main value + visual color
   // (active/stale via className).
@@ -550,6 +548,18 @@ socket.on("status", (s) => {
     }
   }
 
+  // v4.6.0: clear-engine-codes result (only after a click from this page)
+  if (clearEngineSeqAtStart !== null && s.clear_engine_seq !== undefined &&
+      s.clear_engine_seq !== clearEngineSeqAtStart && s.clear_engine_state !== "running") {
+    const status = $("diag-action-status");
+    if (status) {
+      const ok = s.clear_engine_state === "ok";
+      status.textContent = (ok ? "✓ " : "✗ ") + (s.clear_engine_msg || "");
+      status.style.color = ok ? "#4caf50" : "#e74c3c";
+    }
+    clearEngineSeqAtStart = null;
+  }
+
   // v2.1: Clear-all-DTCs progress indicator
   if (s.clear_all_dtcs_in_progress) {
     const status = $("diag-action-status");
@@ -719,22 +729,42 @@ function updateHaldexLive(hx) {
   }
 }
 
-// v2.1: Clear Engine Fault button
+// v4.6.0: Clear ENGINE codes button — listen-only procedure in the firmware.
+// The result comes back in status (clear_engine_state / _msg / _seq).
+let clearEngineSeqAtStart = null;
 const btnClearEng = $("btn-clear-engine-fault");
 if (btnClearEng) {
   btnClearEng.addEventListener("click", () => {
     if (!confirm(
-      "🔧 Clear Engine Fault\n\n" +
-      "Envoyer une trame OBD-II Mode 04 (broadcast 0x700) qui demande à TOUS\n" +
-      "les ECU compatibles OBD-II d'effacer leurs DTC d'émission.\n\n" +
+      "🔧 Effacer les codes défaut du MOTEUR ?\n\n" +
+      "BOT32 passe en écoute seule (aucune émission CAN), le Haldex est remis\n" +
+      "en STOCK, puis la commande Mode 04 est envoyée au moteur seulement.\n\n" +
       "Continuer ?"
     )) return;
-    socket.emit("cmd", { cmd: "clear_engine_fault" });
     const status = $("diag-action-status");
+    if (!lastStatus || lastStatus.clear_engine_seq === undefined) {
+      if (status) {
+        status.textContent = "✗ BOT32 non connecté (ou firmware antérieur à v4.6.0)";
+        status.style.color = "#e74c3c";
+      }
+      return;
+    }
+    clearEngineSeqAtStart = lastStatus.clear_engine_seq;
+    socket.emit("cmd", { cmd: "clear_engine_fault" });
     if (status) {
-      status.textContent = "▶ Clear Engine Fault envoyé (Mode 04 broadcast)";
+      status.textContent = "⏳ Écoute seule — effacement en cours…";
       status.style.color = "var(--accent)";
     }
+    const seqAtClick = clearEngineSeqAtStart;
+    setTimeout(() => {
+      if (clearEngineSeqAtStart !== null && clearEngineSeqAtStart === seqAtClick) {
+        clearEngineSeqAtStart = null;
+        if (status) {
+          status.textContent = "✗ Pas de résultat reçu (vérifie la connexion USB)";
+          status.style.color = "#e74c3c";
+        }
+      }
+    }, 25000);
   });
 }
 
@@ -850,6 +880,15 @@ socket.on("log", (l) => appendLog(`[${l.level}] ${l.msg}`));
 socket.on("raw", (l) => appendLog(`(raw) ${l.line}`));
 socket.on("ack", (a) => {
   appendLog(`ack ${a.for} ok=${a.ok}${a.msg ? ' ' + a.msg : ''}`);
+  // v4.6.0: clear-engine-codes refused (already running)
+  if (a.for === "clear_engine_fault" && !a.ok) {
+    const status = $("diag-action-status");
+    if (status) {
+      status.textContent = "✗ " + (a.msg || "refusé");
+      status.style.color = "#e74c3c";
+    }
+    clearEngineSeqAtStart = null;
+  }
   // Show Haldex command acks prominently next to the buttons.
   if (a.for === "set_haldex_mode" || a.for === "set_haldex_passthrough") {
     const status = $("haldex-cmd-status");

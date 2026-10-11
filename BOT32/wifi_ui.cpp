@@ -59,6 +59,17 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   .hxb.active{outline:2px solid #7df;background:#2a3a6a}
   .card.tap{cursor:pointer}
   .card.armed{border-color:#a33;background:#3a2530}
+  .help{margin-top:16px;background:#252540;border:1px solid #404060;border-radius:10px;overflow:hidden}
+  .help summary{padding:13px 14px;font-weight:600;color:#7df;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
+  .help summary::-webkit-details-marker{display:none}
+  .help summary::after{content:'▾';color:#8a8aa0}
+  .help[open] summary::after{content:'▴'}
+  .combo{padding:11px 14px;border-top:1px solid #404060}
+  .combo h3{margin:0 0 7px;font-size:15px;color:#fff;display:flex;align-items:center;gap:8px}
+  .k{display:inline-block;background:#3a3a5a;border:1px solid #5a5a80;border-radius:6px;padding:3px 8px;font-size:13px;font-weight:600;white-space:nowrap}
+  .plus{color:#8a8aa0;margin:0 4px;font-weight:700}
+  .note{font-size:12px;color:#9a9ab0;margin-top:6px;line-height:1.4}
+  .warn{padding:10px 14px;border-top:1px solid #404060;font-size:12px;color:#fc8;background:#2e2638;line-height:1.4}
 </style></head>
 <body>
 <div class="conn" id="conn">●</div>
@@ -134,6 +145,36 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 <div class="actions">
   <button onclick="location.href='/settings'">⚙ Tous les réglages</button>
 </div>
+
+<details class="help">
+  <summary>📖 Aide-mémoire — combinaisons</summary>
+  <div class="warn">⚠ Haldex : les modes FWD / 50-50 n'agissent que si le X2 est <b>🔴 ARMÉ</b>. Au démarrage, toujours <b>STOCK</b>.</div>
+  <div class="combo">
+    <h3>🔥 FWD (traction avant)</h3>
+    <span class="k">⚠ Hazard ON</span><span class="plus">+</span><span class="k">🚫 TC OFF</span>
+    <div class="note">Dans n'importe quel ordre, <b>frein à main baissé</b> (sinon c'est 50/50). Ensuite tu peux éteindre les Hazard : FWD reste actif. Aussi : bouton 🔥 FWD ci-dessus.</div>
+  </div>
+  <div class="combo">
+    <h3>🅾 Retour STOCK</h3>
+    <span class="k">🚫 TC ON</span>
+    <div class="note">Rallumer le Traction Control (si FWD ou 50/50 a été activé par la combinaison). Si le mode vient de l'app : bouton 🅾 STOCK.</div>
+  </div>
+  <div class="combo">
+    <h3>🚀 50/50</h3>
+    <span class="k">🅿 Frein à main tiré</span><span class="plus">+</span><span class="k">⚠ Hazard ON</span><span class="plus">+</span><span class="k">🚫 TC OFF</span>
+    <div class="note">Le frein à main doit être tiré <b>avant</b> de compléter la combinaison (sinon c'est FWD). Ensuite tu peux le relâcher et éteindre les Hazard : 50/50 reste actif. Aussi : bouton 🚀 50/50 ci-dessus.</div>
+  </div>
+  <div class="combo">
+    <h3>📈 Boost sur la jauge de température</h3>
+    <span class="k">Levier S</span><span class="plus">ou</span><span class="k">Levier M</span>
+    <div class="note">En P / R / N / D, la jauge affiche la vraie température moteur.</div>
+  </div>
+  <div class="combo">
+    <h3>🔓 Armer / désarmer le X2</h3>
+    <span class="k">📱 App seulement</span>
+    <div class="note">⚙ Tous les réglages → Armement MITM. Le statut 🟢 / 🔴 s'affiche à côté de « Haldex (MITM) ».</div>
+  </div>
+</details>
 
 <div class="status" id="st">—</div>
 
@@ -218,8 +259,8 @@ async function cmd(c){
 }
 async function hmode(m){
   // Confirm before engaging a race mode (FWD / 50-50). STOCK is instant.
-  if(m===1 && !confirm('🔥 FWD (traction avant)\\n\\nMode circuit fermé. Engager FWD ?')) return;
-  if(m===2 && !confirm('🚀 50/50 (lock max)\\n\\nMode circuit fermé. Engager 50/50 ?')) return;
+  if(m===1 && !confirm('🔥 FWD (traction avant)\n\nMode circuit fermé. Engager FWD ?')) return;
+  if(m===2 && !confirm('🚀 50/50 (lock max)\n\nMode circuit fermé. Engager 50/50 ?')) return;
   $('st').textContent='⏳ mode…';
   try{
     const r = await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'set_haldex_mode',mode:m})});
@@ -231,7 +272,7 @@ async function hmode(m){
 let g_pt = 1;  // last known passthrough (updated from /api/status)
 async function hpass(){
   const want = g_pt ? false : true;  // toggle
-  if(!want && !confirm('⚠ DÉSARMER le passthrough\\n\\nLe module X2 va MODIFIER les trames Haldex en mode FWD/50-50 (action mécanique réelle).\\nCircuit fermé seulement. Continuer ?')) return;
+  if(!want && !confirm('⚠ DÉSARMER le passthrough\n\nLe module X2 va MODIFIER les trames Haldex en mode FWD/50-50 (action mécanique réelle).\nCircuit fermé seulement. Continuer ?')) return;
   $('st').textContent='⏳ passthrough…';
   try{
     const r = await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'set_haldex_passthrough',on:want})});
@@ -270,6 +311,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   .save{position:fixed;bottom:0;left:0;right:0;padding:10px 14px;background:#0a4;color:#fff;text-align:center;font-weight:600;font-size:14px}
   .save.err{background:#a33}
   .back{display:inline-block;color:#7df;text-decoration:none;font-size:13px;margin-bottom:10px}
+  #clr-btn:disabled{opacity:.5}
 </style></head>
 <body>
 <a class="back" href="/">← Retour live</a>
@@ -293,8 +335,10 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 <label class="cb"><input type="checkbox" data-k="tx_enabled"> 🟢 TX enabled (master)</label>
 <label class="cb"><input type="checkbox" data-k="force_tx_always"> 🔧 Force TX in ALL modes</label>
 
-<h2>🔧 Clear Engine Fault</h2>
-<button onclick="if(confirm('Effacer les defauts moteur (Clear Engine Fault) ?')){fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'clear_engine_fault'})}).then(r=>r.json()).then(j=>alert(j.ok?'✓ Clear Engine Fault envoye':'✗ '+(j.msg||'echec'))).catch(()=>alert('✗ erreur reseau'))}" style="width:100%;margin:6px 0 12px;padding:13px;background:#0a4;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600">🔧 Clear Engine Fault (manuel)</button>
+<h2>🔧 Effacer les codes moteur</h2>
+<button type="button" id="clr-btn" onclick="clearEngine()" style="width:100%;margin:6px 0 4px;padding:13px;background:#0a4;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600">🔧 Effacer les codes moteur</button>
+<div class="hint">Moteur seulement. BOT32 passe en écoute seule (aucune émission sur les bus CAN), le Haldex est remis en STOCK, puis la commande d'effacement est envoyée au moteur. Le Haldex reste en STOCK après.</div>
+<div id="clr-st" style="margin:6px 0 12px;font-size:14px;font-weight:600;min-height:18px"></div>
 <h2>📶 WiFi AP</h2>
 <label class="cb"><input type="checkbox" data-k="wifi_enabled"> 📶 WiFi AP enabled</label>
 <div class="row">
@@ -317,6 +361,50 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 <div class="save" id="save">Touche un champ pour modifier</div>
 
 <script>
+async function getStatus(){const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw 0;return r.json()}
+async function postCmd(o){const r=await fetch('/api/cmd',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});return r.json()}
+
+// v4.6.0 — clear ENGINE codes (listen-only procedure), result polled from /api/status
+async function clearEngine(){
+  if(!confirm('🔧 Effacer les codes défaut du MOTEUR ?\n\nBOT32 passe en écoute seule, le Haldex est remis en STOCK, puis la commande est envoyée au moteur.')) return;
+  const st=document.getElementById('clr-st'), btn=document.getElementById('clr-btn');
+  const show=(t,c)=>{st.textContent=t;st.style.color=c||'#7af'};
+  let seq0;
+  try{ seq0=(await getStatus()).clear_engine_seq; }catch(e){ show('✗ erreur réseau','#f66'); return; }
+  try{
+    const j=await postCmd({cmd:'clear_engine_fault'});
+    if(!j.ok){ show('✗ '+(j.msg||'refusé'),'#f66'); return; }
+  }catch(e){ show('✗ erreur réseau','#f66'); return; }
+  btn.disabled=true; show('⏳ Écoute seule — effacement en cours…');
+  const t0=Date.now();
+  while(Date.now()-t0<25000){
+    await new Promise(r=>setTimeout(r,400));
+    try{
+      const s=await getStatus();
+      if(s.clear_engine_seq!==seq0 && s.clear_engine_state!=='running'){
+        btn.disabled=false;
+        if(s.clear_engine_state==='ok') show('✓ '+s.clear_engine_msg,'#4c4');
+        else show('✗ '+s.clear_engine_msg,'#f66');
+        return;
+      }
+    }catch(e){}
+  }
+  btn.disabled=false; show('✗ Pas de résultat reçu (vérifie la connexion)','#f66');
+}
+
+// v4.6.0 — arm/disarm button on this page (hpass was missing here since v4.2.0)
+async function hpass(){
+  let hx;
+  try{ hx=(await getStatus()).haldex||{}; }catch(e){ setStatus('✗ Erreur réseau', true); return; }
+  if(!hx.online){ setStatus('✗ Module Haldex hors-ligne', true); return; }
+  const want = hx.passthrough ? false : true;   // toggle
+  if(!want && !confirm('⚠ DÉSARMER le passthrough\n\nLe module X2 va MODIFIER les trames Haldex en mode FWD/50-50 (action mécanique réelle).\nCircuit fermé seulement. Continuer ?')) return;
+  try{
+    const j=await postCmd({cmd:'set_haldex_passthrough',on:want});
+    setStatus(j.ok ? (want ? '✓ Passthrough ON (pas armé)' : '✓ MITM ARMÉ') : '✗ '+(j.msg||'échec'), !j.ok);
+  }catch(e){ setStatus('✗ Erreur réseau', true); }
+}
+
 function toHex(n){return '0x'+Number(n||0).toString(16).toUpperCase().padStart(3,'0')}
 function parseHex(s){if(!s)return 0;s=String(s).trim();if(s.startsWith('0x'))return parseInt(s.substring(2),16);if(/[a-fA-F]/.test(s))return parseInt(s,16);return parseInt(s,10)}
 
@@ -399,7 +487,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.5.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.6.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -428,6 +516,10 @@ static void handle_status() {
   doc["hazard_age_ms"]     = button_sniffer_hazard_age_ms();
   doc["tc_button_pressed"] = button_sniffer_tc_pressed();
   doc["tc_button_age_ms"]  = button_sniffer_tc_age_ms();
+  // v4.6.0 — clear-engine-codes procedure (result shown by the settings page)
+  doc["clear_engine_state"] = obd2_clear_engine_state();
+  doc["clear_engine_msg"]   = obd2_clear_engine_msg();
+  doc["clear_engine_seq"]   = obd2_clear_engine_seq();
 
   // v3.1.0 — Haldex (MITM) live + locally-decided mode for the mobile UI
   {
@@ -541,8 +633,8 @@ static void handle_cmd() {
   bool ok = false;
   const char* msg = "ok";
   if (strcmp(cmd, "clear_engine_fault") == 0) {
-    ok = obd2_clear_engine_fault();
-    msg = ok ? "Mode 04 broadcast sent" : "TX failed";
+    ok = obd2_clear_engine_fault();       // v4.6.0: async, engine only
+    msg = ok ? "started" : "busy (already running)";
   } else if (strcmp(cmd, "set_haldex_mode") == 0) {
     uint8_t mode = doc["mode"] | 0;
     ok = haldex_modes_set_manual(mode);   // v3.1.0: via mode logic

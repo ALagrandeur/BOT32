@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "4.5.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "4.6.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -176,6 +176,12 @@ static void emit_status() {
   doc["hazard_age_ms"]      = button_sniffer_hazard_age_ms();
   doc["tc_button_pressed"]  = button_sniffer_tc_pressed();
   doc["tc_button_age_ms"]   = button_sniffer_tc_age_ms();
+
+  // v4.6.0: clear-engine-codes procedure (engine only, listen-only)
+  doc["clear_engine_state"] = obd2_clear_engine_state();
+  doc["clear_engine_msg"]   = obd2_clear_engine_msg();
+  doc["clear_engine_seq"]   = obd2_clear_engine_seq();
+  doc["tx_quiet"]           = can_is_quiet();
 
   // v2.1: clear-all-DTCs progress (only meaningful while running)
   doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();
@@ -373,10 +379,11 @@ static void handle_cmd(const char* line) {
     return;
   }
 
-  // v2.1: Clear engine fault — OBD-II Mode 04 broadcast on 0x700
+  // v4.6.0: clear ENGINE codes — listen-only procedure, Mode 04 to 0x7E0.
+  // The result arrives later in status (clear_engine_state/msg/seq).
   if (strcmp(cmd, "clear_engine_fault") == 0) {
     bool ok = obd2_clear_engine_fault();
-    emit_ack("clear_engine_fault", ok, ok ? "Mode 04 broadcast sent" : "TX failed");
+    emit_ack("clear_engine_fault", ok, ok ? "started" : "busy (already running)");
     return;
   }
 

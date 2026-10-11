@@ -9,7 +9,9 @@
  *            traction control is turned back ON (NOT when the hazards go off),
  *            so the hazards can be switched off while FWD stays armed. Also
  *            settable from app/USB.
- *   - 5050 : app/USB button only. Exits via the app/USB STOCK button.
+ *   - 5050 : v4.6.0: same combo with the HAND BRAKE PULLED at the moment the
+ *            combo completes (else FWD); exits like FWD (TC back ON). Also
+ *            app/USB button, which exits via the app/USB STOCK button.
  *   - STOCK: default; app/USB button; or TC-back-ON after a combo FWD.
  *
  * NOTE on "TC OFF": confirmed on the live data that ESP_21 (0x0FD) byte6 == 0x03
@@ -29,7 +31,7 @@
 #define TELLTALE_BLINK_MS 500    // 0.5 s blink phase while non-STOCK
 
 static uint8_t  g_mode          = HALDEX_M_STOCK;
-static bool     g_fwd_from_combo = false;   // FWD currently held by the combo
+static bool     g_mode_from_combo = false;  // FWD/50-50 currently held by the combo
 static bool     g_prev_combo     = false;   // rising-edge detector
 static bool     g_telltale_phase = false;
 static uint32_t g_last_blink_ms  = 0;
@@ -37,7 +39,7 @@ static bool     g_passthrough_desired = true;  // safe default (X2 boots ON too)
 
 void haldex_modes_init() {
   g_mode           = HALDEX_M_STOCK;
-  g_fwd_from_combo = false;
+  g_mode_from_combo = false;
   g_prev_combo     = false;
   g_telltale_phase = false;
   g_last_blink_ms  = 0;
@@ -60,7 +62,12 @@ bool haldex_modes_set_manual(uint8_t mode) {
   if (mode > HALDEX_M_5050) return false;
 
   // Manual command clears the combo latch so the two sources don't fight.
-  g_fwd_from_combo = false;
+  g_mode_from_combo = false;
+  // An explicit STOCK is always (re)sent: the X2 may still be in FWD/50-50 while
+  // g_mode already reads STOCK (lost broadcast, BOT32 rebooted, USB-C dev link).
+  if (mode == HALDEX_M_STOCK && g_mode == HALDEX_M_STOCK) {
+    haldex_link_set_mode(HALDEX_M_STOCK);
+  }
   apply_mode(mode);
   return true;
 }
@@ -71,7 +78,7 @@ void haldex_modes_tick(uint32_t now) {
   if (!s.haldex_enabled) {
     // Link disabled: force STOCK once and do nothing else.
     if (g_mode != HALDEX_M_STOCK) apply_mode(HALDEX_M_STOCK);
-    g_fwd_from_combo = false;
+    g_mode_from_combo = false;
     g_prev_combo = false;
     g_telltale_phase = false;
     return;
@@ -86,20 +93,26 @@ void haldex_modes_tick(uint32_t now) {
                    (button_sniffer_tc_age_ms() < COMBO_FRESH_MS);
   bool combo     = hazard_on && tc_off;
 
-  // Rising edge of the combo arms FWD. Hazards ON is the deliberate gate, so
-  // disabling TC alone (no hazards) never arms FWD.
-  if (combo && !g_prev_combo) {
-    g_fwd_from_combo = true;
-    apply_mode(HALDEX_M_FWD);
+  // Rising edge of the combo arms FWD, or 50/50 if the hand brake is pulled at
+  // that instant (KOMBI_01 0x30B, vehicle-confirmed). Only arms from a
+  // non-combo state: once a combo mode is held, re-pressing the hazards (or a
+  // stale 0x366 frame coming back) never switches FWD <-> 50/50 while TC is
+  // still OFF. To change, turn TC back ON (-> STOCK) and redo the combo.
+  // Hazards ON is the deliberate gate, so disabling TC alone never arms anything.
+  if (combo && !g_prev_combo && !g_mode_from_combo) {
+    bool hb_on = button_sniffer_handbrake_active() &&
+                 (button_sniffer_handbrake_age_ms() < COMBO_FRESH_MS);
+    g_mode_from_combo = true;
+    apply_mode(hb_on ? HALDEX_M_5050 : HALDEX_M_FWD);
   }
   g_prev_combo = combo;
 
-  // v3.10.0: TC turned back ON releases a combo-armed FWD back to STOCK (was
+  // v3.10.0: TC turned back ON releases a combo-armed mode (FWD or 50/50) back to STOCK (was
   // "hazards OFF"). So the hazards can be switched off while FWD stays armed;
   // FWD drops only when traction control is re-enabled. Losing the TC frame
   // (stale -> tc_off=false) also drops to STOCK, a safe default.
-  if (g_fwd_from_combo && !tc_off) {
-    g_fwd_from_combo = false;
+  if (g_mode_from_combo && !tc_off) {
+    g_mode_from_combo = false;
     apply_mode(HALDEX_M_STOCK);
   }
 

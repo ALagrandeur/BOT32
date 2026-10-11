@@ -35,6 +35,9 @@ static uint8_t        n_listeners[2] = { 0, 0 };
 // =============================================================
 static CanStats stats[2] = { {0}, {0} };
 
+// v4.6.0 — listen-only gate (see can_set_quiet in can_handler.h)
+static bool g_quiet = false;
+
 // =============================================================
 //  Two MCP2515 instances on the SAME SPI bus.
 //  Each has its own CS + INT pin. ACAN2515 uses SPI.beginTransaction()
@@ -126,7 +129,7 @@ void can_poll() {
 // =============================================================
 //  TX
 // =============================================================
-bool can_send(CanChannel ch, const CanFrame& frame) {
+static bool send_frame(CanChannel ch, const CanFrame& frame) {
   // Safety: airbag blocklist (honored only if settings.block_airbag = true)
   if (settings_get().block_airbag) {
     for (int i = 0; i < N_FORBIDDEN; i++) {
@@ -162,6 +165,25 @@ bool can_send(CanChannel ch, const CanFrame& frame) {
   }
   return ok;
 }
+
+bool can_send(CanChannel ch, const CanFrame& frame) {
+  if (g_quiet) return false;
+  return send_frame(ch, frame);
+}
+
+bool can_send_quiet_exempt(CanChannel ch, const CanFrame& frame) {
+  return send_frame(ch, frame);
+}
+
+void can_set_quiet(bool quiet) {
+  if (quiet != g_quiet) {
+    Serial.println(quiet ? "[CAN] listen-only ON (all TX paused)"
+                         : "[CAN] listen-only OFF (TX resumed)");
+  }
+  g_quiet = quiet;
+}
+
+bool can_is_quiet() { return g_quiet; }
 
 // =============================================================
 //  Listener registration

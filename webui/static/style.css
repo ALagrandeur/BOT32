@@ -411,3 +411,14 @@ details.collapsible[open] > summary {
 .race-btn-launch  { background: var(--temp); color: #002918; }
 /* v3.1.0: highlight the currently-active Haldex mode button */
 .race-btn.active { outline: 3px solid #ffd000; outline-offset: 2px; }
+
+/* v4.6.0 — Aide-mémoire des combinaisons de boutons */
+.combo-warn { background: rgba(255,184,77,0.08); border: 1px solid rgba(255,184,77,0.35);
+              color: var(--waiting); border-radius: 6px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+.combo-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+.combo { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.combo h4 { margin: 0 0 8px; font-size: 14px; }
+.combo p { margin: 8px 0 0; line-height: 1.4; }
+.key { display: inline-block; background: #252c38; border: 1px solid #3a4352; border-radius: 6px;
+       padding: 3px 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.key-sep { color: var(--muted); margin: 0 6px; font-weight: 700; }

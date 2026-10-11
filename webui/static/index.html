@@ -489,8 +489,8 @@
       </div>
       <p class="muted small" style="margin-top: 8px;" id="haldex-cmd-status">
         Cliquer sur un mode pour l'envoyer au module MITM.
-        FWD s'arme aussi par le combo physique <b>Hazards ON + bouton TC</b>
-        (et se coupe quand les warnings s'éteignent). 50/50 : application seulement.
+        Combo physique : <b>Hazard ON + TC OFF</b> = FWD (frein à main baissé) ou
+        50/50 (frein à main tiré). Rallumer le TC = retour STOCK.
       </p>
 
       <h4 class="subtitle">🔒 Passthrough (armement MITM)</h4>
@@ -561,7 +561,7 @@
       <p class="muted small">
         Quand activé, l'ESP32 crée un point d'accès WiFi. Connecte ton téléphone à ce réseau
         puis ouvre <code>http://192.168.4.1</code> dans le navigateur — tu verras une page mobile
-        avec les données live + le bouton Clear Engine Fault.
+        avec les données live ; le bouton « Effacer les codes moteur » est dans ⚙ Tous les réglages.
         <br>⚠ <b>La connexion USB-C avec le PC reste 100% active en parallèle</b>, peu importe l'état du WiFi.
       </p>
 
@@ -624,81 +624,65 @@
     </div>
   </details>
 
-  <!-- v2.4.1: Clear Engine Fault — moved INTO Configuration section (was in Roadmap).
-       Manual button works today; auto-trigger via vehicle button is roadmap. -->
+  <!-- v4.6.0: effacement des codes MOTEUR seulement, procédure écoute seule.
+       (Ancien auto-trigger Hazard ×3 retiré : jamais codé, refusé.) -->
   <details class="card collapsible">
     <summary>
-      <h3 class="card-title">🔧 Clear Engine Fault</h3>
-      <span class="summary-hint muted small">OBD-II Mode 04 broadcast — efface les DTC d'émission</span>
+      <h3 class="card-title">🔧 Effacer les codes moteur</h3>
+      <span class="summary-hint muted small">Moteur seulement — BOT32 en écoute seule pendant l'effacement</span>
     </summary>
     <div class="collapsible-body">
       <p class="muted small">
-        Envoie une trame OBD-II Mode 04 (broadcast 0x700 → [01 04]) qui demande
-        à tous les ECU compatibles OBD-II d'effacer leurs DTC d'émission.
+        1. BOT32 passe en <b>écoute seule</b> : plus aucune émission sur les deux bus CAN
+        (override du cluster, polling OBD, bench).<br>
+        2. Le Haldex est remis en <b>STOCK</b> (il reste en STOCK après).<br>
+        3. La commande OBD-II Mode 04 est envoyée <b>au moteur seulement</b> (0x7E0) et
+        BOT32 attend sa réponse (0x7E8).<br>
+        4. Tout reprend normalement. Le résultat s'affiche ci-dessous.
       </p>
-
-      <h4 class="subtitle">⚡ Action manuelle (fonctionne aujourd'hui)</h4>
       <div class="actions">
         <button id="btn-clear-engine-fault" class="primary">
-          🔧 Clear Engine Fault (envoyer maintenant)
+          🔧 Effacer les codes moteur
         </button>
       </div>
       <p class="muted small" id="diag-action-status">—</p>
+    </div>
+  </details>
 
-      <hr class="divider">
-
-      <h4 class="subtitle">🔘 Auto-trigger via bouton du véhicule</h4>
-
-      <div class="row">
-        <label class="checkbox">
-          <input type="checkbox" id="set-cef_auto_enabled">
-          <span>🟢 <b>Activer l'auto-trigger</b><br>
-                <span class="muted small">Quand activé, BOT32 enverra automatiquement le Clear Engine Fault si la séquence de boutons configurée ci-dessous est détectée. <b>Activé par défaut.</b></span>
-          </span>
-        </label>
-      </div>
-
-      <p class="muted small" style="margin-top: 10px;">
-        ⚠ <b>Détecteur firmware à venir</b> — les valeurs configurées ici sont déjà persistées en NVS,
-        prêtes pour quand le module sera codé. La séquence détectée par défaut sera :
-        <b>Hazard ON/OFF 3 fois en 4 secondes</b>.
-      </p>
-
-      <h5 class="subtitle">Bouton source</h5>
-      <div class="sub-card">
-        <div class="row">
-          <label>Trigger CAN ID<br>
-            <input type="text" id="set-cef_trigger_can_id" class="hex-input" placeholder="0x366">
-            <span class="muted small">défaut <code>0x366</code> (Hazard / Blinkmodi_01)</span>
-          </label>
-          <label>Byte index (0..7)<br>
-            <input type="number" id="set-cef_trigger_byte_idx" min="0" max="7" step="1">
-            <span class="muted small">défaut <code>2</code> (D3)</span>
-          </label>
+  <!-- v4.6.0: aide-mémoire des combinaisons de boutons (même contenu que l'UI mobile) -->
+  <h2 class="section-header">📖 Aide-mémoire</h2>
+  <details class="card collapsible">
+    <summary>
+      <h3 class="card-title">📖 Combinaisons de boutons</h3>
+      <span class="summary-hint muted small">Haldex, boost</span>
+    </summary>
+    <div class="collapsible-body">
+      <div class="combo-warn">⚠ Haldex : les modes FWD / 50-50 n'agissent que si le X2 est <b>🔴 ARMÉ</b>. Au démarrage, toujours <b>STOCK</b>.</div>
+      <div class="combo-list">
+        <div class="combo">
+          <h4>🔥 FWD (traction avant)</h4>
+          <span class="key">⚠ Hazard ON</span><span class="key-sep">+</span><span class="key">🚫 TC OFF</span>
+          <p class="muted small">Dans n'importe quel ordre, <b>frein à main baissé</b> (sinon c'est 50/50). Ensuite tu peux éteindre les Hazard : FWD reste actif. Aussi : bouton FWD dans « Haldex AWD link ».</p>
         </div>
-        <div class="row">
-          <label>Valeur "au repos"<br>
-            <input type="number" id="set-cef_trigger_rest_value" min="0" max="255">
-            <span class="muted small">défaut <code>0</code> (Hazard OFF)</span>
-          </label>
-          <label>Valeur "pressé"<br>
-            <input type="number" id="set-cef_trigger_pressed_value" min="0" max="255">
-            <span class="muted small">défaut <code>16</code> (0x10 — Hazard ON)</span>
-          </label>
+        <div class="combo">
+          <h4>🅾 Retour STOCK</h4>
+          <span class="key">🚫 TC ON</span>
+          <p class="muted small">Rallumer le Traction Control (si FWD ou 50/50 a été activé par la combinaison). Si le mode vient de l'app : bouton STOCK.</p>
         </div>
-      </div>
-
-      <h5 class="subtitle">Séquence de détection (multi-press)</h5>
-      <div class="sub-card">
-        <div class="row">
-          <label>Nombre de presses (ON/OFF cycles)<br>
-            <input type="number" id="set-cef_press_count" min="1" max="10" step="1">
-            <span class="muted small">défaut <code>3</code> presses (ON/OFF x3)</span>
-          </label>
-          <label>Fenêtre temps (ms)<br>
-            <input type="number" id="set-cef_press_window_ms" min="500" max="30000" step="100">
-            <span class="muted small">défaut <code>4000</code> ms (4 secondes)</span>
-          </label>
+        <div class="combo">
+          <h4>🚀 50/50</h4>
+          <span class="key">🅿 Frein à main tiré</span><span class="key-sep">+</span><span class="key">⚠ Hazard ON</span><span class="key-sep">+</span><span class="key">🚫 TC OFF</span>
+          <p class="muted small">Le frein à main doit être tiré <b>avant</b> de compléter la combinaison (sinon c'est FWD). Ensuite tu peux le relâcher et éteindre les Hazard : 50/50 reste actif. Aussi : bouton 50/50 dans « Haldex AWD link ».</p>
+        </div>
+        <div class="combo">
+          <h4>📈 Boost sur la jauge de température</h4>
+          <span class="key">Levier S</span><span class="key-sep">ou</span><span class="key">Levier M</span>
+          <p class="muted small">En P / R / N / D, la jauge affiche la vraie température moteur.</p>
+        </div>
+        <div class="combo">
+          <h4>🔓 Armer / désarmer le X2</h4>
+          <span class="key">📱 App seulement</span>
+          <p class="muted small">Case « Passthrough (armement MITM) » dans « Haldex AWD link » (ou ⚙ réglages du cellulaire).</p>
         </div>
       </div>
     </div>

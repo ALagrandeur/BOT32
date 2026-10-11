@@ -202,7 +202,7 @@ Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardle
 
 ## Roadmap
 
-- ✅ **Driver-triggered fault clear** — shipped as **Clear Engine Fault** (manual UI button + configurable auto-trigger on a CAN button-press sequence). A pure MFSW button-combo variant clearing all ECUs (UDS `0x14`) remains a possible extension.
+- ✅ **Clear engine codes** (v4.6.0) — web button (phone + PC): BOT32 goes listen-only on both CAN buses (no cluster override, no OBD polling), the Haldex is set to STOCK, then OBD-II Mode 04 is sent to the **engine ECU only** (0x7E0) and the answer is shown on the page. The old Hazard-based auto-trigger was never implemented and has been removed from the UI.
 
 Implemented since v1.3:
 

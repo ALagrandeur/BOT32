@@ -58,7 +58,17 @@ void can_poll();
 
 // Send a frame on the given channel. Returns true if queued OK.
 // Hard-coded blocklist: FORBIDDEN_IDS (airbag) will NEVER transmit.
+// v4.6.0: refused (returns false, not counted as a TX failure) while the
+// listen-only gate is set — see can_set_quiet().
 bool can_send(CanChannel ch, const CanFrame& frame);
+
+// v4.6.0 — listen-only gate for the engine-code clear procedure. While set,
+// can_send() refuses EVERY frame on both buses (Motor_09 override, OBD2
+// polling, bench frames...). Only can_send_quiet_exempt() still transmits,
+// and only the clear procedure uses it. RX is unaffected.
+void can_set_quiet(bool quiet);
+bool can_is_quiet();
+bool can_send_quiet_exempt(CanChannel ch, const CanFrame& frame);
 
 // =============================================================
 //  RX (callback model)

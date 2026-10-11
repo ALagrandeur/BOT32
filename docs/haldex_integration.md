@@ -69,7 +69,11 @@ are not copyrightable. The BOT32-HALDEX firmware is kept private (personal use).
   traction control is turned back ON** (not when the hazards turn off) — so the
   hazards can be switched off while FWD stays armed. Uses the latched TC state
   (0x0FD byte6 == 0x03, stays set while TC is disabled).
-- **50/50** is app/USB only; exits via the STOCK button.
+- **50/50** (v4.6.0): the **same physical combo with the hand brake PULLED** at the
+  moment the combo completes (KOMBI_01 0x30B byte[2] bit 7, sampled once; hand
+  brake down = FWD). A combo-armed mode never switches while TC stays OFF
+  (re-pressing the hazards does nothing); it exits to STOCK when TC is turned
+  back ON. 50/50 is also available from the app/USB button (exits via STOCK).
 - **No timed auto-revert** (a timed mechanical revert was judged unsafe).
 
 ---

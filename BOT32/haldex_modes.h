@@ -11,7 +11,9 @@
  *            button. v3.10.0: it EXITS (back to STOCK) when Traction Control is
  *            turned back ON (NOT when the hazards go off) — so the hazards can
  *            be switched off while FWD stays armed.
- *   - 5050 : app/USB button only. It EXITS via the app/USB STOCK button.
+ *   - 5050 : v4.6.0: same physical combo with the HAND BRAKE PULLED when it
+ *            completes (else FWD) — exits like FWD (TC back ON). Also the
+ *            app/USB button, which EXITS via the app/USB STOCK button.
  *   - STOCK: default; app/USB button.
  *
  * There is NO timed auto-revert (a timed mechanical revert was judged too

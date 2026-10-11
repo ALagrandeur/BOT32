@@ -4,7 +4,8 @@
  * v2.1 additions (vehicle-validated 2026-05-26):
  *   - Ethanol content polling (DID 0xF452 via engine ECU 0x7E0/0x7E8)
  *   - Haldex degree-of-blockage polling (DID 0x2BF3 via Haldex ECU 0x70F/0x779)
- *   - Clear Engine Fault action  (OBD-II Mode 04 broadcast on 0x700 -> [01 04])
+ *   - Clear engine codes action (v4.6.0: OBD-II Mode 04 [01 04] to 0x7E0 only,
+ *     listen-only procedure — see obd2_clear_engine_fault below)
  *   - Clear DTC on all modules action (UDS ClearDTC sequence to 14+ ECU addresses)
  *
  * Protocol: ISO 14229 (UDS) ReadDataByIdentifier (SID 0x22) for cached reads.
@@ -97,11 +98,29 @@ uint32_t obd2_get_egt_age_ms();
 //  Action commands (one-shot, user-triggered from UI)
 // =============================================================
 
-// Clear Engine Fault — sends OBD-II Mode 04 broadcast on 0x700.
-// This is the simple, session-free way to clear emission-related DTCs
-// from all OBD-II-compliant ECUs in one shot.
-// Returns true if the frame was queued.
+// Clear engine codes — v4.6.0: ENGINE ONLY, non-blocking procedure.
+//   1. listen-only: can_set_quiet(true) pauses every BOT32 TX on both buses
+//      (Motor_09 override, OBD2 polling, bench) + Haldex forced to STOCK;
+//   2. after a short settle, OBD-II Mode 04 [01 04] sent physically to the
+//      engine ECU (0x7E0) — the 0x700 broadcast is NOT used (it also clears
+//      the DSG);
+//   3. waits for the engine's answer on 0x7E8: 0x44 = cleared, 0x7F 04 78 =
+//      response pending (keep waiting), other 0x7F = refused;
+//   4. TX resumes; the Haldex stays in STOCK.
+// Returns true if the procedure started (false if one is already running).
+// Progress/result: obd2_clear_engine_state() / _msg() / _seq().
 bool obd2_clear_engine_fault();
+
+// Drives the procedure — call every loop(), INCLUDING in bench mode.
+void obd2_clear_engine_tick(uint32_t now);
+
+// "idle" | "running" | "ok" | "fail"
+const char* obd2_clear_engine_state();
+// Human-readable (French) result / progress message for the UIs.
+const char* obd2_clear_engine_msg();
+// Incremented each time a procedure finishes (lets a UI spot a NEW result).
+uint32_t obd2_clear_engine_seq();
+bool obd2_clear_engine_busy();
 
 // Clear DTCs on ALL modules — triggers a non-blocking state machine that
 // iterates through 14+ known ECU addresses, sending for each:

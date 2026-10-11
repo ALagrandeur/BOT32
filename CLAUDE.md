@@ -105,6 +105,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 
 - NVS : namespace `"bot32"`, clés courtes (ex. `obd_hz`, `blk_ab`, `bch_en`).
 - `SETTINGS_VERSION` actuel = **18**.
+- Exception voulue (v4.6.0) : les réglages `cef_*` (ancien déclencheur Hazard ×3, jamais codé) restent dans le firmware/NVS mais sont retirés de l'UI PC — pas de bump.
 - Le dispatcher `serial_proto_apply_setting(key, value)` est la **source unique** utilisée à
   la fois par la commande série JSON `{"cmd":"set"}` et par l'endpoint WiFi `/api/set`.
 
@@ -131,16 +132,18 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 | `0x7E0`→`0x7E8` | Moteur | `0x40D5` | EGT °C = `((d4<<8)|d5) − 250` |
 | `0x7E1`→`0x7E9` | DSG (TCM) | `0x2104` | Huile DSG °C = `d4` |
 | `0x70F`→`0x779` | Haldex | `0x2BF3` | Degré de blocage (16-bit) |
-| `0x700` (broadcast) | tous OBD-II | Mode 04 | Clear DTC émissions |
+| `0x7E0`→`0x7E8` | Moteur | Mode 04 `[01 04]` | **v4.6.0** : effacement codes MOTEUR seulement (procédure écoute seule) — à confirmer en voiture |
+| `0x700` (broadcast) | moteur + DSG | Mode 04 | Plus utilisé depuis v4.6.0 (efface aussi la DSG) |
 
-- Polling **round-robin 5 slots** (`obd2.cpp`), défaut `obd2_poll_hz = 30` (~6 Hz/slot).
+- **v4.6.0 — Effacement des codes moteur** (`obd2_clear_engine_fault`, bouton web PC + mobile) : `can_set_quiet(true)` bloque TOUTE émission BOT32 sur les deux bus (override Motor_09, polling OBD, bench) → Haldex en STOCK → 300 ms → Mode 04 `[01 04]` vers **0x7E0 seulement** (`can_send_quiet_exempt`) → attente 0x7E8 (`0x44` = OK, `7F 04 78` = en attente, autre `7F` = refus, 2 s sans réponse = échec) → reprise. Le Haldex reste en STOCK. Résultat dans le status : `clear_engine_state/msg/seq`.
+- Polling **round-robin 6 slots** (`obd2.cpp`), défaut `obd2_poll_hz = 30` (~5 Hz/slot).
 - Sentinelle des températures = **-1000.0f** (les vraies temps peuvent être négatives).
 - Sniffer OK (0x5BF) : repos = `byte[0] == 0x00`, **pressé = `byte[0] != 0x00`** (fix v2.10.0).
 
 **Haldex (MITM) — principal v4.0.0 / X2 v2.0.0 — CONFIRMÉ EN VOITURE (jalon stable) :**
 - Module MITM = **dépôt privé `BOT32-HALDEX`** sur carte **ESP32-CAN-X2** (CAN1 TWAI natif = côté voiture, CAN2 MCP2515 = côté Haldex, **TERM2 120 Ω activée côté Haldex**, 500 kbps). Pont CAR↔Haldex dans une **tâche FreeRTOS avant WiFi** (évite l'écart de boot). **12 V permanent** + light-sleep 15 min + wake-on-CAN (jamais de sommeil tant qu'un hôte USB est branché).
 - Lien **ESP-NOW uniquement**. **Fiabilité (v3.9.0/v1.5.0)** : les deux côtés **verrouillent le canal 1** (`esp_wifi_set_channel`) ET **désactivent le power-save WiFi** (`WiFi.setSleep(false)` + `esp_wifi_set_ps(WIFI_PS_NONE)`) — sans ça la radio STA dort et jette les paquets reçus (c'était LA cause d'un lien mort). Diagnostics : `espnow_rx` (JSON + bandeau UI), ligne X2 `[5s] espnow ch= tx= rxcmd=`.
-- 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC OFF** (ou app) ; **v3.10.0 : sort quand le TC repasse à ON** (plus quand les Hazards s'éteignent → on peut couper les warnings et garder FWD). On lit l'état **latché** du TC (0x0FD byte6==0x03 stable). 50-50 = app, sort via STOCK. **Pas d'auto-revert, pas de seuil de pédale.**
+- 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC OFF** (ou app) ; **v3.10.0 : sort quand le TC repasse à ON** (plus quand les Hazards s'éteignent → on peut couper les warnings et garder FWD). On lit l'état **latché** du TC (0x0FD byte6==0x03 stable). 50-50 = **v4.6.0 : même combo avec le frein à main TIRÉ au moment où il se complète** (KOMBI_01 0x30B byte[2] bit 7, échantillonné une seule fois ; frein baissé = FWD) ; un mode armé par le combo ne change plus tant que le TC reste OFF, et sort quand le TC repasse à ON. 50-50 aussi par l'app (sort via STOCK). **Pas d'auto-revert, pas de seuil de pédale.**
 - **CRC E2E AUTOSAR** sur `[D2..D8, DataID]` — **DataID APPENDÉ** (confirmé 100 % sur 5 logs). Trames modifiées (FWD ET 50-50) : **0x08A D8 + 0x0A7 D6/D7** (couple — la demande de lock) + 0x116/0x106 (ESP) + 0x0B2 (roues). **FWD → demande 0x00 + roues 0 ; 50-50 → demande 0xFA** (0xFE/0xFF = SNA/réservé écartés ; **vérifié run3 : 0x08A D8 est constant 0xFA sur la voiture, jamais 0xFE** — contredit le 0xFE d'OpenHaldex) + roues = vitesse réelle.
 - **v1.6.0 : 0x0A8 (MOTOR_12) en PASSTHROUGH** — son byte[7]/D8 est le signal **RPM moteur** (confirmé run3 : 81 valeurs distinctes), PAS la demande de lock (le compteur est en D2). On le forçait à tort. La demande vit uniquement dans 0x08A + 0x0A7.
 - **Passthrough** = armement : OFF = MITM armé. **Le X2 PERSISTE `passthrough` en NVS** ; le **mode boot TOUJOURS STOCK** (sécurité). 1er boot = STOCK + passthrough ON. ⚠ s'il est coupé ARMÉ, il revient ARMÉ (mais en STOCK = inerte). L'UI affiche le **mode réel rapporté par le X2** + l'**ack** des commandes.
@@ -154,7 +157,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 
 Levier · MAP · Coolant override (TX) · Coolant réel (sniff) · Éthanol % · Haldex blocage % ·
 Huile DSG °C · EGT °C · Frein à main · Bouton OK · Hazard · Traction Control.
-(+ statut WiFi.) Les sniffers sont **passifs** (lecture seule, aucune action firmware).
+(+ statut WiFi.) Les sniffers sont **passifs** (lecture seule sur le bus) ; Hazard, TC et frein à main servent d'entrées aux combos Haldex (`haldex_modes`).
 Le Traction Control est affiché **ON** (relâché = TC actif) / **OFF** (bouton tenu = TC désactivé).
 (Huile moteur retirée en v2.10.0.)
 

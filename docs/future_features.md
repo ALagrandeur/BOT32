@@ -6,8 +6,9 @@ what's needed (hardware, reverse-engineering, code modules) to make the feature 
 > **STATUS (2026) — the two original features below have since been BUILT.** This
 > file is kept as the original design notes.
 > - **Feature 1 (driver-triggered DTC clear)** → shipped as **Clear Engine Fault**:
->   a manual button in the mobile UI + a configurable auto-trigger (button-press
->   sequence on a chosen CAN id/byte, default the Hazard switch).
+>   a manual button in the mobile UI. **v4.6.0:** the button clears the **engine
+>   only** (Mode 04 to 0x7E0) with BOT32 in listen-only; the Hazard-based
+>   auto-trigger was never implemented and has been dropped.
 > - **Feature 2 (Haldex race modes)** → shipped on a dedicated **ESP32-CAN-X2**
 >   (private repo `BOT32-HALDEX`, in-series MITM). All 3 modes confirmed in-vehicle:
 >   STOCK / FWD / **50-50 holding ~95% at all speeds**. Clutch oil temp is **displayed**

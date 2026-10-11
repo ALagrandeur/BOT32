@@ -5,6 +5,8 @@
 #include "config.h"
 #include "settings.h"
 #include "serial_proto.h"
+#include "haldex_modes.h"
+#include "haldex_link.h"
 
 // =============================================================
 //  Cached read values
@@ -81,6 +83,41 @@ static uint32_t  g_clear_step_ms    = 0;
 static const uint32_t CLEAR_STEP_DELAY_MS = 80;   // per-step delay
 
 // =============================================================
+//  Clear-engine-codes procedure (v4.6.0) — engine only, listen-only
+// =============================================================
+enum EngineClearStep {
+  EC_IDLE = 0,
+  EC_SETTLE,        // TX paused, let the bus settle before talking to the ECU
+  EC_WAIT_REPLY,    // Mode 04 sent to 0x7E0, waiting for 0x7E8
+  EC_RESUME,        // result known, short hold before TX resumes
+};
+static EngineClearStep g_ec_step     = EC_IDLE;
+static uint32_t        g_ec_step_ms  = 0;
+static uint32_t        g_ec_deadline = 0;
+static uint32_t        g_ec_sent_ms  = 0;
+static uint8_t         g_ec_tx_tries = 0;
+static bool            g_ec_ok       = false;
+static bool            g_ec_has_result = false;
+static uint32_t        g_ec_seq      = 0;
+static char            g_ec_msg[64]  = "";
+
+static const uint32_t EC_SETTLE_MS        = 300;    // quiet bus before the request
+static const uint32_t EC_REPLY_TIMEOUT_MS = 2000;   // no answer at all
+static const uint32_t EC_PENDING_EXTRA_MS = 5000;   // after each 0x78 "pending"
+static const uint32_t EC_MAX_WAIT_MS      = 15000;  // hard cap after the request
+static const uint32_t EC_RESUME_HOLD_MS   = 200;
+
+static void ec_finish(bool ok, const char* msg, uint32_t now) {
+  g_ec_ok = ok;
+  strncpy(g_ec_msg, msg, sizeof(g_ec_msg) - 1);
+  g_ec_msg[sizeof(g_ec_msg) - 1] = '\0';
+  g_ec_step    = EC_RESUME;
+  g_ec_step_ms = now;
+  Serial.print("[OBD2] Clear engine codes: ");
+  Serial.println(g_ec_msg);
+}
+
+// =============================================================
 //  Helpers
 // =============================================================
 
@@ -110,6 +147,32 @@ static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
 
   const Settings& s = settings_get();
   uint8_t sid = f.data[1];
+
+  // v4.6.0 — answer from the engine to our Mode 04 (clear engine codes)
+  if (g_ec_step == EC_WAIT_REPLY && f.id == CAN_ID_OBD2_RESP) {
+    uint32_t now = millis();
+    if (f.data[0] == 0x01 && sid == 0x44) {
+      ec_finish(true, "Codes moteur effacés", now);
+      return;
+    }
+    if (f.data[0] == 0x03 && sid == 0x7F && f.data[2] == UDS_OBD2_MODE_CLEAR_DTC) {
+      uint8_t nrc = f.data[3];
+      if (nrc == 0x78) {                       // response pending: keep waiting
+        uint32_t d = now + EC_PENDING_EXTRA_MS;
+        uint32_t cap = g_ec_sent_ms + EC_MAX_WAIT_MS;
+        g_ec_deadline = ((int32_t)(d - cap) > 0) ? cap : d;
+        return;
+      }
+      char m[64];
+      if (nrc == 0x22) {
+        snprintf(m, sizeof(m), "Refusé par le moteur (NRC 0x22 : conditions)");
+      } else {
+        snprintf(m, sizeof(m), "Refusé par le moteur (NRC 0x%02X)", nrc);
+      }
+      ec_finish(false, m, now);
+      return;
+    }
+  }
 
   // Negative response?
   if (sid == 0x7F) {
@@ -294,25 +357,83 @@ uint32_t obd2_get_egt_age_ms() {
 // v2.10.0: engine oil temp getters removed.
 
 // =============================================================
-//  Action: Clear Engine Fault — OBD-II Mode 04 broadcast
+//  Action: Clear engine codes — v4.6.0 listen-only procedure, ENGINE ONLY
 // =============================================================
 bool obd2_clear_engine_fault() {
-  // Functional broadcast frame [01 04] on 0x700 -> all OBD-II compliant ECUs
-  // respond with positive 0x44 acknowledging the clear.
-  uint8_t payload[8] = { 0x01, UDS_OBD2_MODE_CLEAR_DTC, 0, 0, 0, 0, 0, 0 };
-  CanFrame f;
-  f.id  = CAN_ID_OBD2_BROADCAST;
-  f.len = 8;
-  for (uint8_t i = 0; i < 8; i++) f.data[i] = payload[i];
-  bool ok = can_send(CAN_OBD2, f);
-  if (ok) {
-    serial_proto_report_tx(CAN_OBD2, f);
-    Serial.println("[OBD2] Clear Engine Fault TX (Mode 04 broadcast on 0x700)");
-  } else {
-    Serial.println("[OBD2] Clear Engine Fault TX FAILED");
+  if (g_ec_step != EC_IDLE) {
+    Serial.println("[OBD2] Clear engine codes already running");
+    return false;
   }
-  return ok;
+  if (obd2_clear_all_dtcs_in_progress()) {
+    Serial.println("[OBD2] Clear engine codes refused: clear-all running");
+    return false;
+  }
+  uint32_t now = millis();
+  can_set_quiet(true);                       // 1. listen-only on both buses
+  haldex_modes_set_manual(HALDEX_M_STOCK);   //    + Haldex to STOCK (no-op if link disabled)
+  g_ec_step       = EC_SETTLE;
+  g_ec_step_ms    = now;
+  g_ec_tx_tries   = 0;
+  g_ec_has_result = false;
+  strncpy(g_ec_msg, "Effacement en cours", sizeof(g_ec_msg));
+  Serial.println("[OBD2] Clear engine codes START (listen-only, Haldex STOCK)");
+  return true;
 }
+
+void obd2_clear_engine_tick(uint32_t now) {
+  switch (g_ec_step) {
+    case EC_IDLE:
+      return;
+
+    case EC_SETTLE: {
+      if ((int32_t)(now - g_ec_step_ms) < (int32_t)EC_SETTLE_MS) return;
+      // 2. OBD-II Mode 04, physical request to the engine ECU only.
+      CanFrame f;
+      f.id  = CAN_ID_OBD2_REQ;
+      f.len = 8;
+      memset(f.data, 0, sizeof(f.data));
+      f.data[0] = 0x01;
+      f.data[1] = UDS_OBD2_MODE_CLEAR_DTC;
+      if (can_send_quiet_exempt(CAN_OBD2, f)) {
+        serial_proto_report_tx(CAN_OBD2, f);
+        g_ec_sent_ms  = now;
+        g_ec_deadline = now + EC_REPLY_TIMEOUT_MS;
+        g_ec_step     = EC_WAIT_REPLY;
+        Serial.println("[OBD2] Clear engine codes: Mode 04 sent to 0x7E0");
+      } else if (++g_ec_tx_tries >= 3) {
+        ec_finish(false, "Envoi CAN impossible", now);
+      } else {
+        g_ec_step_ms = now - EC_SETTLE_MS + 50;   // retry in 50 ms
+      }
+      return;
+    }
+
+    case EC_WAIT_REPLY:
+      if ((int32_t)(now - g_ec_deadline) >= 0) {
+        ec_finish(false, "Pas de réponse du moteur", now);
+      }
+      return;
+
+    case EC_RESUME:
+      // signed: g_ec_step_ms may be set by the RX callback slightly AFTER `now`
+      if ((int32_t)(now - g_ec_step_ms) < (int32_t)EC_RESUME_HOLD_MS) return;
+      haldex_link_set_mode(HALDEX_M_STOCK);  // one more STOCK (broadcast has no ACK)
+      can_set_quiet(false);                  // 4. TX resumes (Haldex stays STOCK)
+      g_ec_has_result = true;
+      g_ec_seq++;
+      g_ec_step = EC_IDLE;
+      return;
+  }
+}
+
+const char* obd2_clear_engine_state() {
+  if (g_ec_step != EC_IDLE) return "running";
+  if (!g_ec_has_result)     return "idle";
+  return g_ec_ok ? "ok" : "fail";
+}
+const char* obd2_clear_engine_msg()  { return g_ec_msg; }
+uint32_t    obd2_clear_engine_seq()  { return g_ec_seq; }
+bool        obd2_clear_engine_busy() { return g_ec_step != EC_IDLE; }
 
 // =============================================================
 //  Action: Clear DTC on ALL modules — non-blocking state machine
@@ -320,6 +441,10 @@ bool obd2_clear_engine_fault() {
 bool obd2_clear_all_dtcs() {
   if (g_clear_step != CS_IDLE && g_clear_step != CS_DONE) {
     Serial.println("[OBD2] Clear-all-DTCs already in progress");
+    return false;
+  }
+  if (g_ec_step != EC_IDLE) {
+    Serial.println("[OBD2] Clear-all-DTCs refused: clear engine codes running");
     return false;
   }
   g_clear_step    = CS_SESSION_EXTENDED;
@@ -401,7 +526,8 @@ void obd2_tick(bool active) {
   // Always advance the clear-all state machine if running
   clear_all_dtcs_advance(now);
 
-  if (!active) return;
+  // v4.6.0: no polling while the clear-engine-codes procedure holds the bus
+  if (!active || g_ec_step != EC_IDLE) return;
 
   const Settings& s = settings_get();
   uint32_t poll_period_ms = 1000UL / (s.obd2_poll_hz > 0 ? s.obd2_poll_hz : 5);

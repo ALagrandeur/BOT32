@@ -1,13 +1,13 @@
 # État du projet BOT32
 
-> Photo lisible de l'état du projet. Mise à jour : **2026-06-12**.
+> Photo lisible de l'état du projet. Mise à jour : **2026-10-11**.
 > Pour les règles et conventions techniques, voir **`CLAUDE.md`**.
 
 ---
 
 ## Version actuelle
 
-🏁 **v4.5.0** (principal) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2) — **jalon stable (version finale).**
+🏁 **v4.6.0** (principal, **à valider en voiture** — dernière version confirmée en voiture : **v4.5.0**) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 
 **Les 3 modes fonctionnent en voiture, confirmés par le pilote.** **STOCK** (normal),
@@ -24,6 +24,17 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   *(Recette détaillée dans le dépôt privé.)*
 - **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
   (un accouplement 100 % verrouillé bloque la transmission en virage).
+
+### Nouveautés v4.6.0
+- **Effacement des codes MOTEUR seulement** (bouton web PC + mobile) : BOT32 passe en
+  **écoute seule** (aucune émission CAN : ni override du cluster, ni polling OBD), le
+  Haldex est remis en **STOCK**, puis Mode 04 est envoyé **au moteur seulement**
+  (0x7E0). Le résultat (effacé / refusé / pas de réponse) s'affiche sur la page.
+- **50-50 par combinaison** : frein à main tiré + Hazard ON + TC OFF (frein baissé = FWD).
+  Un mode armé par le combo ne change plus tant que le TC reste OFF ; TC ON = STOCK.
+- **Aide-mémoire des combinaisons** dans l'UI mobile et PC.
+- Bouton « Armer / Désarmer le X2 » de la page Réglages mobile réparé (cassé depuis v4.2.0).
+- Ancien déclencheur auto Hazard ×3 (jamais codé) retiré de l'UI PC.
 
 ### Ajouts principal v4.0.0 → v4.5.0
 - **v4.2.0 — Temp embrayage Haldex** : DID UDS **0x2BF1** (poll via le Haldex, à travers
@@ -71,7 +82,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   directement au X2 (dev/diagnostic) — ESP-NOW court-circuité dans ce mode.
 - **3 modes** : STOCK / FWD / 50-50.
 - **FWD** = combo **Hazards ON + TC OFF** (ou app) ; **v3.10.0 : sort quand le TC repasse à ON** (plus quand les warnings s'éteignent → on peut couper les Hazards et garder FWD).
-  **50-50** = app/USB ; sort via STOCK. **Pas d'auto-revert. Pas de seuil de pédale.**
+  **50-50** = **v4.6.0 : même combo avec le frein à main tiré** au moment où il se complète (frein baissé = FWD) ; un mode armé par le combo sort quand le TC repasse à ON. Aussi par l'app/USB (sort via STOCK). **Pas d'auto-revert. Pas de seuil de pédale.**
 - **Passthrough ON/OFF** (commande live) : le X2 démarre toujours **ON** (transparent/sûr) ;
   OFF = MITM **armé**. Affiché en live + confirmation modale avant d'armer + **ack** du X2 dans l'UI.
 - **LIVE** : Vitesse · Pédale % · Lock target % · Pump % · Mode · Connexion (bandeau) · Passthrough
@@ -83,8 +94,8 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 
 - ✅ **Boost-on-coolant** : override de Motor_09 (0x647), mapping linéaire MAP→température.
 - ✅ **Polling UDS multi-DID** (round-robin 6 slots) : MAP, éthanol, blocage Haldex, huile DSG, EGT, **temp embrayage Haldex (0x2BF1)**.
-- ✅ **4 sniffers passifs** : frein à main, bouton OK volant, Hazard, Traction Control (affichage seul).
-- ✅ **Clear Engine Fault** : OBD-II Mode 04 broadcast (0x700) — manuel depuis l'UI.
+- ✅ **4 sniffers passifs** (lecture seule) : frein à main, bouton OK volant, Hazard, Traction Control — Hazard + TC + frein à main servent aussi d'entrées aux combos Haldex.
+- ✅ **Effacement codes moteur** (v4.6.0) : écoute seule + Haldex STOCK + Mode 04 vers 0x7E0 — bouton web PC + mobile.
 - ✅ **Clear DTC tous modules** : machine à états UDS non-bloquante (14+ ECU).
 - ✅ **Bench test mode** + **lamp killer** (cartographie des voyants du combiné).
 - ✅ **UI web PC** (Flask + SocketIO) via USB série + **UI mobile** via WiFi AP (PROGMEM).
@@ -112,6 +123,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v3.9.0 | **Power-save WiFi OFF** (lien ESP-NOW fiable) + lecture du canal réel |
 | v3.10.0 | **FWD sort quand le TC repasse à ON** (plus quand Hazards OFF) — état TC latché |
 | **v4.0.0** | 🏁 **Jalon stable** — tout confirmé en voiture (STOCK/FWD/50-50, lien solide, UI complète) |
+| v4.6.0 | Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -134,8 +146,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
   pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
-- ⏳ Implémenter la **détection firmware** du déclenchement auto du Clear Engine Fault (Hazard ×3 / 4 s).
-- ⏳ **Valider Clear Engine Fault** avec une capture fraîche.
+- ⏳ **Valider en voiture** l'effacement moteur v4.6.0 (Mode 04 envoyé directement à 0x7E0) et le combo 50-50.
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---
