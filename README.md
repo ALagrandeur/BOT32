@@ -35,8 +35,8 @@ The role descriptions are kept in French, as in the project's shared map.
 
 | | |
 |---|---|
-| **Current version** | **v4.6.0** (`master`) — **to be validated in the car** (engine-code clearing and the 50-50 combo are new) |
-| **Last version confirmed in the car** | **v4.5.0** (git tag `v4.5.0`) |
+| **Current version** | **v4.6.0 — STABLE** (`master`), flashed and confirmed in the car on 2026-10-12 |
+| **Previous stable version** | **v4.5.0** (git tag `v4.5.0`) — rollback point |
 | **Paired Haldex module** | BOT32-HALDEX **v3.0.0** (stable, all 3 modes confirmed in the car) |
 
 Detailed status, version history and roadmap (French): [ÉTAT_DU_PROJET.md](ÉTAT_DU_PROJET.md).
@@ -135,7 +135,7 @@ Haldex card (via ESP-NOW, or a direct USB-C link to the X2 for development),
 WiFi remote, engine-code clearing, combo cheat-sheet. You can unplug USB at any time:
 BOT32 keeps running in the car with the last saved settings (NVS).
 
-### 5. Clear engine codes (v4.6.0 — to be validated in the car)
+### 5. Clear engine codes (v4.6.0)
 
 Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI), or serial
 `{"cmd":"clear_engine_fault"}`. **Engine ECU only:**

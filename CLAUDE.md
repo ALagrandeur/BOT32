@@ -140,7 +140,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 | `0x7E0`→`0x7E8` | Moteur | `0x40D5` | EGT °C = `((d4<<8)|d5) − 250` |
 | `0x7E1`→`0x7E9` | DSG (TCM) | `0x2104` | Huile DSG °C = `d4` |
 | `0x70F`→`0x779` | Haldex | `0x2BF3` | Degré de blocage (16-bit) |
-| `0x7E0`→`0x7E8` | Moteur | Mode 04 `[01 04]` | **v4.6.0** : effacement codes MOTEUR seulement (procédure écoute seule) — à confirmer en voiture |
+| `0x7E0`→`0x7E8` | Moteur | Mode 04 `[01 04]` | **v4.6.0** : effacement codes MOTEUR seulement (procédure écoute seule) — confirmé en voiture (v4.6.0 stable) |
 | `0x700` (broadcast) | moteur + DSG | Mode 04 | Plus utilisé depuis v4.6.0 (efface aussi la DSG) |
 
 - **v4.6.0 — Effacement des codes moteur** (`obd2_clear_engine_fault`, bouton web PC + mobile) : `can_set_quiet(true)` bloque TOUTE émission BOT32 sur les deux bus (override Motor_09, polling OBD, bench) → Haldex en STOCK → 300 ms → Mode 04 `[01 04]` vers **0x7E0 seulement** (`can_send_quiet_exempt`) → attente 0x7E8 (`0x44` = OK, `7F 04 78` = en attente, autre `7F` = refus, 2 s sans réponse = échec) → reprise. Le Haldex reste en STOCK. Résultat dans le status : `clear_engine_state/msg/seq`.
@@ -148,7 +148,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 - Sentinelle des températures = **-1000.0f** (les vraies temps peuvent être négatives).
 - Sniffer OK (0x5BF) : repos = `byte[0] == 0x00`, **pressé = `byte[0] != 0x00`** (fix v2.10.0).
 
-**Haldex (MITM) — principal v4.6.0 (à valider en voiture ; v4.5.0 confirmée) / X2 v3.0.0 — 3 modes CONFIRMÉS EN VOITURE (jalons stables : v4.0.0 / X2 v2.0.0, puis X2 v3.0.0 = 50-50 tenu à toutes les vitesses) :**
+**Haldex (MITM) — principal v4.6.0 STABLE (confirmée en voiture le 2026-10-12) / X2 v3.0.0 — 3 modes CONFIRMÉS EN VOITURE (jalons stables : v4.0.0 / X2 v2.0.0, puis X2 v3.0.0 = 50-50 tenu à toutes les vitesses) :**
 
 > ⚠ Les puces « CRC E2E / trames modifiées », « v1.6.0 » et « Burnout FWD » ci-dessous
 > datent du X2 v0.4–v2.0 et sont **conservées telles quelles (historique)**. Le détail de la

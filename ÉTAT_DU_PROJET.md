@@ -8,7 +8,7 @@
 
 ## Version actuelle
 
-🏁 **v4.6.0** (principal, **à valider en voiture** — dernière version confirmée en voiture : **v4.5.0**) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
+🏁 **v4.6.0 — STABLE** (principal, **flashée et confirmée en voiture le 2026-10-12**) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2). Version stable précédente : v4.5.0 (tag `v4.5.0`).
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 Le commit v4.6.0 est poussé sur `master`, mais le **tag `v4.6.0` n'est pas encore sur GitHub**
 (au 2026-10-12 le dernier tag distant est `v4.5.0`) et il n'y a **aucune release GitHub depuis v4.1.0**.
@@ -146,8 +146,8 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v4.2.0 | Temp embrayage Haldex (DID 0x2BF1) dans l'UI mobile + badge d'armement 🟢/🔴 |
 | v4.3.0 | Limite de temp embrayage + coupure auto vers STOCK (retirée en v4.5.0) |
 | v4.4.0 | Ménage de la page Réglages mobile + valeur brute 0x2BF1 pour la calibration |
-| **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — **dernière version confirmée en voiture** |
-| v4.6.0 | Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **à valider en voiture** (tag pas encore poussé) |
+| **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — version stable précédente |
+| **v4.6.0** | 🏁 **STABLE** — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **confirmée en voiture** (2026-10-12) |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
