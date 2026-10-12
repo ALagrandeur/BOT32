@@ -1,5 +1,10 @@
 # BOT32 — Future features roadmap
 
+> 🗄️ **Historical — superseded.** Both features below have shipped, with a different design
+> (no auto-revert, ESP32-CAN-X2 over ESP-NOW, Hazard/TC combos, engine-only code clearing).
+> This is **not** the current roadmap — see [ÉTAT_DU_PROJET.md](../ÉTAT_DU_PROJET.md)
+> (French) and [haldex_integration.md](haldex_integration.md).
+
 This document tracks features planned for future BOT32 versions. Each entry lists
 what's needed (hardware, reverse-engineering, code modules) to make the feature work.
 

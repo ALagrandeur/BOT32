@@ -1,5 +1,10 @@
 # SavvyCAN — Guide de capture VW MQB powertrain (Haldex hunt)
 
+> 🗄️ **Historique — remplacé.** Guide de recherche d'avant le MITM Haldex. Ce travail est
+> terminé (BOT32-HALDEX v3.0.0, dépôt privé) ; `haldex_mitm.cpp` cité plus bas se trouve dans
+> ce dépôt privé, pas ici. Conservé pour référence avec `docs/vw_mqb_powertrain.dbc`.
+> Guide actuel du lien Haldex : [haldex_integration.md](haldex_integration.md).
+
 Workflow pour identifier la présence du Haldex sur le bus moteur MK7 et
 décoder ses paramètres en utilisant SavvyCAN + le DBC fourni dans
 `docs/vw_mqb_powertrain.dbc`.

@@ -1,7 +1,8 @@
 # État du projet BOT32
 
-> Photo lisible de l'état du projet. Mise à jour : **2026-10-11**.
-> Pour les règles et conventions techniques, voir **`CLAUDE.md`**.
+> Photo lisible de l'état du projet. Mise à jour : **2026-10-12**.
+> Pour les règles et conventions techniques, voir **`CLAUDE.md`**. Vue d'ensemble
+> (matériel, build, utilisation) : **`README.md`** ; UI PC : **`webui/README.md`**.
 
 ---
 
@@ -9,6 +10,12 @@
 
 🏁 **v4.6.0** (principal, **à valider en voiture** — dernière version confirmée en voiture : **v4.5.0**) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
+Le commit v4.6.0 est poussé sur `master`, mais le **tag `v4.6.0` n'est pas encore sur GitHub**
+(au 2026-10-12 le dernier tag distant est `v4.5.0`) et il n'y a **aucune release GitHub depuis v4.1.0**.
+
+**Autres appareils liés** : la **manette AMOLED** (dépôt `Remote32`, dossier `Recepteur_AMOLED`,
+mode Golf) parle aussi au X2 par ESP-NOW — elle envoie **SET_MODE seulement** (jamais
+SET_PASSTHROUGH). Le X2 a donc deux sources de mode : le principal et la manette.
 
 **Les 3 modes fonctionnent en voiture, confirmés par le pilote.** **STOCK** (normal),
 **FWD** (roues avant seulement — le burnout fonctionne), et surtout **50-50 qui TIENT
@@ -80,13 +87,21 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Lien ESP-NOW uniquement.** AP téléphone + ESP-NOW **coexistent** sur le **canal 1**
   (mode AP+STA quand le lien est activé). Le PC en **USB-C** peut aussi parler
   directement au X2 (dev/diagnostic) — ESP-NOW court-circuité dans ce mode.
+- **2e source de mode : la manette AMOLED** (Remote32, mode Golf) écoute le STATE et envoie
+  SET_MODE (STOCK/FWD/50-50) ; elle ne peut pas armer. Le principal affiche le **mode
+  rapporté par le X2** et renvoie toujours un STOCK explicite quand on appuie sur STOCK.
 - **3 modes** : STOCK / FWD / 50-50.
 - **FWD** = combo **Hazards ON + TC OFF** (ou app) ; **v3.10.0 : sort quand le TC repasse à ON** (plus quand les warnings s'éteignent → on peut couper les Hazards et garder FWD).
   **50-50** = **v4.6.0 : même combo avec le frein à main tiré** au moment où il se complète (frein baissé = FWD) ; un mode armé par le combo sort quand le TC repasse à ON. Aussi par l'app/USB (sort via STOCK). **Pas d'auto-revert. Pas de seuil de pédale.**
-- **Passthrough ON/OFF** (commande live) : le X2 démarre toujours **ON** (transparent/sûr) ;
-  OFF = MITM **armé**. Affiché en live + confirmation modale avant d'armer + **ack** du X2 dans l'UI.
+- **Passthrough ON/OFF** (commande live, **depuis l'app du principal seulement**) : ON =
+  transparent/sûr ; OFF = MITM **armé**. Le X2 **persiste le passthrough en NVS** (il revient
+  dans l'état où il a été laissé ; 1er boot = ON) ; c'est le **mode** qui démarre toujours en
+  **STOCK**, donc rien n'est modifié tant qu'un mode n'est pas choisi. Affiché en live +
+  confirmation modale avant d'armer + **ack** du X2 dans l'UI.
 - **LIVE** : Vitesse · Pédale % · Lock target % · Pump % · Mode · Connexion (bandeau) · Passthrough
-  · santé CAN (rx/tx✗/TEC/EFLG). Boutons mode + passthrough aussi sur l'**UI mobile**.
+  · temp embrayage (0x2BF1, UI mobile). La **santé CAN du X2 (rx/tx✗/TEC/EFLG)** n'est **pas** dans le
+  paquet STATE ESP-NOW : elle ne s'affiche que dans l'UI PC en mode **USB-C direct au X2**.
+  Boutons mode + armement aussi sur l'**UI mobile**.
 
 ---
 
@@ -96,13 +111,17 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - ✅ **Polling UDS multi-DID** (round-robin 6 slots) : MAP, éthanol, blocage Haldex, huile DSG, EGT, **temp embrayage Haldex (0x2BF1)**.
 - ✅ **4 sniffers passifs** (lecture seule) : frein à main, bouton OK volant, Hazard, Traction Control — Hazard + TC + frein à main servent aussi d'entrées aux combos Haldex.
 - ✅ **Effacement codes moteur** (v4.6.0) : écoute seule + Haldex STOCK + Mode 04 vers 0x7E0 — bouton web PC + mobile.
-- ✅ **Clear DTC tous modules** : machine à états UDS non-bloquante (14+ ECU).
+- ⚠️ **Clear DTC tous modules** : la machine à états UDS non bloquante (14 ECU) existe dans le
+  firmware, mais **seulement comme commande série** `{"cmd":"clear_all_dtcs"}` — **aucun bouton
+  UI** (PC ou mobile). Sa liste contient `0x715`, que `docs/future_features.md` désigne comme
+  l'Airbag à ne jamais effacer (à confirmer). Fonction héritée — statut à décider.
 - ✅ **Bench test mode** + **lamp killer** (cartographie des voyants du combiné).
 - ✅ **UI web PC** (Flask + SocketIO) via USB série + **UI mobile** via WiFi AP (PROGMEM).
 - ✅ **MITM Haldex confirmé EN VOITURE** : STOCK / FWD (avant seulement) / 50-50, lien
   ESP-NOW solide, contrôle depuis l'UI. Firmware dans le dépôt **privé** `BOT32-HALDEX`
   (carte Autosport Labs **ESP32-CAN-X2**).
-- ✅ **Sécurité** : `block_airbag` forcé ON, 5 s listen-only au boot, confirmations modales,
+- ✅ **Sécurité** : `block_airbag` forcé ON, 5 s sans émission sur le bus combiné au boot (le
+  polling UDS sur le bus OBD2, lui, démarre dès le boot avec les réglages par défaut), confirmations modales,
   aucun ID deviné émis par défaut, mode boot TOUJOURS STOCK, série USB toujours active.
 
 ---
@@ -123,7 +142,12 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v3.9.0 | **Power-save WiFi OFF** (lien ESP-NOW fiable) + lecture du canal réel |
 | v3.10.0 | **FWD sort quand le TC repasse à ON** (plus quand Hazards OFF) — état TC latché |
 | **v4.0.0** | 🏁 **Jalon stable** — tout confirmé en voiture (STOCK/FWD/50-50, lien solide, UI complète) |
-| v4.6.0 | Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire |
+| v4.1.0 | Libellés des sources CAN sous les cellules Haldex + finitions de l'UI mobile (dernière release GitHub) |
+| v4.2.0 | Temp embrayage Haldex (DID 0x2BF1) dans l'UI mobile + badge d'armement 🟢/🔴 |
+| v4.3.0 | Limite de temp embrayage + coupure auto vers STOCK (retirée en v4.5.0) |
+| v4.4.0 | Ménage de la page Réglages mobile + valeur brute 0x2BF1 pour la calibration |
+| **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — **dernière version confirmée en voiture** |
+| v4.6.0 | Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **à valider en voiture** (tag pas encore poussé) |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -136,12 +160,14 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v1.5.0 | **Power-save WiFi OFF** + diagnostics ESP-NOW (canal/tx/rxcmd) |
 | v1.6.0 | **Fix 50-50** : 0x0A8 en passthrough (D8 = RPM, pas la demande de lock) |
 | **v2.0.0** | 🏁 **Jalon stable** — MITM confirmé en voiture (STOCK/FWD/50-50), lien ESP-NOW solide |
+| **v3.0.0** | 🏁 **Jalon stable actuel** — 50-50 tenu ~95 % à toutes les vitesses, confirmé en voiture (détails dans le dépôt privé) |
 
 ---
 
 ## Pistes / roadmap (à faire — captures en attente)
 
-- 📌 **Log Haldex 50-50 en roulant** (côté Haldex) : confirmer que l'engagement (0x118)
+- *(Probablement obsolète depuis X2 v3.0.0, où le 50-50 tient ~95 % à toutes les vitesses — à confirmer.)*
+  📌 **Log Haldex 50-50 en roulant** (côté Haldex) : confirmer que l'engagement (0x118)
   tient sous charge, et tester **0x116** haut/bas/off (seul octet ESP incertain). Comparer
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour

@@ -1,5 +1,11 @@
 # BOT32 — Hardware notes
 
+> 🗄️ **Historical — superseded.** Early options analysis. Its conclusion ("Option A",
+> TWAI on GPIO 21/22) was **never built**: BOT32 uses the WaveShare 2-CH CAN HAT
+> (2× MCP2515). Current wiring: [wiring_waveshare_hat.md](wiring_waveshare_hat.md).
+> The OBD-II pin 16 statements below contradict each other — whether pin 16 is permanent
+> or switched on this car is **to be confirmed**.
+
 ## Status
 
 🟢 **Hardware decided: Option A** (1× TWAI internal + 1× MCP2515 over SPI).

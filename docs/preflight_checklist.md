@@ -1,5 +1,10 @@
 # BOT32 — Pre-flight checklist (à faire avant le 1er test)
 
+> 🗄️ **Historique — remplacé.** Checklist du tout premier flash (époque v0.1 : « 9 onglets »,
+> JSON de boot « version 0.1 »). Le firmware compte aujourd'hui 14 modules et annonce
+> `4.6.0`. À jour : section *Build and flash* du [README](../README.md) et checklist de
+> [wiring_waveshare_hat.md](wiring_waveshare_hat.md).
+
 Suis cette checklist **dans l'ordre** avant de connecter quoi que ce soit au véhicule.
 
 ---

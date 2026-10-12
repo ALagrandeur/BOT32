@@ -25,11 +25,11 @@ Auteur / propriétaire : **Antoine Lagrandeur** — hobbyiste, communique **en f
 | GitHub | `ALagrandeur/BOT32`, branche `master` |
 | Sketch principal | `BOT32/BOT32.ino` (+ modules `.cpp/.h`) |
 | Module Haldex MITM | **dépôt privé séparé** `BOT32-HALDEX` (carte ESP32-CAN-X2) — hors de ce repo |
-| UI PC | `webui/` — Flask + SocketIO (`server.py`, `static/index.html`, `app.js`, `style.css`) |
+| UI PC | `webui/` — Flask + SocketIO (`server.py`, `static/index.html`, `app.js`, `style.css`) — mode d'emploi : `webui/README.md` |
 | UI mobile | servie en PROGMEM depuis `BOT32/wifi_ui.cpp` (`MOBILE_HTML`) |
-| Docs | `docs/` |
+| Docs | `docs/` — à jour : `haldex_integration.md`, `wiring_waveshare_hat.md` ; historiques (bandeau en tête) : `wiring.md`, `hardware.md`, `future_features.md`, `savvycan_capture_guide.md`, `preflight_checklist.md` |
 | Captures véhicule (SavvyCAN) | `DATA input from CAR/*.csv` |
-| Outils | `tools/verify_crc.py` |
+| Outils | `tools/generate_bench_frames_cpp.py` (génère `BOT32/bench_frames.cpp` ; chemins Windows codés en dur, capture source absente du repo) · `tools/verify_crc.py` (vérif CRC ponctuelle) · `tools/derive_bench_frames.py` (ancien, remplacé par `generate_bench_frames_cpp.py`) |
 
 > Note : Claude Code est généralement lancé depuis `C:\Users\AntoineLagrandeur\MK7-cluster`
 > (c'est là que se charge la **mémoire auto**). Le code, lui, est dans `BOT32`.
@@ -53,10 +53,10 @@ Auteur / propriétaire : **Antoine Lagrandeur** — hobbyiste, communique **en f
 ## 4. Architecture firmware (machine à états)
 
 ```
-BOOT        (5 s listen-only au démarrage, aucune TX)
+BOOT        (5 s au démarrage : aucune TX Motor_09 sur le bus combiné ; le polling UDS OBD2 tourne déjà avec les réglages par défaut)
 SILENT      (levier P/R/N/D : pas de TX, le combiné affiche le vrai coolant)
 BOOST       (levier S/M : poll MAP via OBD2, TX Motor_09 override boost)
-SAFE_FAULT  (TX désactivée par l'utilisateur ou erreur fatale : aucune TX)
+SAFE_FAULT  (échec d'init MCP2515 au boot : aucune TX — `tx_enabled = false` coupe la TX sans changer de mode)
 BENCH_TEST  (combiné sur établi sans véhicule : émet le bundle complet)
 ```
 
@@ -70,11 +70,16 @@ Fonction cœur : **boost-on-coolant** — on calcule un octet « coolant » à p
 
 1. **`block_airbag` est forcé ON en dur** au boot (`settings.cpp`, garde v2.3.3).
    Jamais de TX sur les IDs airbag **0x040 / 0x572**. Pas de case UI pour le désactiver.
+   ⚠ La clé `block_airbag` reste modifiable **à chaud** par la commande série `set` et par
+   `/api/set` (dispatcher `serial_proto_apply_setting`) jusqu'au prochain reboot.
 2. **Aucun ID CAN deviné n'émet par défaut.** Toute émission doit reposer sur un ID
    **confirmé sur le véhicule** ou être **armée explicitement** par l'utilisateur.
 3. **Le port série USB-C reste 100 % actif en parallèle du WiFi.** Le WiFi est purement
    additif ; il ne doit jamais casser le chemin série.
 4. **5 s de listen-only au boot** avant toute première TX (protection du bus).
+   ⚠ État réel du code (v4.6.0) : la phase `BOOT` bloque seulement l'override Motor_09 sur le
+   bus combiné ; le polling UDS sur le bus OBD2 démarre dès le boot quand `poll_ethanol` ou
+   `poll_haldex_blockage` est ON (réglages par défaut) — voir `loop()` dans `BOT32.ino`.
 5. **Avertissement modal** (confirm) avant toute action destructrice/critique
    (désactiver TX, activer/désactiver bench mode, clear DTC, etc.).
 6. **Préserver les réglages utilisateur entre flashs** : ne **pas** bumper
@@ -92,6 +97,9 @@ Fonction cœur : **boost-on-coolant** — on calcule un octet « coolant » à p
 4. Chaîne `version` dans `BOT32/wifi_ui.cpp` (`handle_status`).
 5. Tag git (`git tag vX.Y.Z`) + push + release GitHub.
 6. L'UI affiche la version via l'évènement `boot` (pill « fw: vX.Y.Z ») — vérifier la cohérence.
+
+> État au 2026-10-12 : pour **v4.6.0**, le tag existe en local mais **n'a pas été poussé** et
+> aucune release GitHub n'a été créée (dernière release : v4.1.0 ; tags distants jusqu'à v4.5.0).
 
 ---
 
@@ -140,7 +148,11 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 - Sentinelle des températures = **-1000.0f** (les vraies temps peuvent être négatives).
 - Sniffer OK (0x5BF) : repos = `byte[0] == 0x00`, **pressé = `byte[0] != 0x00`** (fix v2.10.0).
 
-**Haldex (MITM) — principal v4.0.0 / X2 v2.0.0 — CONFIRMÉ EN VOITURE (jalon stable) :**
+**Haldex (MITM) — principal v4.6.0 (à valider en voiture ; v4.5.0 confirmée) / X2 v3.0.0 — 3 modes CONFIRMÉS EN VOITURE (jalons stables : v4.0.0 / X2 v2.0.0, puis X2 v3.0.0 = 50-50 tenu à toutes les vitesses) :**
+
+> ⚠ Les puces « CRC E2E / trames modifiées », « v1.6.0 » et « Burnout FWD » ci-dessous
+> datent du X2 v0.4–v2.0 et sont **conservées telles quelles (historique)**. Le détail de la
+> recette du X2 **v3.0.0** est dans le dépôt privé `BOT32-HALDEX` : s'y référer.
 - Module MITM = **dépôt privé `BOT32-HALDEX`** sur carte **ESP32-CAN-X2** (CAN1 TWAI natif = côté voiture, CAN2 MCP2515 = côté Haldex, **TERM2 120 Ω activée côté Haldex**, 500 kbps). Pont CAR↔Haldex dans une **tâche FreeRTOS avant WiFi** (évite l'écart de boot). **12 V permanent** + light-sleep 15 min + wake-on-CAN (jamais de sommeil tant qu'un hôte USB est branché).
 - Lien **ESP-NOW uniquement**. **Fiabilité (v3.9.0/v1.5.0)** : les deux côtés **verrouillent le canal 1** (`esp_wifi_set_channel`) ET **désactivent le power-save WiFi** (`WiFi.setSleep(false)` + `esp_wifi_set_ps(WIFI_PS_NONE)`) — sans ça la radio STA dort et jette les paquets reçus (c'était LA cause d'un lien mort). Diagnostics : `espnow_rx` (JSON + bandeau UI), ligne X2 `[5s] espnow ch= tx= rxcmd=`.
 - 3 modes : STOCK/FWD/50-50. FWD = combo **Hazards ON + TC OFF** (ou app) ; **v3.10.0 : sort quand le TC repasse à ON** (plus quand les Hazards s'éteignent → on peut couper les warnings et garder FWD). On lit l'état **latché** du TC (0x0FD byte6==0x03 stable). 50-50 = **v4.6.0 : même combo avec le frein à main TIRÉ au moment où il se complète** (KOMBI_01 0x30B byte[2] bit 7, échantillonné une seule fois ; frein baissé = FWD) ; un mode armé par le combo ne change plus tant que le TC reste OFF, et sort quand le TC repasse à ON. 50-50 aussi par l'app (sort via STOCK). **Pas d'auto-revert, pas de seuil de pédale.**
@@ -149,6 +161,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 - **Passthrough** = armement : OFF = MITM armé. **Le X2 PERSISTE `passthrough` en NVS** ; le **mode boot TOUJOURS STOCK** (sécurité). 1er boot = STOCK + passthrough ON. ⚠ s'il est coupé ARMÉ, il revient ARMÉ (mais en STOCK = inerte). L'UI affiche le **mode réel rapporté par le X2** + l'**ack** des commandes.
 - **Burnout FWD (v0.4.0)** : en FWD armé, le X2 falsifie aussi **ESP_19 (0x0B2)** = les 4 vitesses de roue (présente les 4 à la vitesse réelle véhicule, lue sur ESP_21 0x0FD, `roue=veh*4/3`) → le Haldex (embrayage ouvert) voit une voiture cohérente, pas de défaut. ESP_19 est full-packed → pas de CRC à recalculer. ⚠ ne trompe que le Haldex ; l'ESP/ABS amont se neutralise par le bouton TC/ESP.
 - Côté principal : module `haldex_modes` (logique modes + passthrough), `haldex_link`/`haldex_espnow` (transport ESP-NOW).
+- **2e source de SET_MODE : la manette AMOLED** (dépôt `Remote32`, `Recepteur_AMOLED`, mode Golf) écoute le STATE et diffuse **SET_MODE seulement, jamais SET_PASSTHROUGH** (l'armement reste réservé à l'app du principal). Le principal affiche le mode rapporté par le X2 et renvoie toujours un STOCK explicite (`haldex_modes_set_manual`), même si son propre état est déjà STOCK.
 - Témoin frein à main pour indiquer le mode = **abandonné** (frein mécanique → pas de trame CAN d'entrée). Le mode se lit dans l'UI web.
 
 ---

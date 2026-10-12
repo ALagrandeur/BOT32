@@ -1,5 +1,10 @@
 # BOT32 — Schéma de câblage détaillé
 
+> 🗄️ **Historique — remplacé.** Ce document décrit l'« Option A » (TWAI + SN65HVD230 +
+> MCP2515/TJA1050 + level shifter), **abandonnée et jamais montée**. Les broches citées ici
+> (ex. TWAI sur GPIO 21/22) **n'existent pas** dans le firmware. Câblage actuel :
+> [wiring_waveshare_hat.md](wiring_waveshare_hat.md) (HAT WaveShare 2-CH CAN, 2× MCP2515).
+
 **Architecture retenue** : Option A
 - **CAN0 (cluster)** = TWAI interne ESP32 + transceiver SN65HVD230 (3.3V)
 - **CAN1 (OBD2)** = MCP2515 sur SPI + transceiver TJA1050 (5V) + level shifter

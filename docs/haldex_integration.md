@@ -1,12 +1,18 @@
 # BOT32 — Haldex AWD link integration guide
 
+> Applies to BOT32 main **v4.6.0** and BOT32-HALDEX **v3.0.0**.
+
 BOT32 main is the **client**; it drives an external **MITM module** that does the
-actual man-in-the-middle work on the private Haldex CAN bus. The two devices talk
+actual man-in-the-middle work on the private Haldex CAN bus. The devices talk
 **only over ESP-NOW** (wireless).
 
 - **BOT32 main** — ESP32 + WaveShare 2-CH CAN HAT. Cluster + OBD + web UI.
 - **MITM module** — Autosport Labs **ESP32-CAN-X2**, running the **BOT32-HALDEX**
   firmware (kept in a **private** repo). Sits in series on the Haldex bus.
+- **AMOLED remote** (optional 3rd device) — the ESP32-S3 AMOLED 1.8" universal remote of
+  [Remote32](https://github.com/ALagrandeur/Remote32) (`Recepteur_AMOLED`, Golf mode). It
+  listens to STATE and sends **SET_MODE only** — never SET_PASSTHROUGH, so it cannot arm
+  the X2.
 
 > ⚠️ **MOTORSPORT — closed course only.** Forcing the AWD lock is for drag/track
 > use. Do not use on public roads.
@@ -46,12 +52,22 @@ are not copyrightable. The BOT32-HALDEX firmware is kept private (personal use).
             │   • sends SET_MODE + SET_PASSTHROUGH │
             │   • shows live STATE                 │
             └──────────────────────────────────────┘
+
+            ┌──────────────────────────────────────┐
+            │  Remote32 AMOLED remote (optional)   │  ESP-NOW (ch.1) to the X2
+            │   • Golf mode: sends SET_MODE only   │
+            │   • listens to STATE                 │
+            └──────────────────────────────────────┘
 ```
 
 | Device | Role |
 |---|---|
 | **ESP32-CAN-X2 (BOT32-HALDEX)** | In-line MITM. Reads live state; when armed, rewrites the MQB AWD-demand frames to force the lock. Broadcasts STATE over ESP-NOW. |
 | **BOT32 main** | Client. Decides the mode, arms/disarms passthrough, shows live data. No contact with the Haldex bus. |
+| **AMOLED remote (Remote32)** | Optional 2nd mode source. Sends SET_MODE (STOCK / FWD / 50-50), never SET_PASSTHROUGH. |
+
+Because the X2 accepts modes from two sources, the main always shows the mode **reported
+by the X2** (STATE), and its STOCK button always re-sends an explicit STOCK.
 
 ---
 
@@ -75,15 +91,21 @@ are not copyrightable. The BOT32-HALDEX firmware is kept private (personal use).
   (re-pressing the hazards does nothing); it exits to STOCK when TC is turned
   back ON. 50/50 is also available from the app/USB button (exits via STOCK).
 - **No timed auto-revert** (a timed mechanical revert was judged unsafe).
+- The combos and app buttons only work while `haldex_enabled` is ON on the main. The
+  sniffed button states must be fresher than 2 s.
+- The **AMOLED remote** (Golf mode) can also send STOCK / FWD / 50-50 directly to the X2.
 
 ---
 
 ## 🔒 Passthrough (MITM arming)
 
-The X2 always **boots in passthrough ON** = transparent bridge, nothing modified
-(honours "no guessed frame emitted by default"). BOT32 main must explicitly send
-**SET_PASSTHROUGH OFF** to arm the MITM (UI has a modal confirmation). Only when
-**passthrough is OFF AND mode ≠ STOCK** does the X2 rewrite frames.
+The X2 **persists the passthrough flag in NVS** and restores it at boot (first boot =
+passthrough ON = transparent bridge). The **mode always boots in STOCK** (not persisted),
+so nothing is modified at power-up even if the X2 was switched off armed (honours "no
+guessed frame emitted by default"). BOT32 main must explicitly send
+**SET_PASSTHROUGH OFF** to arm the MITM (UI has a modal confirmation). Only BOT32's own
+UIs can arm (phone, or PC — which in USB-C development mode sends the command straight to
+the X2); the AMOLED remote cannot. Only when **passthrough is OFF AND mode ≠ STOCK** does the X2 rewrite frames.
 
 The live UI shows the **actual** passthrough state reported by the X2.
 
@@ -178,8 +200,10 @@ live in the private BOT32-HALDEX firmware.)
 | Symptom | Likely cause |
 |---|---|
 | Link banner red, `espnow_rx = 0` | WiFi power-save still on (flash v3.9.0/v1.5.0), wrong channel, or X2 off/asleep |
-| Live state shows "déconnecté" | X2 not powered, asleep (>15 min parked, no USB), or main not connected to PC |
-| Modes/passthrough don't take effect | `haldex_enabled` is OFF, or in ESP-NOW mode the main isn't connected to the PC |
+| Live state shows "déconnecté" | X2 not powered or asleep (>15 min parked, no USB). The main relays ESP-NOW on its own and the phone UI works without a PC; only the **PC UI** needs the main connected over USB (or, in USB-C dev mode, the X2 connected to the PC) |
+| Modes/passthrough don't take effect | `haldex_enabled` is OFF on the main, or X2 offline. PC UI only: main not connected over USB (ESP-NOW source) or X2 not connected (USB-C source) |
+| FWD / 50-50 selected but nothing happens | X2 not armed (badge 🟢 = passthrough ON) — arm it from the main's app |
+| Mode changed without touching the main | the AMOLED remote (Golf mode) sent a SET_MODE — the main shows the mode reported by the X2 |
 | Armed but no AWD change | passthrough still ON, or this controller variant uses a different demand byte (validate on bench) |
 | TC/TPMS faults at boot or after idle | in-series boot gap (fixed by FreeRTOS bridge), or marginal termination — enable **TERM2 (120 Ω)** on the Haldex side and watch the MCP TEC stay 0 |
 

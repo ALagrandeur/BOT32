@@ -1,5 +1,7 @@
 # BOT32 — Câblage avec HAT WaveShare 2-CH CAN
 
+> Document de câblage **actuel** (BOT32 v4.6.0) — le brochage correspond à `BOT32/config.h`.
+
 **Hardware utilisé** : HAT WaveShare 2-CH CAN (2× MCP2515 + 2× SIT65HVD230) connecté à un ESP32 via fils Dupont, **sans utiliser le connecteur GPIO 40 pin du Pi** (juste les broches individuelles).
 
 ## ✅ Pourquoi cette approche
@@ -10,7 +12,7 @@
 | Pas de level shifter | SIT65HVD230 = 3.3V natif, ESP32 = 3.3V, compatible direct |
 | Transceivers déjà soudés | + termination jumpers 120Ω + borniers à vis CAN H/L/G |
 | 2 chips identiques | Code symétrique, plus simple à debugger |
-| 10 fils Dupont seulement | Câblage rapide |
+| 9 fils Dupont seulement | Câblage rapide |
 
 ## 🛒 BOM additionnel
 
@@ -128,7 +130,11 @@ Plusieurs options :
    HAT 3V3 pin
 ```
 
-→ Quand cléf OFF, OBD2 pin 16 coupe l'alim, ESP32 s'éteint, pas de drain batterie.
+→ Hypothèse : quand clé OFF, OBD2 pin 16 coupe l'alim, l'ESP32 s'éteint, pas de drain batterie.
+**À confirmer sur la voiture** : `docs/hardware.md` (historique) la décrit à un endroit comme un
++12 V **permanent** (batterie), à un autre comme coupée clé OFF. Si elle est permanente, BOT32
+reste alimenté voiture garée — le firmware n'a aucun mode veille. Mesurer la pin 16 clé OFF
+avant l'installation finale.
 
 ## 🚗 Câblage côté voiture (terminaux à vis du HAT)
 
@@ -161,12 +167,12 @@ Plusieurs options :
 | Diode 1N5408 | Si tu inverses + et -, la diode bloque (chute 0.7V OK) |
 | Jumper VIO=3V3 | Force le HAT en 3.3V logique, évite tout level shifter |
 | Termination OFF en voiture | Évite mismatch impédance avec terminateurs OEM |
-| Pas de TX en BOOT (5s) | Listen-only au démarrage, attend signaux stables |
+| Pas de TX Motor_09 en BOOT (5 s) | Le bus combiné reste en écoute au démarrage (le polling UDS du bus OBD2, lui, démarre dès le boot avec les réglages par défaut) |
 
 ## 📋 Checklist montage rapide
 
 - [ ] **Jumper VIO du HAT en position 3V3** ✓
-- [ ] 10 fils Dupont F-F connectés selon table ci-dessus
+- [ ] 9 fils Dupont F-F connectés selon table ci-dessus
 - [ ] Termination jumpers selon usage (bench=ON, voiture=OFF)
 - [ ] Bornier CAN0 vissé sur fils vers cluster pins 17/18
 - [ ] Bornier CAN1 vissé sur fils vers OBD2 pins 6/14
@@ -176,7 +182,7 @@ Plusieurs options :
 
 ## 🧪 Test rapide (sans rien câbler au véhicule)
 
-1. Wire les 10 fils Dupont HAT ↔ ESP32
+1. Wire les 9 fils Dupont HAT ↔ ESP32
 2. Alimente l'ESP32 via USB depuis ton PC
 3. Vérifie LED `PWR` HAT allumée
 4. Flash le sketch BOT32
@@ -187,14 +193,22 @@ Plusieurs options :
   BOT32 - boost gauge override
 ================================
 [NVS] Settings loaded from flash
-[CAN] cluster MCP2515 started at 500 kbps (12 MHz xtal)
-[CAN] obd2    MCP2515 started at 500 kbps (12 MHz xtal)
+[CAN] cluster MCP2515 started at 500 kbps (16 MHz xtal)
+[CAN] obd2 MCP2515 started at 500 kbps (16 MHz xtal)
+[espnow] init OK, peer=..., ACTUAL channel=1, PS=OFF, my MAC=...
+{"evt":"boot","version":"4.6.0","build":"..."}
+{"evt":"settings", ...}
 [main] Entering BOOT
 ```
 
+(La valeur « 16 MHz » vient de `MCP2515_CLOCK_MHZ` dans `BOT32/config.h`. Sortie complète :
+voir la section *Expected serial output* du `README.md`.)
+
 → Si tu vois "MCP2515 started" pour les 2 chips : ✅ tu peux déjà voir les frames RX dans la web UI dès que tu connectes le HAT à un bus CAN vivant (ou loopback).
 
-## ⚠ Différence vs Option A originale
+## ⚠ Différence vs Option A originale (historique)
+
+*Option A n'a jamais été montée ; voir `docs/wiring.md` / `docs/hardware.md` (documents historiques).*
 
 | | Option A (initial) | **HAT WaveShare (actuel)** |
 |---|---|---|

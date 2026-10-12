@@ -1,105 +1,250 @@
 # BOT32
 
-ESP32 firmware for in-vehicle override of the **VW Golf MK7 Alltrack 2017** coolant temperature gauge to display turbocharger boost pressure.
+**BOT32 is the "Main ESP" of a VW Golf MK7 Alltrack 2017.** It is an ESP32 with a
+WaveShare 2-CH CAN HAT, wired to the instrument-cluster CAN bus (CAN0) and to the
+OBD-II CAN bus (CAN1). It:
+
+- shows **turbo boost on the coolant-temperature needle** of the cluster (lever in S/M);
+- reads **live data** (12 values: MAP, ethanol, Haldex, DSG oil, EGT, buttons…);
+- serves a **phone web UI** over its own WiFi access point, and a **PC web UI** over USB;
+- **clears engine fault codes** with a listen-only procedure (engine ECU only);
+- **commands the Haldex AWD modes** (STOCK / FWD / 50-50) of the in-line
+  [BOT32-HALDEX](https://github.com/ALagrandeur/BOT32-HALDEX) module over ESP-NOW,
+  from the app or with physical button combos.
 
 Successor to [MK7BoostGauge](https://github.com/ALagrandeur/MK7BoostGauge) (Raspberry Pi version, archived due to MCP2515 driver instability).
-Logic ported from [mk7-cluster-bench-controller](https://github.com/ALagrandeur/mk7-cluster-bench-controller).
+Logic ported from [mk7-cluster-bench-controller](https://github.com/ALagrandeur/mk7-cluster-bench-controller)
+(lineage: mk7-cluster-bench-controller → MK7BoostGauge → BOT32).
 
-## What it does
+## Project map (all repos)
 
-When the gear lever is in **S/M**, BOT32:
-1. Polls intake manifold absolute pressure (MAP) via OBD-II UDS query DID `0x39C0` @ 5 Hz
-2. Converts MAP value to a coolant byte (linear mapping, 250→2068 mbar = 50→130°C)
-3. Broadcasts the override `Motor_09 (0x647)` on the cluster CAN @ 30 Hz
-4. Cluster shows the boost pressure on the analog coolant temperature needle
+The role descriptions are kept in French, as in the project's shared map.
 
-In **P/R/N/D**, BOT32 stays silent and the cluster displays real engine coolant.
+| Vehicle | Device | Repo / folder | Role |
+|---|---|---|---|
+| **Golf MK7 Alltrack 2017** | **ESP Main (ESP32 + HAT WaveShare 2-CH CAN)** | **[BOT32](https://github.com/ALagrandeur/BOT32)** | **jauge boost sur le combiné, données live, interface web (cellulaire + PC), effacement des codes moteur, commande des modes Haldex** |
+| Golf MK7 Alltrack 2017 | ESP32-CAN-X2 en série sur le bus Haldex | [BOT32-HALDEX](https://github.com/ALagrandeur/BOT32-HALDEX) (privé) | modes Haldex STOCK / FWD / 50-50 |
+| Westfalia | ESP32-CAN-X2 | [Remote32](https://github.com/ALagrandeur/Remote32) / Emetteur_CAN_X2 | lit le CAN du Microsquirt et diffuse les données (ESP-NOW + WiFi/UDP) |
+| Westfalia | ESP32-P4 écran rond 3.4" | [Remote32](https://github.com/ALagrandeur/Remote32) / Recepteur_P4_IDF | tableau de bord à cadrans (version finale v1.4) |
+| Les deux | ESP32-S3 AMOLED 1.8" | [Remote32](https://github.com/ALagrandeur/Remote32) / Recepteur_AMOLED | manette universelle : cadrans Westfalia + mode Golf (modes Haldex) |
+| Outil | ESP32 (ESP32RET) + PC | [mk7-cluster-bench-controller](https://github.com/ALagrandeur/mk7-cluster-bench-controller) | banc d'essai du combiné MK7 (dormant) |
+| Référence | — | [OpenHaldex-C6-perso](https://github.com/ALagrandeur/OpenHaldex-C6-perso) | copie non modifiée d'OpenHaldex-C6, non utilisée |
+| Archivé | — | [MK7BoostGauge](https://github.com/ALagrandeur/MK7BoostGauge) | ancêtre de BOT32 (Raspberry Pi) |
+
+## Status
+
+| | |
+|---|---|
+| **Current version** | **v4.6.0** (`master`) — **to be validated in the car** (engine-code clearing and the 50-50 combo are new) |
+| **Last version confirmed in the car** | **v4.5.0** (git tag `v4.5.0`) |
+| **Paired Haldex module** | BOT32-HALDEX **v3.0.0** (stable, all 3 modes confirmed in the car) |
+
+Detailed status, version history and roadmap (French): [ÉTAT_DU_PROJET.md](ÉTAT_DU_PROJET.md).
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  ESP32 (always-on, autonomous in vehicle)                   │
-│                                                             │
-│  ┌─── Shared SPI bus (SCK 18, MISO 19, MOSI 23)             │
-│  │                                                          │
-│  │    ├── MCP2515 #0 (CS 5, INT 4)                          │
-│  │    │   └── SIT65HVD230 (3.3V) → MK7 cluster CAN bus      │
-│  │    │       ├── RX: WBA_03 (0x394) gear lever             │
-│  │    │       └── TX: Motor_09 (0x647) coolant override     │
-│  │    │                                                     │
-│  │    └── MCP2515 #1 (CS 25, INT 26)                        │
-│  │        └── SIT65HVD230 (3.3V) → OBD-II port              │
-│  │            ├── TX: UDS query DID 0x39C0 @ 5 Hz           │
-│  │            └── RX: UDS response → MAP value              │
-│  │                                                          │
-│  │    Hardware: WaveShare 2-CH CAN HAT (2x MCP2515 +        │
-│  │    2x SIT65HVD230 3.3V transceivers).                    │
-│  │    See docs/wiring_waveshare_hat.md.                     │
-│  │                                                          │
-│  ┌─── USB serial (debug + config when PC connected)         │
-│  │    └── Line-delimited JSON protocol                      │
-│  │                                                          │
-│  └─── NVS (persistent settings: MAP min/max, scale, …)      │
-└─────────────────────────────────────────────────────────────┘
+                         VW Golf MK7 Alltrack 2017
+   cluster CAN bus ───────┐                         ┌──────── OBD-II port (CAN)
+   (18-pin conn. 17/18)   │                         │         (pins 6/14)
+                ┌─────────┴─────────────────────────┴─────────┐
+                │  BOT32 Main — ESP32 + WaveShare 2-CH CAN HAT │
+                │   CAN0 (MCP2515 #0): TX Motor_09 0x647,      │
+                │        RX lever / buttons / real coolant     │
+                │   CAN1 (MCP2515 #1): UDS polling, Mode 04    │
+                │   USB serial (JSON) ── PC web UI (webui/)    │
+                │   WiFi AP ch.1 ─────── phone (192.168.4.1)   │
+                └──────────────┬───────────────────────────────┘
+                               │ ESP-NOW (WiFi channel 1)
+                               │ SET_MODE + SET_PASSTHROUGH ▼   STATE ▲
+                ┌──────────────┴───────────────┐       ┌──────────────────────────┐
+                │ ESP32-CAN-X2 (BOT32-HALDEX)  │◄──────┤ Remote32 AMOLED remote   │
+                │ in series on the Haldex bus  │ESP-NOW│ (Golf mode): SET_MODE    │
+                │ (private repo)               │       │ only, never arming       │
+                └──────────────────────────────┘       └──────────────────────────┘
 ```
 
-## State machine
+The X2 accepts modes from **two sources**: the Main and the
+[Remote32 AMOLED remote](https://github.com/ALagrandeur/Remote32) (Golf mode). Only
+the Main can arm/disarm the X2 (SET_PASSTHROUGH). The Main always displays the mode
+**reported by the X2**. Protocol details: [docs/haldex_integration.md](docs/haldex_integration.md).
 
-| Lever | Mode | Behavior |
-|---|---|---|
-| Boot (5s) | BOOT | Listen-only, no TX |
-| P, R, N, D | SILENT | No TX. Cluster shows real engine coolant. |
-| S, M | BOOST | Poll MAP, TX Motor_09 override. |
-| TX disabled by user | SAFE_FAULT | No TX. Failsafe. |
+## Features
+
+### 1. Boost on the coolant gauge
+
+- Lever in **S/M** → BOT32 transmits `Motor_09 (0x647)` on the cluster bus at
+  `tx_rate_hz` (default **30 Hz**). The coolant needle then shows the intake
+  manifold pressure (MAP, UDS DID `0x39C0`).
+- **Linear** mapping: `map_min_mbar` (default **250 mbar**) → 50 °C (cold end),
+  `map_max_mbar` (default **2068 mbar**) → 130 °C (red zone). Both are settings.
+- Lever in **P/R/N/D** → nothing is transmitted on the cluster bus; the cluster shows the
+  real coolant temperature. (With the default settings, UDS polling on the OBD bus keeps
+  running in every lever position, so live data stays live.)
+- If no fresh MAP is available, the needle falls back to the cold end.
+
+Coolant byte formula (validated in the sister project):
+`temp_C = byte × 0.7339 − 43.94` → `0x80` = 50 °C, `0xED` = 130 °C. There is no
+dead-zone handling: the needle simply follows the linear mapping (the dead-zone mode
+was removed in v2.0).
+
+### 2. Live data (12 cells, phone + PC)
+
+| Cell | Source |
+|---|---|
+| Lever | `0x394` WBA_03 (cluster bus) |
+| MAP (mbar) | UDS `0x39C0`, engine `0x7E0`→`0x7E8` |
+| Coolant TX (what BOT32 sends / would send) | computed from MAP |
+| Real coolant | `0x647` sniffed on the cluster bus |
+| Ethanol % | UDS `0xF452`, engine |
+| Haldex blockage % | UDS `0x2BF3`, Haldex `0x70F`→`0x779` |
+| DSG oil °C | UDS `0x2104`, DSG `0x7E1`→`0x7E9` |
+| EGT °C | UDS `0x40D5`, engine |
+| Hand brake | `0x30B` byte 2 bit 7 |
+| OK button (steering wheel) | `0x5BF` byte 0 |
+| Hazard | `0x366` byte 2 bit 4 |
+| Traction Control | `0x0FD` byte 6 |
+
+UDS polling: 6 round-robin slots (MAP, ethanol, Haldex blockage, DSG oil, EGT, Haldex
+clutch temp `0x2BF1`), `obd2_poll_hz` = **30 Hz in total** (~5 Hz per slot). The button
+sniffers are passive (read-only). A Haldex block (mode, link, speed, pedal, lock target,
+pump %, clutch temp — display only) is shown below the grid.
+
+### 3. Phone web UI (WiFi access point)
+
+| | |
+|---|---|
+| Enable | **OFF by default.** Turn it on from the PC UI (card *📶 WiFi remote*) or over serial: `{"cmd":"set","key":"wifi_enabled","value":true}` — starts/stops live, no reboot |
+| SSID / password (firmware defaults) | **`BOT32`** / **`BOT32-2026`** (WPA2, 8 characters min) — **change them** (PC UI or phone settings page): the web UI itself has no login, so anyone connected to the access point can read and change every setting |
+| Address | **http://192.168.4.1** (channel 1, shared with ESP-NOW) |
+| `/` | 12 live cells, Haldex block, **STOCK / FWD / 50-50** buttons (confirmation asked for FWD and 50-50), 🟢/🔴 armed badge, combo cheat-sheet (*Aide-mémoire*) |
+| `/settings` | MAP min/max, Poll Hz, TX rate, TX enabled, Force TX, **Effacer les codes moteur**, WiFi AP (SSID/password), Haldex link + X2 peer MAC, **Arm / Disarm the X2** |
+
+HTTP API (same settings dispatcher as the serial `set` command):
+`GET /api/status`, `GET /api/get_settings`, `POST /api/set {key, value}`,
+`POST /api/cmd {cmd: clear_engine_fault | set_haldex_mode (mode 0..2) | set_haldex_passthrough (on)}`.
+
+The USB serial link stays fully active in parallel with WiFi.
+Screenshots (taken on v4.4.0): [docs/screenshots/](docs/screenshots/).
+
+### 4. PC web UI (USB)
+
+Python Flask + Socket.IO app in [`webui/`](webui/) — see **[webui/README.md](webui/README.md)**.
+Live grid, CAN frame monitor, mapping / IDs / rates, bench mode + "lamp killer",
+Haldex card (via ESP-NOW, or a direct USB-C link to the X2 for development),
+WiFi remote, engine-code clearing, combo cheat-sheet. You can unplug USB at any time:
+BOT32 keeps running in the car with the last saved settings (NVS).
+
+### 5. Clear engine codes (v4.6.0 — to be validated in the car)
+
+Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI), or serial
+`{"cmd":"clear_engine_fault"}`. **Engine ECU only:**
+
+1. BOT32 goes **listen-only on both CAN buses** (no cluster override, no OBD polling,
+   no bench frames) and sets the Haldex to **STOCK**.
+2. 300 ms later, OBD-II Mode 04 `[01 04]` is sent to `0x7E0`.
+3. Reply on `0x7E8`: `01 44` = cleared · `7F 04 78` = pending (keeps waiting, 15 s max) ·
+   other `7F` = refused (NRC shown) · 2 s without a reply = *Pas de réponse du moteur*.
+4. 200 ms later, one more STOCK is sent and transmissions resume. The Haldex stays in STOCK.
+
+The result is shown on the page (`clear_engine_state/msg/seq` in the status).
+
+### 6. Haldex AWD modes (via BOT32-HALDEX)
+
+> ⚠️ **Motorsport — closed course only.** Do not use on public roads.
+
+Requires *Haldex link enabled* (`haldex_enabled`, OFF by default).
+
+| Mode | How to select it |
+|---|---|
+| **FWD** (front wheels only) | **Hazard ON + TC OFF**, in any order, **hand brake down** — or the 🔥 FWD button |
+| **50-50** (max lock) | the **same combo with the hand brake pulled** when it completes — or the 🚀 50/50 button |
+| **STOCK** | **turn TC back ON** (exits a combo-selected mode) — or the 🅾 STOCK button (the only exit for a mode chosen in the app) |
+
+- The button states must be fresh (< 2 s). Once a combo mode is held, re-pressing the
+  hazards changes nothing while TC stays OFF; hazards and hand brake can then be released.
+- FWD and 50-50 only act when the X2 is **ARMED** (passthrough OFF). **Arming is done only
+  from the app** (`/settings` → *Armer / Désarmer le X2*, or the PC Haldex card).
+  The X2 always boots in STOCK mode (its arming state is kept in its own NVS).
+- The **Remote32 AMOLED remote** (Golf mode) can also set STOCK / FWD / 50-50; it cannot arm.
+- No timed auto-revert, no pedal threshold.
+
+Full guide: [docs/haldex_integration.md](docs/haldex_integration.md).
 
 ## Hardware
 
-**Réutilisation du HAT WaveShare 2-CH CAN** (déjà en main) : 2× MCP2515 sur SPI partagé + 2× SIT65HVD230 3.3V transceivers + jumpers de terminaison 120Ω + borniers H/L/G à vis.
+**ESP32 DevKit** ("ESP32 Dev Module") + **WaveShare 2-CH CAN HAT** (2× MCP2515 with
+**16 MHz** crystals + 2× SIT65HVD230 3.3 V transceivers), wired with 9 Dupont jumpers
+(the 7 signals below + 3V3 + GND).
+HAT jumper **VIO on 3V3** (critical — no level shifter is used). Photo: [HAT.jpg](HAT.jpg).
 
-→ Voir [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md) pour le pinout HAT↔ESP32 (10 fils Dupont).
+Pins (from [`BOT32/config.h`](BOT32/config.h)):
 
-Coût hardware additionnel : ~$15 (ESP32 + LM2596 + connecteur OBD2).
-
-> _Note historique : initialement on planifiait Option A (1× TWAI + 1× MCP2515 + level shifter), documentée dans [docs/wiring.md](docs/wiring.md) et [docs/hardware.md](docs/hardware.md). Abandonné car la réutilisation du HAT existant est plus simple et moins chère._
-
-## Firmware setup (Arduino IDE)
-
-### 1. Install Arduino IDE 2.x
-
-[Download](https://www.arduino.cc/en/software).
-
-### 2. Install ESP32 board support
-
-In Arduino IDE:
-- **File → Preferences → Additional Boards Manager URLs**, add:
-  `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-- **Tools → Board → Boards Manager**, search "esp32" by Espressif Systems, install.
-- **Tools → Board → ESP32 Arduino → ESP32 Dev Module** (or matching your dev board).
-
-### 3. Install required libraries
-
-**Tools → Manage Libraries**, install:
-
-| Library | Author | Version |
+| Signal | ESP32 GPIO | HAT |
 |---|---|---|
-| **ACAN2515** | Pierre Molinaro | >= 2.1.x |
-| **ArduinoJson** | Benoit Blanchon | >= 7.x |
+| SPI SCK (shared, VSPI) | 18 | SCK |
+| SPI MISO | 19 | MISO |
+| SPI MOSI | 23 | MOSI |
+| CAN0 (cluster bus) CS | 5 | CS0 |
+| CAN0 INT | 4 | INT0 |
+| CAN1 (OBD-II bus) CS | 25 | CS1 |
+| CAN1 INT | 26 | INT1 |
+| Status LED | 2 | — |
+| Power | 3V3 / GND | 3V3 / GND |
 
-### 4. Open the sketch
+Both buses run at **500 kbps**, normal mode. `MCP2515_CLOCK_MHZ` must match the crystal.
 
-- Open `BOT32/BOT32.ino` in Arduino IDE
-- Select your COM port: **Tools → Port**
-- Configure board:
-  - **Tools → Board**: ESP32 Dev Module
-  - **Tools → Flash Size**: 4 MB
-  - **Tools → Partition Scheme**: Default 4 MB
-  - **Tools → Upload Speed**: 921600
-- **Sketch → Upload**
+Car side (details in [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md)):
 
-### 5. Verify in Serial Monitor
+- CAN0 → cluster 18-pin connector, pins **17 (H) / 18 (L)**, T-tap (do not cut).
+- CAN1 → OBD-II pins **6 (H) / 14 (L)**, ground on 4/5.
+- HAT 120 Ω jumpers: **ON on the bench**, **OFF in the car** (the buses are already terminated).
+- Power in the car, as documented: LM2596 5 V buck from OBD-II pin 16, 2 A fuse,
+  1N5408 diode (BOM ≈ $27 CAD on top of the HAT). Whether pin 16 is cut with the key
+  OFF on this car is **to be confirmed** — the firmware has no sleep mode.
 
-Open **Serial Monitor** @ 115200 baud. You should see:
+## State machine and LED
+
+| Mode | When | Behaviour |
+|---|---|---|
+| `BOOT` | first 5 s after power-on (`listen_only_boot`) | no Motor_09 TX on the cluster bus. Not a full listen-only: with the default settings, UDS polling on the OBD bus already runs |
+| `SILENT` | lever P / R / N / D | no TX on the cluster bus (UDS polling continues) |
+| `BOOST` | lever S / M | Motor_09 override transmitted |
+| `BENCH_TEST` | bench mode enabled (PC UI) | emits the full cluster bundle for a cluster on the bench; normal logic suspended. When bench mode is turned off, BOT32 goes back through `BOOT` |
+| `SAFE_FAULT` | MCP2515 init failed at boot | no TX |
+
+`tx_enabled = false` (master switch) stops all Motor_09 TX without changing the mode.
+`force_tx_always` (diagnostic) also transmits in SILENT.
+
+LED (GPIO 2): when the Haldex link is enabled → **solid = X2 online**, **blinking (400 ms) =
+searching**. Otherwise it shows the mode: solid = BOOT, slow blink = SILENT, fast blink =
+BOOST, medium = BENCH_TEST, very fast = SAFE_FAULT.
+
+## Build and flash (Arduino IDE 2.x)
+
+1. **Board support**: *File → Preferences → Additional Boards Manager URLs*:
+   `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`,
+   then *Boards Manager* → **esp32 by Espressif Systems** (core 3.x). The exact minimum
+   core version is **to be confirmed**: the ESP-NOW send callback uses `wifi_tx_info_t`
+   (`BOT32/haldex_espnow.cpp`), which only exists in recent cores (probably 3.3 or newer,
+   based on ESP-IDF 5.5 — to be confirmed).
+2. **Libraries** (*Tools → Manage Libraries*):
+
+   | Library | Author | Version |
+   |---|---|---|
+   | **ACAN2515** | Pierre Molinaro | ≥ 2.1.x |
+   | **ArduinoJson** | Benoit Blanchon | **7.x** (v6 does not compile: `JsonDocument` API) |
+
+   WiFi, WebServer, ESP-NOW, Preferences and SPI come with the core.
+3. Open **`BOT32/BOT32.ino`** (14 `.cpp/.h` modules + `config.h`).
+4. *Tools*: **Board = ESP32 Dev Module**, **Flash Size = 4MB**,
+   **Partition Scheme = Default 4MB with spiffs**, **Upload Speed = 921600**, your COM port.
+5. *Sketch → Upload*.
+
+If the IDE keeps compiling a file that no longer exists, close the IDE and delete the
+Arduino sketch build cache (see [CLAUDE.md](CLAUDE.md) §10).
+
+### Expected serial output (115200 baud)
 
 ```
 ================================
@@ -108,143 +253,102 @@ Open **Serial Monitor** @ 115200 baud. You should see:
 [NVS] Settings loaded from flash
 [CAN] cluster MCP2515 started at 500 kbps (16 MHz xtal)
 [CAN] obd2 MCP2515 started at 500 kbps (16 MHz xtal)
-[main] Entering BOOT
-{"evt":"boot","version":"0.1","build":"..."}
+[espnow] init OK, peer=FF:FF:FF:FF:FF:FF, ACTUAL channel=1, PS=OFF, my MAC=...
+[wifi_ui] ...                      (only if the WiFi AP is enabled)
+{"evt":"boot","version":"4.6.0","build":"..."}
 {"evt":"settings", ...}
-{"evt":"status", "mode":"BOOT", ...}
+[main] Entering BOOT
+[main] BOOT complete -> SILENT (listening)
+{"evt":"status", ...}              (every 500 ms)
 ```
 
-If MCP2515 init fails (error code in Serial), check:
-- HAT power: LED `PWR` on HAT should be lit (orange)
-- HAT jumper VIO in position **3V3** (CRITICAL — protects ESP32)
-- SPI wiring: 10 Dupont jumpers per [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md)
+On the very first boot (or after a settings-version change) the NVS line reads
+`[NVS] No saved settings ... using defaults` instead.
 
-If MCP2515 init succeeds BUT no CAN traffic flows (`rx=0`, `tx_fail` high):
-- Crystal frequency mismatch — check the silver crystal cans on your HAT.
-  WaveShare 2-CH CAN HAT uses **16 MHz** (set in `MCP2515_CLOCK_MHZ` in config.h).
-  If your board uses 8 or 20 MHz, update the define.
+### Troubleshooting
 
-## PC web UI (USB debug + config)
+| Symptom | Check |
+|---|---|
+| `[CAN] ... begin FAILED` / mode `SAFE_FAULT` | HAT `PWR` LED lit, **VIO jumper on 3V3**, the 9 Dupont wires (SPI, CS, INT, 3V3, GND) |
+| "MCP2515 started" but `rx = 0`, `tx_fail` high | crystal mismatch: `MCP2515_CLOCK_MHZ` (16 for the WaveShare HAT); on the bench, 120 Ω jumpers ON |
+| Needle does not move | lever in S/M? `tx_enabled` ON? MAP cell updating? |
+| Phone can't find the network | the WiFi AP is OFF by default — enable it from the PC UI or over serial |
+| Haldex buttons refused / no effect | `haldex_enabled` OFF; X2 not armed (badge 🟢 *Pas armé*); X2 offline (LED blinking) — see [docs/haldex_integration.md](docs/haldex_integration.md) |
 
-Optional. Allows live monitoring + parameter tuning.
+## Serial protocol (USB, 115200, one JSON object per line)
 
-### 1. Install Python deps
-
-```bash
-cd webui
-pip install -r requirements.txt
-```
-
-### 2. Run the server
-
-```bash
-python server.py
-```
-
-Or on Windows: double-click `webui/run.bat`.
-
-### 3. Open browser
-
-[http://127.0.0.1:5000](http://127.0.0.1:5000)
-
-Features:
-- Auto-detects ESP32 USB port (CP210x / CH340 / etc.)
-- Live status (mode, lever, MAP, coolant byte, bus stats)
-- Settings editor (auto-saved to NVS on focus loss)
-- Live CAN frame monitor (subscribe on/off to avoid clutter)
-- ESP32 log mirror
-
-When you **unplug USB**, ESP32 keeps running autonomously in the car with the last-saved settings.
-
-## Coolant mapping (validated formula from sister project)
-
-- `temp_C = byte * 0.7339 - 43.94`
-- `0x80` (128) = 50 °C → needle at cold (low boost)
-- `0xED` (237) = 130 °C → needle at red zone (high boost)
-- Cluster **dead zone** [80, 110] °C: needle damped at center. Mapping skips this zone with a 1 °C safety margin to ensure smooth visible needle movement.
-
-## In-vehicle vs bench
-
-In **vehicle mode** (this project), we only TX `Motor_09 (0x647)`. The real gateway already broadcasts everything else (Wake `0x3C0`, Engine_Code `0x641`, ESP/TSK/EPS heartbeats, Airbag). Duplicating them would cause bus collisions.
-
-For **bench mode** (without a real gateway), see the sister project [mk7-cluster-bench-controller](https://github.com/ALagrandeur/mk7-cluster-bench-controller) which fakes the full engine context bundle.
+- Commands: `ping`, `get_status`, `get_settings`, `factory_reset`, `subscribe_frames`,
+  `set {key, value}`, `set_haldex_mode {mode}`, `set_haldex_passthrough {on}`,
+  `clear_engine_fault`, `get_bench_frames`, `bench_frame {idx, on}`, `bench_frames_all_off`,
+  `clear_all_dtcs` (serial only, no UI button: UDS clear on 14 ECUs, including `0x715`,
+  possibly the airbag — to be confirmed; whether to keep it is undecided, see
+  [ÉTAT_DU_PROJET.md](ÉTAT_DU_PROJET.md)).
+- Events: `boot`, `settings`, `status` (every 500 ms), `ack`, `frame`, `pong`, `log`, `bench_frames`.
 
 ## Safety
 
-Hardcoded forbidden CAN IDs in `can_handler.cpp` (cannot be transmitted regardless of any code path):
-- `0x040` Airbag_01
-- `0x572` Airbag_02
+- **Airbag IDs `0x040` / `0x572`** are blocked in `can_handler.cpp` while `block_airbag` is
+  true. `block_airbag` is **forced back to true at every boot** and has no UI checkbox (it
+  can still be changed at runtime over serial / `/api/set` until the next reboot).
+- **5 s without cluster-bus TX** after power-on (`BOOT`). This does not gate the OBD bus:
+  with the default settings, UDS polling starts right away.
+- In the car BOT32 only transmits `Motor_09 (0x647)` on the cluster bus (the gateway
+  already sends everything else) plus UDS requests on the OBD bus.
+- Engine-code clearing targets the **engine ECU only**, with BOT32 silent on both buses.
+- Haldex: the X2 boots in STOCK mode; FWD / 50-50 need explicit arming from the app.
 
-5-second listen-only window at boot before any TX. `tx_enabled` master switch in NVS — set to false to fully disable TX without unplugging.
+## In-vehicle vs bench
 
-## Status
+In the car, never enable bench mode: its bundle (wake, engine context, heartbeats) would
+collide with the real gateway. On the bench, `BENCH_TEST` mode (PC UI) drives a standalone
+cluster with RPM / MAP / speed sliders and the "lamp killer" frame injector (HAT 120 Ω
+jumpers ON). The original bench tool is
+[mk7-cluster-bench-controller](https://github.com/ALagrandeur/mk7-cluster-bench-controller).
 
-🟢 **v1.0 — Bench-validated** (2026-05-19). Vehicle install pending.
+## Repository contents
 
-| Component | Status |
-|---|---|
-| MQB CRC8H2F + constants | ✅ ported from sister Python project |
-| Coolant byte ↔ temp formula + dead zone skip | ✅ ported |
-| CAN handler (2× MCP2515 unified API on shared SPI) | ✅ working |
-| OBD2 UDS query + response parsing | ✅ written |
-| WBA_03 lever decoder | ✅ written |
-| NVS settings persistence | ✅ working |
-| USB serial JSON protocol | ✅ working |
-| Main sketch + state machine | ✅ working |
-| Python web UI (auto-open browser) | ✅ working |
-| Bench test mode (full sister-project bundle) | ✅ validated on real cluster |
-| **Bench cluster test — CAN0** | ✅ **passed (cluster reacts to RPM + MAP sliders)** |
-| **Bench cluster test — CAN1** | ✅ **passed (same behavior on second bus)** |
-| **Vehicle OBD2 listen-only — MAP via UDS DID 0x39C0** | ✅ **passed 2026-05-23 (MAP reads back live in UI)** |
-| **Vehicle lever decode (WBA_03 0x394)** | ✅ **passed 2026-05-23 (lever live in UI)** |
-| Vehicle install — boost-on-coolant gauge (Motor_09 full TX) | ✅ working in-vehicle (gauge driven by MAP; fine calibration ongoing) |
-| Long-term in-vehicle calibration | ⏳ ongoing |
-
-## Roadmap
-
-- ✅ **Clear engine codes** (v4.6.0) — web button (phone + PC): BOT32 goes listen-only on both CAN buses (no cluster override, no OBD polling), the Haldex is set to STOCK, then OBD-II Mode 04 is sent to the **engine ECU only** (0x7E0) and the answer is shown on the page. The old Hazard-based auto-trigger was never implemented and has been removed from the UI.
-
-Implemented since v1.3:
-
-- 🏁 **Haldex AWD link** (race modes) — BOT32 acts as a client to an external
-  Haldex MITM module (Autosport Labs **ESP32-CAN-X2**) over **ESP-NOW**. Web UI
-  buttons for **Stock / FWD (burnout) / 50-50 (full lock)** — all three confirmed
-  in-vehicle, with **50-50 holding ~95 % engagement at all road speeds**. Live state
-  (pump %, target %, vehicle speed, pedal, **clutch oil temp** for awareness — the
-  Haldex runs its own thermal protection, BOT32 adds no cut-out). The actual Haldex
-  bus MITM happens on separate hardware — see
-  [docs/haldex_integration.md](docs/haldex_integration.md).
-
-📱 Mobile UI screenshots: [docs/screenshots/](docs/screenshots/).
-
-See [docs/future_features.md](docs/future_features.md) for the remaining
-planned features.
+| Path | What it is | State |
+|---|---|---|
+| `BOT32/` | Firmware sketch (`BOT32.ino` + 14 modules + `config.h`) | current |
+| `webui/` | PC web UI — [webui/README.md](webui/README.md) | current |
+| [ÉTAT_DU_PROJET.md](ÉTAT_DU_PROJET.md) | Project status, history, roadmap (French) | current |
+| [CLAUDE.md](CLAUDE.md) | Rules and conventions for Claude Code (French) | current |
+| [docs/haldex_integration.md](docs/haldex_integration.md) | Haldex link guide (ESP-NOW protocol, modes, arming) | current |
+| [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md) | HAT ↔ ESP32 ↔ car wiring (French) | current |
+| [docs/screenshots/](docs/screenshots/) | Phone UI screenshots (v4.4.0) | slightly outdated |
+| `tools/generate_bench_frames_cpp.py` | Generates `BOT32/bench_frames.cpp` (hard-coded Windows paths; its source capture is not in the repo) | current |
+| `tools/verify_crc.py` | One-off CRC check against the sister project | current |
+| `HAT.jpg`, `ESP32.jpg` | Hardware photos | current |
+| [docs/wiring.md](docs/wiring.md) | Abandoned "Option A" wiring (TWAI + level shifter) | **legacy** |
+| [docs/hardware.md](docs/hardware.md) | Early hardware options analysis | **legacy** |
+| [docs/future_features.md](docs/future_features.md) | Original design notes of two features since shipped | **legacy** |
+| [docs/savvycan_capture_guide.md](docs/savvycan_capture_guide.md), `docs/vw_mqb_powertrain.dbc` | Pre-MITM Haldex research guide | **legacy** |
+| [docs/preflight_checklist.md](docs/preflight_checklist.md) | v0.1 first-flash checklist | **legacy** |
+| `tools/derive_bench_frames.py` | Older bench-frame helper, replaced by `generate_bench_frames_cpp.py` | **legacy** |
+| `Cluster Bench.png` | Screenshot of the mk7-cluster-bench-controller UI | **legacy** |
+| `DATA input from CAR/` | Development captures and notes (`caf.csv` is referenced in the code) | **legacy** |
 
 ## Acknowledgments
 
-The Haldex AWD integration in BOT32 is designed to interoperate with
-[**OpenHaldex-C6** by **Forbes Automotive**](https://github.com/Forbes-Automotive/OpenHaldex-C6),
-a separate source-available project that handles the Haldex bus
-man-in-the-middle on its own dedicated hardware.
+The MQB Haldex protocol knowledge used in this project (protocol facts such as CAN IDs
+and mode numbering) was openly reverse-engineered by
+[**OpenHaldex-C6** by **Forbes Automotive**](https://github.com/Forbes-Automotive/OpenHaldex-C6).
 
-BOT32 implements **only the client side** of the publicly documented
-CAN broadcast/command protocol — using freshly-written code (MIT) that
-references protocol facts (CAN IDs, mode numbering) but does **not** include
-any source code, PCB designs, or compiled binaries from OpenHaldex-C6.
+In this project, the Haldex bus man-in-the-middle is done by
+[BOT32-HALDEX](https://github.com/ALagrandeur/BOT32-HALDEX) (private) on an Autosport Labs
+**ESP32-CAN-X2**. BOT32 only talks to it over its own ESP-NOW protocol (see
+[docs/haldex_integration.md](docs/haldex_integration.md)). Both are freshly written code
+(MIT) that uses protocol facts only: **no OpenHaldex-C6 source code, PCB designs or
+compiled binaries are included**. OpenHaldex-C6 is licensed under FASL v1.0 — respect
+its license.
 
-Users who want the actual Haldex MITM functionality should:
-- Use the official OpenHaldex-C6 hardware, or
-- Fork the OpenHaldex-C6 firmware to their own ESP32 hardware (permitted by
-  Forbes Automotive's FASL v1.0 license for personal/non-commercial use).
-
-**Huge thanks to Forbes Automotive** for the open reverse-engineering work
-on the VW MQB Haldex platform that makes this integration possible.
+**Huge thanks to Forbes Automotive** for the open reverse-engineering work on the VW MQB
+Haldex platform.
 
 Other credits:
 - [commaai/opendbc](https://github.com/commaai/opendbc) — VW MQB CAN message definitions
 - [commaai/openpilot](https://github.com/commaai/openpilot) — MQB CRC8H2F algorithm
 - [r00li/CarCluster](https://github.com/r00li/CarCluster) — Motor_09 magic bytes
-- ESP32 [TWAI driver](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/twai.html) (Espressif)
 - [ACAN2515](https://github.com/pierremolinaro/acan2515) by Pierre Molinaro
 - [ArduinoJson](https://arduinojson.org/) by Benoit Blanchon
 
