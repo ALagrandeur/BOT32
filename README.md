@@ -35,9 +35,9 @@ The role descriptions are kept in French, as in the project's shared map.
 
 | | |
 |---|---|
-| **Current version** | **v4.7.0** (`master`) — adds the steering-wheel trigger (OK × 10 in < 6 s) for the engine-code clear; **to be validated in the car** |
+| **Current version** | **v4.8.0** (`master`) — Haldex back to STOCK at every vehicle restart; engine codes cleared by **holding OK for 6 s** on the steering wheel; **to be validated in the car** |
 | **Last stable version** | **v4.6.0 — STABLE** (git tag `v4.6.0`), confirmed in the car on 2026-10-12 — rollback point |
-| **Paired Haldex module** | BOT32-HALDEX **v3.0.0** (stable, all 3 modes confirmed in the car) |
+| **Paired Haldex module** | BOT32-HALDEX **v3.1.0** (STOCK after 5 s without CAN — to be validated; based on the stable v3.0.0, all 3 modes confirmed in the car) |
 
 Detailed status, version history and roadmap (French): [ÉTAT_DU_PROJET.md](ÉTAT_DU_PROJET.md).
 
@@ -135,14 +135,15 @@ Haldex card (via ESP-NOW, or a direct USB-C link to the X2 for development),
 WiFi remote, engine-code clearing, combo cheat-sheet. You can unplug USB at any time:
 BOT32 keeps running in the car with the last saved settings (NVS).
 
-### 5. Clear engine codes (v4.6.0, steering-wheel trigger v4.7.0)
+### 5. Clear engine codes (v4.6.0, steering-wheel trigger v4.8.0)
 
 Three ways to start it — **engine ECU only** in every case:
 
-- **Steering wheel (v4.7.0): press OK 10 times within 6 seconds.** Counted on the
-  MFSW frame `0x5BF` (same decode as the *OK button* live cell: `byte[0] != 0` = pressed;
-  each released → pressed transition is one press, holding counts once). After a trigger,
-  presses are ignored for 10 s. The cluster still reacts to each press (menus).
+- **Steering wheel (v4.8.0): hold OK for 6 seconds.** Read on the MFSW frame `0x5BF`
+  (same decode as the *OK button* live cell: `byte[0] != 0` = pressed). Releasing before
+  6 s cancels; one trigger per hold (release before the next); presses are ignored for
+  10 s after a trigger. Avoid the cluster's trip-data screen: a long OK press resets it.
+  (v4.7.0 used 10 quick presses instead.)
 - Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI).
 - Serial `{"cmd":"clear_engine_fault"}`.
 
@@ -165,6 +166,25 @@ open at that moment** — a result older than the page is never shown.
 > ⚠️ **Motorsport — closed course only.** Do not use on public roads.
 
 Requires *Haldex link enabled* (`haldex_enabled`, OFF by default).
+
+**Back to STOCK at every vehicle restart (v4.8.0 + BOT32-HALDEX v3.1.0).** The X2 is on
+permanent +12 V and its light sleep keeps RAM, so a mode used to survive a key cycle. Now:
+- BOT32 forces STOCK at its own boot, on every ignition change (Kl15 from
+  Klemmen_Status_01 `0x3C0` byte[2] bit 1, vehicle-confirmed: `0x00` → `0x03` at key-on)
+  and when the cluster bus wakes after ≥ 3 s of silence. It re-sends STOCK every 500 ms
+  until the X2 reports STOCK (10 s max, normally < 1 s); a mode chosen from the app or a
+  combo cancels the re-send. A mode sent from the AMOLED remote should be chosen once the
+  X2 shows STOCK (BOT32 cannot see AMOLED commands).
+- The X2 itself returns to STOCK after **5 s without any CAN frame** (car switched off),
+  even if BOT32 is not running.
+- Since AMOLED remote v3.18, its BOOT button steps from the mode the X2 reports
+  (STOCK → FWD after a restart).
+
+**Combo held through loop stalls (v4.8.0).** A long pause in BOT32's main loop (e.g. a
+slow web request) overflows the 32-frame CAN receive buffer, and the frames read right
+after it may not include the TC frame. Combo frames now go stale on *polled* time: each
+CAN read counts for at most 100 ms, so a pause no longer drops a combo FWD/50-50 to STOCK,
+while a real loss of the bus still does after about 2 s of reading.
 
 | Mode | How to select it |
 |---|---|

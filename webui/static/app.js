@@ -549,7 +549,7 @@ socket.on("status", (s) => {
   }
 
   // v4.6.0/v4.7.0: clear-engine-codes result — from this page's button or from
-  // any other source (OK x10 on the wheel, phone). Baseline = first status seen,
+  // any other source (OK held 6 s on the wheel, phone). Baseline = first status seen,
   // so a result older than the page is never shown.
   if (s.clear_engine_seq !== undefined) {
     // BOT32 rebooted (uptime went down): its counter restarts at 0.

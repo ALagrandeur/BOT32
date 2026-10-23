@@ -42,6 +42,10 @@
 //   0x03 = TC button held (pressed), 0x00 = TC enabled (released)
 #define CAN_ID_HAZARD          0x366   // RX: Blinkmodi_01 (hazard switch)
 #define CAN_ID_TC_BUTTON       0x0FD   // RX: ESP_21 (Traction Control button)
+// v4.8.0 — ignition: Klemmen_Status_01 (0x3C0) byte[2] bit 1 = Kl15 (ignition ON),
+//   bit 0 = key present. Vehicle-confirmed in capture 1.csv: byte[2] 0x00 -> 0x03
+//   when the ignition is switched on; 10 Hz on the cluster bus.
+#define CAN_ID_KLEMMEN_STATUS  0x3C0   // RX: Klemmen_Status_01 (ignition state)
 
 // UDS Data Identifiers (DIDs) — all confirmed on MK7 Alltrack 2017
 #define UDS_DID_MAP                0x39C0  // Saugrohrdruck (MAP, mbar, 16-bit) — engine ECU

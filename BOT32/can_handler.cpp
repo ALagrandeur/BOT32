@@ -37,6 +37,9 @@ static CanStats stats[2] = { {0}, {0} };
 
 // v4.6.0 — listen-only gate (see can_set_quiet in can_handler.h)
 static bool g_quiet = false;
+// v4.8.0 — time of the last can_poll() (bus silence is measured up to the last
+// poll, so a long stall elsewhere in loop() never looks like a quiet bus)
+static uint32_t g_last_poll_ms = 0;
 
 // =============================================================
 //  Two MCP2515 instances on the SAME SPI bus.
@@ -94,6 +97,7 @@ bool can_init() {
 }
 
 void can_poll() {
+  g_last_poll_ms = millis();
   // Drain MCP2515 #0 RX queue (cluster)
   CANMessage rx;
   while (mcp_cluster.available()) {
@@ -184,6 +188,8 @@ void can_set_quiet(bool quiet) {
 }
 
 bool can_is_quiet() { return g_quiet; }
+
+uint32_t can_last_poll_ms() { return g_last_poll_ms; }
 
 // =============================================================
 //  Listener registration

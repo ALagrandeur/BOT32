@@ -101,6 +101,9 @@ by the X2** (STATE), and its STOCK button always re-sends an explicit STOCK.
 
 The X2 **persists the passthrough flag in NVS** and restores it at boot (first boot =
 passthrough ON = transparent bridge). The **mode always boots in STOCK** (not persisted),
+and since BOT32 v4.8.0 / X2 v3.1.0 it also **returns to STOCK at every vehicle restart**
+(BOT32 forces STOCK on ignition changes, on its own boot and on CAN-bus wake; the X2
+falls back to STOCK after 5 s without CAN),
 so nothing is modified at power-up even if the X2 was switched off armed (honours "no
 guessed frame emitted by default"). BOT32 main must explicitly send
 **SET_PASSTHROUGH OFF** to arm the MITM (UI has a modal confirmation). Only BOT32's own

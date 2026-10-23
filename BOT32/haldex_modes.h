@@ -49,6 +49,15 @@ void    haldex_modes_tick(uint32_t now);
 // Returns true if the command was accepted + forwarded to the MITM.
 bool    haldex_modes_set_manual(uint8_t mode);
 
+// v4.8.0 — force STOCK (vehicle restart, ignition change, BOT32 boot, CAN bus
+// wake). Clears the combo latch, sends STOCK now and keeps re-sending it every
+// 500 ms until the X2 reports STOCK (or 10 s). A mode chosen afterwards from the
+// app or a combo cancels the re-send; a mode sent by the AMOLED remote (which
+// BOT32 does not see) is only safe once the X2 has confirmed STOCK (normally
+// < 1 s). No-op if Haldex disabled.
+void    haldex_modes_force_stock(const char* reason);
+bool    haldex_modes_force_stock_pending();
+
 // Current effective mode (0/1/2) as decided by this module.
 uint8_t haldex_modes_get();
 

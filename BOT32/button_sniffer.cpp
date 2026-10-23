@@ -18,6 +18,10 @@ static uint32_t ok_ms       = 0;
 static uint32_t ok_press_events = 0;
 static uint8_t  ok_last_code    = 0;
 
+// === Ignition Kl15 (Klemmen_Status_01 0x3C0, byte[2] bit 1) — v4.8.0 ===
+static bool     kl15_on     = false;
+static uint32_t kl15_ms     = 0;
+
 // === Hazard switch (Blinkmodi_01 0x366, byte[2] bit 4 = 0x10) — v2.9.0 ===
 static bool     hz_active   = false;
 static uint32_t hz_ms       = 0;
@@ -29,6 +33,12 @@ static uint32_t tc_ms       = 0;
 
 static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
   if (ch != CAN_CLUSTER) return;
+
+  if (f.id == CAN_ID_KLEMMEN_STATUS && f.len >= 3) {
+    kl15_on = (f.data[2] & 0x02) != 0;
+    kl15_ms = millis();
+    return;
+  }
 
   if (f.id == CAN_ID_KOMBI_01 && f.len >= 3) {
     bool now_active = (f.data[2] & 0x80) != 0;
@@ -83,6 +93,11 @@ uint32_t button_sniffer_handbrake_age_ms() {
 
 bool button_sniffer_ok_pressed()         { return ok_pressed; }
 uint32_t button_sniffer_ok_press_events() { return ok_press_events; }
+bool     button_sniffer_ignition_on()     { return kl15_on; }
+uint32_t button_sniffer_ignition_age_ms() {
+  if (kl15_ms == 0) return UINT32_MAX;
+  return millis() - kl15_ms;
+}
 uint8_t  button_sniffer_ok_last_code()    { return ok_last_code; }
 uint32_t button_sniffer_ok_age_ms() {
   if (ok_ms == 0) return UINT32_MAX;

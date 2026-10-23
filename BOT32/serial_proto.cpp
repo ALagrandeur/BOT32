@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "4.7.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "4.8.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -186,6 +186,10 @@ static void emit_status() {
   // v4.7.0 — OK button press counter (10 presses / 6 s = clear engine codes)
   doc["ok_press_events"]    = button_sniffer_ok_press_events();
   doc["ok_last_code"]       = button_sniffer_ok_last_code();
+  // v4.8.0 — ignition (Kl15, 0x3C0) + forced-STOCK re-send in progress
+  doc["ignition_on"]        = button_sniffer_ignition_on();
+  doc["ignition_age_ms"]    = button_sniffer_ignition_age_ms();
+  doc["haldex_force_stock_pending"] = haldex_modes_force_stock_pending();
 
   // v2.1: clear-all-DTCs progress (only meaningful while running)
   doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();

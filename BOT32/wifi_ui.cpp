@@ -168,8 +168,8 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   </div>
   <div class="combo">
     <h3>🔧 Effacer les codes moteur</h3>
-    <span class="k">🅾 OK × 10</span><span class="plus">en moins de</span><span class="k">6 s</span>
-    <div class="note">Bouton OK du volant. Moteur seulement : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Message ici si la page est ouverte. Aussi : bouton dans ⚙ Tous les réglages.</div>
+    <span class="k">🅾 OK maintenu</span><span class="plus">pendant</span><span class="k">6 s</span>
+    <div class="note">Bouton OK du volant, maintenu enfoncé. Moteur seulement : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Message ici si la page est ouverte. Évite l'écran des données de trajet (un appui long les remet à zéro). Aussi : bouton dans ⚙ Tous les réglages.</div>
   </div>
   <div class="combo">
     <h3>📈 Boost sur la jauge de température</h3>
@@ -251,7 +251,7 @@ async function poll(){
     $('conn').textContent='✗';
   }
 }
-// v4.7.0 — clear-engine-codes banner (OK x10 on the wheel, phone or PC).
+// v4.7.0 — clear-engine-codes banner (OK held 6 s on the wheel, phone or PC).
 // Baseline at page load: a result older than the page is never shown.
 // After a BOT32 reboot (uptime goes down) the counter restarts at 0: re-baseline,
 // and never show an 'idle' state as a result.
@@ -526,7 +526,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.7.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.8.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();

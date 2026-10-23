@@ -35,10 +35,15 @@ bool     button_sniffer_handbrake_active();
 uint32_t button_sniffer_handbrake_age_ms();
 
 // v4.7.0 — number of OK presses (released -> pressed transitions) since boot,
-// counted frame by frame. Used by ok_clear (10 presses / 6 s = clear engine codes).
+// counted frame by frame. Used by ok_clear (a new edge starts the 6 s hold timer).
 uint32_t button_sniffer_ok_press_events();
 // byte[0] of the 0x5BF frame at the last press (diagnostic: which button code).
 uint8_t  button_sniffer_ok_last_code();
+
+// v4.8.0 — ignition (Kl15) from Klemmen_Status_01 0x3C0 byte[2] bit 1.
+// false until the first frame; check the age for freshness.
+bool     button_sniffer_ignition_on();
+uint32_t button_sniffer_ignition_age_ms();
 
 // MFSW OK button — true = pressed, false = released.
 // Returns false if no frame received yet.

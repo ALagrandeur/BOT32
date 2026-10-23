@@ -1,5 +1,5 @@
 /*
- * Version: v4.7.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v4.7.0
+ * Version: v4.8.0 — https://github.com/ALagrandeur/BOT32/releases/tag/v4.8.0
  * BOT32 — In-vehicle boost-on-coolant override for VW MK7 cluster.
  *
  * Architecture (Hardware: WaveShare 2-CH CAN HAT wired to ESP32 via Dupont):
@@ -39,6 +39,7 @@
 #include "button_sniffer.h"
 #include "haldex_modes.h"
 #include "ok_clear.h"
+#include "ignition_watch.h"
 
 // =============================================================
 //  State
@@ -98,6 +99,7 @@ void setup() {
     button_sniffer_init();    // v2.8+: hand brake + OK + Hazard + TC sniffers
     haldex_modes_init();      // v3.1: Haldex mode logic (combo FWD + app modes)
     ok_clear_init();          // v4.7.0: OK x10 / 6 s -> clear engine codes
+    ignition_watch_init();    // v4.8.0: Haldex back to STOCK at every restart
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));
@@ -244,7 +246,7 @@ void loop() {
   // 1. Drain CAN RX queues + dispatch to listeners
   can_poll();
 
-  // 1b. v4.7.0: steering-wheel trigger (OK pressed 10x within 6 s).
+  // 1b. v4.8.0: steering-wheel trigger (OK held 6 s -> clear engine codes).
   ok_clear_tick(now);
 
   // 1c. v4.6.0: clear-engine-codes procedure (listen-only gate + Mode 04 to
@@ -296,6 +298,10 @@ void loop() {
 
   // 6b. v2.6: WiFi UI tick (serves HTTP requests from phone)
   wifi_ui_tick();
+
+  // 6b2. v4.8.0: vehicle restart / ignition change / BOT32 boot -> Haldex STOCK
+  //      (runs before haldex_modes_tick so a forced STOCK is re-sent right away).
+  ignition_watch_tick(now);
 
   // 6c. v3.1: Haldex mode logic — physical combo (Hazard ON + TC) arms FWD,
   // hazards-OFF releases it; app/USB sets STOCK/FWD/5050. Pushes to the MITM.

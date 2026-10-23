@@ -130,6 +130,7 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 | `0x5BF` | MFSW | RX bouton OK volant — `byte[0]` (0x00=pressé) |
 | `0x366` | Blinkmodi_01 | RX bouton Hazard — `byte[2] bit 4` (0x10=ON) |
 | `0x0FD` | ESP_21 | RX bouton Traction Control — `byte[6]` (0x03=tenu) |
+| `0x3C0` | Klemmen_Status_01 | RX contact — `byte[2] bit 1` = Kl15 (0x00 → 0x03 à la mise du contact, capture `1.csv`) — v4.8.0 |
 | `0x040`, `0x572` | Airbag | ❌ INTERDIT en TX |
 
 **Bus OBD2 (CAN1) — UDS ReadDataByIdentifier (SID 0x22 → réponse 0x62) :**
@@ -144,7 +145,10 @@ Tout réglage persistant doit exister, **cohérent**, dans ces 7 endroits :
 | `0x700` (broadcast) | moteur + DSG | Mode 04 | Plus utilisé depuis v4.6.0 (efface aussi la DSG) |
 
 - **v4.6.0 — Effacement des codes moteur** (`obd2_clear_engine_fault`, bouton web PC + mobile) : `can_set_quiet(true)` bloque TOUTE émission BOT32 sur les deux bus (override Motor_09, polling OBD, bench) → Haldex en STOCK → 300 ms → Mode 04 `[01 04]` vers **0x7E0 seulement** (`can_send_quiet_exempt`) → attente 0x7E8 (`0x44` = OK, `7F 04 78` = en attente, autre `7F` = refus, 2 s sans réponse = échec) → reprise. Le Haldex reste en STOCK. Résultat dans le status : `clear_engine_state/msg/seq/src`.
-- **v4.7.0 — Déclencheur au volant** (`ok_clear.cpp`, **à valider en voiture** ; v4.6.0 = dernière stable) : **OK appuyé 10 fois en moins de 6 s** → `obd2_clear_engine_start("bouton OK")`. Fronts comptés trame par trame dans `button_sniffer` (`button_sniffer_ok_press_events()`), 10 s d'inhibition après un déclenchement. Bandeau sur la page principale du cellulaire seulement si elle est ouverte au moment de l'effacement.
+- **v4.8.0 — Haldex en STOCK à chaque redémarrage** (`ignition_watch.cpp`, à valider en voiture) : `haldex_modes_force_stock()` au démarrage de BOT32, à chaque changement de Kl15 (Klemmen_Status_01 `0x3C0` octet 2 bit 1 — confirmé `00`→`03` à la mise du contact, capture `1.csv`) et au réveil du bus cluster après ≥ 3 s de silence ; STOCK renvoyé toutes les 500 ms jusqu'à confirmation du X2 (10 s max), annulé si l'app ou un combo choisit un mode (une commande AMOLED n'est pas vue par BOT32). Côté X2 v3.1.0 : STOCK après 5 s sans trame CAN.
+- **v4.8.0 — Fraîcheur du combo en « temps de lecture »** (`haldex_modes.cpp`, `track_combo_frames()`) : chaque `can_poll()` ajoute au plus `COMBO_POLL_STEP_MS` (100 ms) au temps sans trame de hazard / TC / frein à main ; une trame lue à la dernière lecture remet à 0. Une pause de `loop()` qui fait déborder le tampon ACAN2515 (32 trames, les nouvelles sont jetées) ne fait donc plus retomber un combo en STOCK ; une vraie perte du bus oui (`COMBO_FRESH_MS` = 2 s de lecture). Le renvoi STOCK d'`ignition_watch` exige `haldex_enabled` (désactivé par défaut).
+- **v4.8.0 — Déclencheur au volant = OK MAINTENU 6 s** (`ok_clear.cpp`, remplace OK × 10 de v4.7.0) : maintien mesuré depuis le front d'appui, relâcher annule, un déclenchement par appui, 10 s d'inhibition.
+- **v4.7.0 — Déclencheur au volant (remplacé en v4.8.0)** (`ok_clear.cpp`, **à valider en voiture** ; v4.6.0 = dernière stable) : **OK appuyé 10 fois en moins de 6 s** → `obd2_clear_engine_start("bouton OK")`. Fronts comptés trame par trame dans `button_sniffer` (`button_sniffer_ok_press_events()`), 10 s d'inhibition après un déclenchement. Bandeau sur la page principale du cellulaire seulement si elle est ouverte au moment de l'effacement.
 - Polling **round-robin 6 slots** (`obd2.cpp`), défaut `obd2_poll_hz = 30` (~5 Hz/slot).
 - Sentinelle des températures = **-1000.0f** (les vraies temps peuvent être négatives).
 - Sniffer OK (0x5BF) : repos = `byte[0] == 0x00`, **pressé = `byte[0] != 0x00`** (fix v2.10.0).

@@ -8,7 +8,7 @@
 
 ## Version actuelle
 
-**v4.7.0** (principal, **à valider en voiture**) — dernière version STABLE : **v4.6.0** (confirmée en voiture le 2026-10-12, point de retour) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
+**v4.8.0** (principal, **à valider en voiture** ; inclut v4.7.0) — dernière version STABLE : **v4.6.0** (confirmée en voiture le 2026-10-12, point de retour) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 Le commit v4.6.0 est poussé sur `master`, mais le **tag `v4.6.0` n'est pas encore sur GitHub**
 (au 2026-10-12 le dernier tag distant est `v4.5.0`) et il n'y a **aucune release GitHub depuis v4.1.0**.
@@ -32,7 +32,30 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
   (un accouplement 100 % verrouillé bloque la transmission en virage).
 
-### Nouveautés v4.7.0
+### Nouveautés v4.8.0
+- **Effacement des codes moteur au volant : bouton OK MAINTENU 6 s** (remplace les 10 appuis
+  rapides de v4.7.0). Relâcher avant 6 s annule ; un seul déclenchement par appui (relâcher
+  avant le suivant) ; 10 s d'inhibition après un déclenchement. Éviter l'écran des données de
+  trajet du combiné : un appui long sur OK les remet à zéro.
+- **Haldex remis en STOCK à chaque redémarrage du véhicule.** Le X2 est sur 12 V permanent
+  et sa veille légère garde la mémoire : avant, le dernier mode survivait à une coupure du contact.
+  - **BOT32** force STOCK à son démarrage, à chaque coupure et remise du contact (Kl15 lu dans
+    Klemmen_Status_01 `0x3C0` octet 2 bit 1, confirmé par la capture `1.csv` : `00` → `03` à la
+    mise du contact) et au réveil du bus cluster après ≥ 3 s de silence. STOCK est renvoyé toutes
+    les 500 ms jusqu'à ce que le X2 le confirme (10 s max, normalement < 1 s) ; un mode choisi dans l'app ou par combo annule
+    le renvoi.
+  - **X2 (BOT32-HALDEX v3.1.0)** : retour en STOCK tout seul après **5 s sans aucune trame CAN**
+    (auto éteinte), même si BOT32 n'est pas là. **Il faut reflasher le X2** pour ce filet de sécurité.
+  - Le renvoi de STOCK par BOT32 au changement de contact n'a lieu que si la **liaison Haldex est
+    activée** dans les réglages de BOT32 (désactivée par défaut) ; sinon seul le filet des 5 s du X2 joue.
+  - **Manette AMOLED v3.18** : le bouton BOOT part du mode renvoyé par le X2 (STOCK → FWD après un
+    redémarrage) au lieu d'un compteur local.
+- **Combo FWD/50-50 maintenu malgré une pause de la boucle** (requête web lente, etc.) : la pause
+  fait déborder le tampon de réception CAN (32 trames) et la trame TC peut manquer à la lecture
+  suivante. La fraîcheur des trames du combo se compte maintenant en temps de lecture CAN (100 ms
+  max par lecture) : une pause ne fait plus retomber en STOCK ; une vraie perte du bus, si (≈ 2 s).
+
+### Nouveautés v4.7.0 (déclencheur remplacé en v4.8.0 par « OK maintenu 6 s »)
 - **Effacement des codes moteur au volant** : **bouton OK appuyé 10 fois en moins de 6 s**
   (trame MFSW 0x5BF, même décodage que la cellule « OK button » : `byte[0] != 0` = pressé ;
   chaque passage relâché → pressé compte, un appui maintenu compte une fois ; 10 s
@@ -162,6 +185,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — version stable précédente |
 | **v4.6.0** | 🏁 **STABLE** — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **confirmée en voiture** (2026-10-12) |
 | v4.7.0 | Effacement des codes moteur au volant (OK × 10 en < 6 s) + bandeau de confirmation sur le cellulaire — **à valider en voiture** |
+| v4.8.0 | Haldex remis en STOCK à chaque redémarrage (contact, démarrage BOT32, réveil du bus) — avec X2 v3.1.0 ; effacement des codes au volant par **OK maintenu 6 s** — **à valider en voiture** |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -186,7 +210,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
   pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
-- ⏳ **Valider en voiture** le déclencheur au volant v4.7.0 (OK × 10 en moins de 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
+- ⏳ **Valider en voiture** le retour en STOCK à chaque redémarrage (v4.8.0 + X2 v3.1.0), l'effacement au volant (OK maintenu 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---

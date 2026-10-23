@@ -87,6 +87,9 @@ void can_register_listener(CanChannel ch, CanRxCallback cb);
 
 CanStats can_get_stats(CanChannel ch);
 
+// v4.8.0 — millis() at the start of the last can_poll().
+uint32_t can_last_poll_ms();
+
 // Recovery: try to bring a bus back if bus-off occurred.
 bool can_recover(CanChannel ch);
 
