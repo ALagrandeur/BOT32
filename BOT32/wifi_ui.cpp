@@ -53,6 +53,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   button:active{transform:scale(.98)}
   .status{margin-top:10px;font-size:12px;color:#7af;text-align:center;min-height:18px}
   .conn{position:fixed;top:0;right:0;padding:4px 10px;font-size:10px;background:#0a4;color:#fff;border-radius:0 0 0 8px}
+  .clrb{display:none;position:fixed;left:10px;right:10px;top:26px;z-index:9;padding:14px;border-radius:10px;font-size:16px;font-weight:700;text-align:center;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   .conn.off{background:#a33}
   .hx-btns{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
   .hxb{flex:1 1 0;min-width:90px;background:#3a3a5a}
@@ -73,6 +74,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 </style></head>
 <body>
 <div class="conn" id="conn">●</div>
+<div class="clrb" id="clrb" onclick="this.style.display='none'"></div>
 <h1>BOT32 <span class="v" id="v">—</span></h1>
 
 <div class="grid">
@@ -165,6 +167,11 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
     <div class="note">Le frein à main doit être tiré <b>avant</b> de compléter la combinaison (sinon c'est FWD). Ensuite tu peux le relâcher et éteindre les Hazard : 50/50 reste actif. Aussi : bouton 🚀 50/50 ci-dessus.</div>
   </div>
   <div class="combo">
+    <h3>🔧 Effacer les codes moteur</h3>
+    <span class="k">🅾 OK × 10</span><span class="plus">en moins de</span><span class="k">6 s</span>
+    <div class="note">Bouton OK du volant. Moteur seulement : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Message ici si la page est ouverte. Aussi : bouton dans ⚙ Tous les réglages.</div>
+  </div>
+  <div class="combo">
     <h3>📈 Boost sur la jauge de température</h3>
     <span class="k">Levier S</span><span class="plus">ou</span><span class="k">Levier M</span>
     <div class="note">En P / R / N / D, la jauge affiche la vraie température moteur.</div>
@@ -188,6 +195,7 @@ async function poll(){
     if(!r.ok) throw 0;
     const s = await r.json();
     lastOk = Date.now();
+    clrBanner(s);
     $('v').textContent = s.version ? 'v'+s.version : '—';
     $('lever').textContent = (s.lever && s.lever!=='?') ? (s.gear?s.lever+s.gear:s.lever) : '—';
     setVal('map', s.map_mbar>=0 ? Math.round(s.map_mbar) : null);
@@ -242,6 +250,37 @@ async function poll(){
     $('conn').classList.add('off');
     $('conn').textContent='✗';
   }
+}
+// v4.7.0 — clear-engine-codes banner (OK x10 on the wheel, phone or PC).
+// Baseline at page load: a result older than the page is never shown.
+// After a BOT32 reboot (uptime goes down) the counter restarts at 0: re-baseline,
+// and never show an 'idle' state as a result.
+let clrSeq = null, clrRun = false, clrTimer = null, clrUp = 0;
+function clrBanner(s){
+  if(s.clear_engine_seq === undefined) return;
+  const b = $('clrb');
+  const src = s.clear_engine_src ? ' (' + s.clear_engine_src + ')' : '';
+  if(s.uptime_ms !== undefined){ if(s.uptime_ms < clrUp && clrSeq !== null) clrSeq = 0; clrUp = s.uptime_ms; }
+  if(clrSeq === null){ clrSeq = s.clear_engine_seq; }
+  if(s.clear_engine_state === 'running'){
+    if(!clrRun){ clrRun = true; clearTimeout(clrTimer);
+      b.textContent = '⏳ Effacement des codes moteur…' + src; b.style.background = '#246'; b.style.display = 'block'; }
+    return;
+  }
+  const done = (s.clear_engine_state === 'ok' || s.clear_engine_state === 'fail');
+  if(!done){
+    clrSeq = s.clear_engine_seq;
+    if(clrRun){ clrRun = false; b.style.display = 'none'; }
+    return;
+  }
+  if(s.clear_engine_seq !== clrSeq){
+    clrSeq = s.clear_engine_seq; clrRun = false;
+    const ok = s.clear_engine_state === 'ok';
+    b.textContent = (ok ? '✓ ' : '✗ ') + s.clear_engine_msg + src;
+    b.style.background = ok ? '#0a4' : '#a33';
+    b.style.display = 'block';
+    clearTimeout(clrTimer); clrTimer = setTimeout(() => { b.style.display = 'none'; }, 10000);
+  } else if(clrRun){ clrRun = false; b.style.display = 'none'; }
 }
 function setVal(id, v, stale){
   const el = $(id);
@@ -487,7 +526,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.6.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.7.0";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();
@@ -520,6 +559,7 @@ static void handle_status() {
   doc["clear_engine_state"] = obd2_clear_engine_state();
   doc["clear_engine_msg"]   = obd2_clear_engine_msg();
   doc["clear_engine_seq"]   = obd2_clear_engine_seq();
+  doc["clear_engine_src"]   = obd2_clear_engine_source();   // v4.7.0
 
   // v3.1.0 — Haldex (MITM) live + locally-decided mode for the mobile UI
   {
@@ -633,7 +673,7 @@ static void handle_cmd() {
   bool ok = false;
   const char* msg = "ok";
   if (strcmp(cmd, "clear_engine_fault") == 0) {
-    ok = obd2_clear_engine_fault();       // v4.6.0: async, engine only
+    ok = obd2_clear_engine_start("cellulaire");   // v4.6.0: async, engine only
     msg = ok ? "started" : "busy (already running)";
   } else if (strcmp(cmd, "set_haldex_mode") == 0) {
     uint8_t mode = doc["mode"] | 0;

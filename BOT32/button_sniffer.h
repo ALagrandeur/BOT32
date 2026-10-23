@@ -34,6 +34,12 @@ void button_sniffer_init();
 bool     button_sniffer_handbrake_active();
 uint32_t button_sniffer_handbrake_age_ms();
 
+// v4.7.0 — number of OK presses (released -> pressed transitions) since boot,
+// counted frame by frame. Used by ok_clear (10 presses / 6 s = clear engine codes).
+uint32_t button_sniffer_ok_press_events();
+// byte[0] of the 0x5BF frame at the last press (diagnostic: which button code).
+uint8_t  button_sniffer_ok_last_code();
+
 // MFSW OK button — true = pressed, false = released.
 // Returns false if no frame received yet.
 bool     button_sniffer_ok_pressed();

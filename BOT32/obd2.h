@@ -110,6 +110,11 @@ uint32_t obd2_get_egt_age_ms();
 // Returns true if the procedure started (false if one is already running).
 // Progress/result: obd2_clear_engine_state() / _msg() / _seq().
 bool obd2_clear_engine_fault();
+// v4.7.0 — same, with the trigger source shown to the UIs ("cellulaire", "PC",
+// "bouton OK"). obd2_clear_engine_fault() == obd2_clear_engine_start("web").
+bool obd2_clear_engine_start(const char* source);
+// Source of the running / last procedure ("" before the first one).
+const char* obd2_clear_engine_source();
 
 // Drives the procedure — call every loop(), INCLUDING in bench mode.
 void obd2_clear_engine_tick(uint32_t now);

@@ -100,6 +100,7 @@ static bool            g_ec_ok       = false;
 static bool            g_ec_has_result = false;
 static uint32_t        g_ec_seq      = 0;
 static char            g_ec_msg[64]  = "";
+static char            g_ec_src[16]  = "";
 
 static const uint32_t EC_SETTLE_MS        = 300;    // quiet bus before the request
 static const uint32_t EC_REPLY_TIMEOUT_MS = 2000;   // no answer at all
@@ -359,7 +360,9 @@ uint32_t obd2_get_egt_age_ms() {
 // =============================================================
 //  Action: Clear engine codes — v4.6.0 listen-only procedure, ENGINE ONLY
 // =============================================================
-bool obd2_clear_engine_fault() {
+bool obd2_clear_engine_fault() { return obd2_clear_engine_start("web"); }
+
+bool obd2_clear_engine_start(const char* source) {
   if (g_ec_step != EC_IDLE) {
     Serial.println("[OBD2] Clear engine codes already running");
     return false;
@@ -376,7 +379,10 @@ bool obd2_clear_engine_fault() {
   g_ec_tx_tries   = 0;
   g_ec_has_result = false;
   strncpy(g_ec_msg, "Effacement en cours", sizeof(g_ec_msg));
-  Serial.println("[OBD2] Clear engine codes START (listen-only, Haldex STOCK)");
+  strncpy(g_ec_src, source ? source : "", sizeof(g_ec_src) - 1);
+  g_ec_src[sizeof(g_ec_src) - 1] = '\0';
+  Serial.print("[OBD2] Clear engine codes START (listen-only, Haldex STOCK) — source: ");
+  Serial.println(g_ec_src);
   return true;
 }
 
@@ -432,6 +438,7 @@ const char* obd2_clear_engine_state() {
   return g_ec_ok ? "ok" : "fail";
 }
 const char* obd2_clear_engine_msg()  { return g_ec_msg; }
+const char* obd2_clear_engine_source() { return g_ec_src; }
 uint32_t    obd2_clear_engine_seq()  { return g_ec_seq; }
 bool        obd2_clear_engine_busy() { return g_ec_step != EC_IDLE; }
 

@@ -8,7 +8,7 @@
 
 ## Version actuelle
 
-🏁 **v4.6.0 — STABLE** (principal, **flashée et confirmée en voiture le 2026-10-12**) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2). Version stable précédente : v4.5.0 (tag `v4.5.0`).
+**v4.7.0** (principal, **à valider en voiture**) — dernière version STABLE : **v4.6.0** (confirmée en voiture le 2026-10-12, point de retour) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 Le commit v4.6.0 est poussé sur `master`, mais le **tag `v4.6.0` n'est pas encore sur GitHub**
 (au 2026-10-12 le dernier tag distant est `v4.5.0`) et il n'y a **aucune release GitHub depuis v4.1.0**.
@@ -31,6 +31,19 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   *(Recette détaillée dans le dépôt privé.)*
 - **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
   (un accouplement 100 % verrouillé bloque la transmission en virage).
+
+### Nouveautés v4.7.0
+- **Effacement des codes moteur au volant** : **bouton OK appuyé 10 fois en moins de 6 s**
+  (trame MFSW 0x5BF, même décodage que la cellule « OK button » : `byte[0] != 0` = pressé ;
+  chaque passage relâché → pressé compte, un appui maintenu compte une fois ; 10 s
+  d'inhibition après un déclenchement). Lance exactement la même procédure que le bouton web
+  (écoute seule, Haldex STOCK, moteur seulement).
+- **Bandeau sur la page principale du cellulaire** (⏳ / ✓ / ✗ + source) seulement si la page
+  est ouverte au moment de l'effacement. L'UI PC affiche aussi le résultat, quelle que soit la source.
+- Aide-mémoire (cellulaire + PC) : carte « Effacer les codes moteur — OK × 10 en moins de 6 s ».
+- ⚠ Le décodage du bouton OK ne distingue pas encore le OK des autres boutons du volant
+  (tout `byte[0] != 0` compte). À surveiller ; le code du dernier appui est exposé dans le
+  status série (`ok_last_code`) pour l'affiner au besoin.
 
 ### Nouveautés v4.6.0
 - **Effacement des codes MOTEUR seulement** (bouton web PC + mobile) : BOT32 passe en
@@ -148,6 +161,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v4.4.0 | Ménage de la page Réglages mobile + valeur brute 0x2BF1 pour la calibration |
 | **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — version stable précédente |
 | **v4.6.0** | 🏁 **STABLE** — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **confirmée en voiture** (2026-10-12) |
+| v4.7.0 | Effacement des codes moteur au volant (OK × 10 en < 6 s) + bandeau de confirmation sur le cellulaire — **à valider en voiture** |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -172,7 +186,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
   pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
-- ⏳ **Valider en voiture** l'effacement moteur v4.6.0 (Mode 04 envoyé directement à 0x7E0) et le combo 50-50.
+- ⏳ **Valider en voiture** le déclencheur au volant v4.7.0 (OK × 10 en moins de 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---

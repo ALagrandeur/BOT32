@@ -13,6 +13,10 @@ static uint32_t hb_ms       = 0;
 //   raw value 0x07 = released, 0x00 = pressed
 static bool     ok_pressed  = false;
 static uint32_t ok_ms       = 0;
+// v4.7.0 — press edges counted per frame (a poll in loop() could miss a short
+// press if press + release frames are drained by the same can_poll()).
+static uint32_t ok_press_events = 0;
+static uint8_t  ok_last_code    = 0;
 
 // === Hazard switch (Blinkmodi_01 0x366, byte[2] bit 4 = 0x10) — v2.9.0 ===
 static bool     hz_active   = false;
@@ -39,7 +43,12 @@ static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
     // NON-ZERO code in byte[0] (0x01 and 0x02 observed; D2..D8 always 0x00).
     // The previous code tested == 0x00, so it reported "pressed" while idle.
     // Correct logic: pressed = byte[0] != 0x00.
-    ok_pressed = (f.data[0] != 0x00);
+    bool pressed_now = (f.data[0] != 0x00);
+    if (pressed_now && !ok_pressed) {
+      ok_press_events++;
+      ok_last_code = f.data[0];
+    }
+    ok_pressed = pressed_now;
     ok_ms      = millis();
     return;
   }
@@ -73,6 +82,8 @@ uint32_t button_sniffer_handbrake_age_ms() {
 }
 
 bool button_sniffer_ok_pressed()         { return ok_pressed; }
+uint32_t button_sniffer_ok_press_events() { return ok_press_events; }
+uint8_t  button_sniffer_ok_last_code()    { return ok_last_code; }
 uint32_t button_sniffer_ok_age_ms() {
   if (ok_ms == 0) return UINT32_MAX;
   return millis() - ok_ms;

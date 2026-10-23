@@ -548,16 +548,29 @@ socket.on("status", (s) => {
     }
   }
 
-  // v4.6.0: clear-engine-codes result (only after a click from this page)
-  if (clearEngineSeqAtStart !== null && s.clear_engine_seq !== undefined &&
-      s.clear_engine_seq !== clearEngineSeqAtStart && s.clear_engine_state !== "running") {
-    const status = $("diag-action-status");
-    if (status) {
-      const ok = s.clear_engine_state === "ok";
-      status.textContent = (ok ? "✓ " : "✗ ") + (s.clear_engine_msg || "");
-      status.style.color = ok ? "#4caf50" : "#e74c3c";
+  // v4.6.0/v4.7.0: clear-engine-codes result — from this page's button or from
+  // any other source (OK x10 on the wheel, phone). Baseline = first status seen,
+  // so a result older than the page is never shown.
+  if (s.clear_engine_seq !== undefined) {
+    // BOT32 rebooted (uptime went down): its counter restarts at 0.
+    if (s.uptime_ms !== undefined) {
+      if (s.uptime_ms < clearEngineUptime && clearEngineSeqSeen !== null) clearEngineSeqSeen = 0;
+      clearEngineUptime = s.uptime_ms;
     }
-    clearEngineSeqAtStart = null;
+    const done = (s.clear_engine_state === "ok" || s.clear_engine_state === "fail");
+    if (clearEngineSeqSeen === null || (!done && s.clear_engine_state !== "running")) {
+      clearEngineSeqSeen = s.clear_engine_seq;     // baseline / 'idle' is never a result
+    } else if (done && s.clear_engine_seq !== clearEngineSeqSeen) {
+      clearEngineSeqSeen = s.clear_engine_seq;
+      const status = $("diag-action-status");
+      if (status) {
+        const ok = s.clear_engine_state === "ok";
+        const src = s.clear_engine_src ? " (" + s.clear_engine_src + ")" : "";
+        status.textContent = (ok ? "✓ " : "✗ ") + (s.clear_engine_msg || "") + src;
+        status.style.color = ok ? "#4caf50" : "#e74c3c";
+      }
+      clearEngineSeqAtStart = null;
+    }
   }
 
   // v2.1: Clear-all-DTCs progress indicator
@@ -732,6 +745,8 @@ function updateHaldexLive(hx) {
 // v4.6.0: Clear ENGINE codes button — listen-only procedure in the firmware.
 // The result comes back in status (clear_engine_state / _msg / _seq).
 let clearEngineSeqAtStart = null;
+let clearEngineSeqSeen = null;   // v4.7.0: last clear result already displayed
+let clearEngineUptime = 0;       // v4.7.0: detects a BOT32 reboot (uptime goes down)
 const btnClearEng = $("btn-clear-engine-fault");
 if (btnClearEng) {
   btnClearEng.addEventListener("click", () => {

@@ -19,7 +19,7 @@
 #include "config.h"
 #include <ArduinoJson.h>
 
-#define BUILD_VERSION  "4.6.0"   // keep in sync with BOT32.ino line 2 + git tag
+#define BUILD_VERSION  "4.7.0"   // keep in sync with BOT32.ino line 2 + git tag
 #define BUILD_DATE     __DATE__
 
 static bool     subscribe_frames = false;     // off by default to avoid spam
@@ -181,7 +181,11 @@ static void emit_status() {
   doc["clear_engine_state"] = obd2_clear_engine_state();
   doc["clear_engine_msg"]   = obd2_clear_engine_msg();
   doc["clear_engine_seq"]   = obd2_clear_engine_seq();
+  doc["clear_engine_src"]   = obd2_clear_engine_source();
   doc["tx_quiet"]           = can_is_quiet();
+  // v4.7.0 — OK button press counter (10 presses / 6 s = clear engine codes)
+  doc["ok_press_events"]    = button_sniffer_ok_press_events();
+  doc["ok_last_code"]       = button_sniffer_ok_last_code();
 
   // v2.1: clear-all-DTCs progress (only meaningful while running)
   doc["clear_all_dtcs_in_progress"] = obd2_clear_all_dtcs_in_progress();
@@ -382,7 +386,7 @@ static void handle_cmd(const char* line) {
   // v4.6.0: clear ENGINE codes — listen-only procedure, Mode 04 to 0x7E0.
   // The result arrives later in status (clear_engine_state/msg/seq).
   if (strcmp(cmd, "clear_engine_fault") == 0) {
-    bool ok = obd2_clear_engine_fault();
+    bool ok = obd2_clear_engine_start("PC");
     emit_ack("clear_engine_fault", ok, ok ? "started" : "busy (already running)");
     return;
   }

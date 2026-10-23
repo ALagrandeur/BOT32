@@ -35,8 +35,8 @@ The role descriptions are kept in French, as in the project's shared map.
 
 | | |
 |---|---|
-| **Current version** | **v4.6.0 — STABLE** (`master`), flashed and confirmed in the car on 2026-10-12 |
-| **Previous stable version** | **v4.5.0** (git tag `v4.5.0`) — rollback point |
+| **Current version** | **v4.7.0** (`master`) — adds the steering-wheel trigger (OK × 10 in < 6 s) for the engine-code clear; **to be validated in the car** |
+| **Last stable version** | **v4.6.0 — STABLE** (git tag `v4.6.0`), confirmed in the car on 2026-10-12 — rollback point |
 | **Paired Haldex module** | BOT32-HALDEX **v3.0.0** (stable, all 3 modes confirmed in the car) |
 
 Detailed status, version history and roadmap (French): [ÉTAT_DU_PROJET.md](ÉTAT_DU_PROJET.md).
@@ -135,10 +135,18 @@ Haldex card (via ESP-NOW, or a direct USB-C link to the X2 for development),
 WiFi remote, engine-code clearing, combo cheat-sheet. You can unplug USB at any time:
 BOT32 keeps running in the car with the last saved settings (NVS).
 
-### 5. Clear engine codes (v4.6.0)
+### 5. Clear engine codes (v4.6.0, steering-wheel trigger v4.7.0)
 
-Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI), or serial
-`{"cmd":"clear_engine_fault"}`. **Engine ECU only:**
+Three ways to start it — **engine ECU only** in every case:
+
+- **Steering wheel (v4.7.0): press OK 10 times within 6 seconds.** Counted on the
+  MFSW frame `0x5BF` (same decode as the *OK button* live cell: `byte[0] != 0` = pressed;
+  each released → pressed transition is one press, holding counts once). After a trigger,
+  presses are ignored for 10 s. The cluster still reacts to each press (menus).
+- Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI).
+- Serial `{"cmd":"clear_engine_fault"}`.
+
+Procedure:
 
 1. BOT32 goes **listen-only on both CAN buses** (no cluster override, no OBD polling,
    no bench frames) and sets the Haldex to **STOCK**.
@@ -147,7 +155,10 @@ Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI), or serial
    other `7F` = refused (NRC shown) · 2 s without a reply = *Pas de réponse du moteur*.
 4. 200 ms later, one more STOCK is sent and transmissions resume. The Haldex stays in STOCK.
 
-The result is shown on the page (`clear_engine_state/msg/seq` in the status).
+The result is shown on the page (`clear_engine_state/msg/seq/src` in the status).
+When the clear comes from the steering wheel, the phone main page shows a banner
+(*⏳ Effacement… / ✓ Codes moteur effacés / ✗ …*, with the source) **only if the page is
+open at that moment** — a result older than the page is never shown.
 
 ### 6. Haldex AWD modes (via BOT32-HALDEX)
 
