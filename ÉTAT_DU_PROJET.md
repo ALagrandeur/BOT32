@@ -35,6 +35,13 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   (un accouplement 100 % verrouillé bloque la transmission en virage).
 
 ### Nouveautés v4.8.0
+- **Effacement des codes : OBD générique.** L'envoi direct au moteur (Mode 04 vers 0x7E0, depuis
+  v4.6.0) n'effaçait pas les codes dans l'auto. BOT32 envoie maintenant le Mode 04 `[01 04]`
+  **OBD générique en adressage fonctionnel sur 0x7DF** (comme un outil OBD générique, sans le mode
+  de connexion VW), puis sur **0x700** (adresse de l'outil VW dans `cef.csv`) si le moteur ne
+  répond pas. Le moteur décide (0x7E8 : `44` effacé, `78` en attente, autre refus). Comme tout
+  effacement OBD générique, la boîte DSG (0x7E9) efface aussi ses codes antipollution ; le message
+  l'indique (« Codes effacés : moteur + boîte DSG »).
 - **Effacement des codes moteur au volant : bouton OK MAINTENU 6 s** (remplace les 10 appuis
   rapides de v4.7.0). Relâcher avant 6 s annule ; un seul déclenchement par appui (relâcher
   avant le suivant) ; 10 s d'inhibition après un déclenchement. Éviter l'écran des données de

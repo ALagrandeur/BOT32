@@ -98,12 +98,14 @@ uint32_t obd2_get_egt_age_ms();
 //  Action commands (one-shot, user-triggered from UI)
 // =============================================================
 
-// Clear engine codes — v4.6.0: ENGINE ONLY, non-blocking procedure.
+// Clear engine codes — v4.6.0 non-blocking procedure, v4.8.0 generic OBD.
 //   1. listen-only: can_set_quiet(true) pauses every BOT32 TX on both buses
 //      (Motor_09 override, OBD2 polling, bench) + Haldex forced to STOCK;
-//   2. after a short settle, OBD-II Mode 04 [01 04] sent physically to the
-//      engine ECU (0x7E0) — the 0x700 broadcast is NOT used (it also clears
-//      the DSG);
+//   2. after a short settle, generic OBD-II Mode 04 [01 04] as a functional
+//      request on 0x7DF, then on 0x700 (VW broadcast) if the engine stays
+//      silent or answers "not supported" (the physical 0x7E0 request of
+//      v4.6.0 did not clear the codes). Like any generic OBD clear, the other
+//      OBD ECUs (DSG) clear their emission codes too;
 //   3. waits for the engine's answer on 0x7E8: 0x44 = cleared, 0x7F 04 78 =
 //      response pending (keep waiting), other 0x7F = refused;
 //   4. TX resumes; the Haldex stays in STOCK.

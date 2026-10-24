@@ -83,23 +83,30 @@ static uint32_t  g_clear_step_ms    = 0;
 static const uint32_t CLEAR_STEP_DELAY_MS = 80;   // per-step delay
 
 // =============================================================
-//  Clear-engine-codes procedure (v4.6.0) — engine only, listen-only
+//  Clear-engine-codes procedure (v4.6.0) — listen-only
+//  v4.8.0: generic OBD-II Mode 04, functional request (0x7DF, then 0x700 if the
+//  engine does not answer) — the physical 0x7E0 request did not clear the codes.
 // =============================================================
 enum EngineClearStep {
   EC_IDLE = 0,
   EC_SETTLE,        // TX paused, let the bus settle before talking to the ECU
-  EC_WAIT_REPLY,    // Mode 04 sent to 0x7E0, waiting for 0x7E8
+  EC_WAIT_REPLY,    // Mode 04 sent, waiting for the engine (0x7E8)
   EC_RESUME,        // result known, short hold before TX resumes
 };
+static const uint16_t EC_REQ_IDS[] = { CAN_ID_OBD2_FUNCTIONAL, CAN_ID_OBD2_BROADCAST };
+static const uint8_t  EC_N_REQ     = sizeof(EC_REQ_IDS) / sizeof(EC_REQ_IDS[0]);
 static EngineClearStep g_ec_step     = EC_IDLE;
 static uint32_t        g_ec_step_ms  = 0;
 static uint32_t        g_ec_deadline = 0;
 static uint32_t        g_ec_sent_ms  = 0;
 static uint8_t         g_ec_tx_tries = 0;
+static uint8_t         g_ec_req      = 0;   // index in EC_REQ_IDS
+static bool            g_ec_heard    = false; // the engine answered this request (e.g. 0x78 pending)
+static uint8_t         g_ec_ok_mask  = 0;   // bit n: 0x7E8+n answered 0x44 (bit 0 engine, bit 1 DSG)
 static bool            g_ec_ok       = false;
 static bool            g_ec_has_result = false;
 static uint32_t        g_ec_seq      = 0;
-static char            g_ec_msg[64]  = "";
+static char            g_ec_msg[96]  = "";
 static char            g_ec_src[16]  = "";
 
 static const uint32_t EC_SETTLE_MS        = 300;    // quiet bus before the request
@@ -116,6 +123,18 @@ static void ec_finish(bool ok, const char* msg, uint32_t now) {
   g_ec_step_ms = now;
   Serial.print("[OBD2] Clear engine codes: ");
   Serial.println(g_ec_msg);
+}
+
+// v4.8.0: no usable answer from the engine -> same request on the next
+// functional address (0x7DF -> 0x700); false when none is left.
+static bool ec_next_request(uint32_t now) {
+  if (g_ec_req + 1 >= EC_N_REQ) return false;
+  g_ec_req++;
+  g_ec_heard    = false;
+  g_ec_tx_tries = 0;
+  g_ec_step     = EC_SETTLE;
+  g_ec_step_ms  = now - EC_SETTLE_MS;     // send on the next tick
+  return true;
 }
 
 // =============================================================
@@ -149,30 +168,39 @@ static void on_obd2_rx(CanChannel ch, const CanFrame& f) {
   const Settings& s = settings_get();
   uint8_t sid = f.data[1];
 
-  // v4.6.0 — answer from the engine to our Mode 04 (clear engine codes)
-  if (g_ec_step == EC_WAIT_REPLY && f.id == CAN_ID_OBD2_RESP) {
+  // v4.6.0 — answers to our Mode 04 (clear engine codes). v4.8.0: functional
+  // request, so every OBD ECU (0x7E8..0x7EF) may answer; the engine decides.
+  if ((g_ec_step == EC_WAIT_REPLY || g_ec_step == EC_RESUME) &&
+      f.id >= CAN_ID_OBD2_RESP && f.id <= CAN_ID_OBD2_RESP + 7) {
     uint32_t now = millis();
-    if (f.data[0] == 0x01 && sid == 0x44) {
-      ec_finish(true, "Codes moteur effacés", now);
+    bool positive = (f.data[0] == 0x01 && sid == 0x44);
+    if (positive) g_ec_ok_mask |= (uint8_t)(1u << (f.id - CAN_ID_OBD2_RESP));
+    if (g_ec_step != EC_WAIT_REPLY || f.id != CAN_ID_OBD2_RESP) return;
+    if (positive) {
+      ec_finish(true, "Codes effacés", now);   // ECU list added when TX resumes
       return;
     }
     if (f.data[0] == 0x03 && sid == 0x7F && f.data[2] == UDS_OBD2_MODE_CLEAR_DTC) {
       uint8_t nrc = f.data[3];
+      g_ec_heard = true;
       if (nrc == 0x78) {                       // response pending: keep waiting
         uint32_t d = now + EC_PENDING_EXTRA_MS;
         uint32_t cap = g_ec_sent_ms + EC_MAX_WAIT_MS;
         g_ec_deadline = ((int32_t)(d - cap) > 0) ? cap : d;
         return;
       }
-      char m[64];
+      // not supported on this address: try the next one
+      if ((nrc == 0x11 || nrc == 0x12) && ec_next_request(now)) return;
+      char m[96];
       if (nrc == 0x22) {
-        snprintf(m, sizeof(m), "Refusé par le moteur (NRC 0x22 : conditions)");
+        snprintf(m, sizeof(m), "Refusé par le moteur (NRC 0x22) : essayer moteur arrêté, contact mis");
       } else {
         snprintf(m, sizeof(m), "Refusé par le moteur (NRC 0x%02X)", nrc);
       }
       ec_finish(false, m, now);
       return;
     }
+    return;
   }
 
   // Negative response?
@@ -377,6 +405,9 @@ bool obd2_clear_engine_start(const char* source) {
   g_ec_step       = EC_SETTLE;
   g_ec_step_ms    = now;
   g_ec_tx_tries   = 0;
+  g_ec_req        = 0;
+  g_ec_heard      = false;
+  g_ec_ok_mask    = 0;
   g_ec_has_result = false;
   strncpy(g_ec_msg, "Effacement en cours", sizeof(g_ec_msg));
   strncpy(g_ec_src, source ? source : "", sizeof(g_ec_src) - 1);
@@ -393,9 +424,9 @@ void obd2_clear_engine_tick(uint32_t now) {
 
     case EC_SETTLE: {
       if ((int32_t)(now - g_ec_step_ms) < (int32_t)EC_SETTLE_MS) return;
-      // 2. OBD-II Mode 04, physical request to the engine ECU only.
+      // 2. Generic OBD-II Mode 04, functional request (0x7DF, then 0x700).
       CanFrame f;
-      f.id  = CAN_ID_OBD2_REQ;
+      f.id  = EC_REQ_IDS[g_ec_req];
       f.len = 8;
       memset(f.data, 0, sizeof(f.data));
       f.data[0] = 0x01;
@@ -405,7 +436,8 @@ void obd2_clear_engine_tick(uint32_t now) {
         g_ec_sent_ms  = now;
         g_ec_deadline = now + EC_REPLY_TIMEOUT_MS;
         g_ec_step     = EC_WAIT_REPLY;
-        Serial.println("[OBD2] Clear engine codes: Mode 04 sent to 0x7E0");
+        Serial.print("[OBD2] Clear engine codes: Mode 04 sent to 0x");
+        Serial.println(f.id, HEX);
       } else if (++g_ec_tx_tries >= 3) {
         ec_finish(false, "Envoi CAN impossible", now);
       } else {
@@ -415,15 +447,26 @@ void obd2_clear_engine_tick(uint32_t now) {
     }
 
     case EC_WAIT_REPLY:
-      if ((int32_t)(now - g_ec_deadline) >= 0) {
-        ec_finish(false, "Pas de réponse du moteur", now);
-      }
+      if ((int32_t)(now - g_ec_deadline) < 0) return;
+      // silent engine: try the next address; it answered (pending) but never
+      // finished: re-sending would not help
+      if (!g_ec_heard && ec_next_request(now)) return;
+      ec_finish(false, g_ec_heard ? "Le moteur n'a pas terminé l'effacement" : "Pas de réponse du moteur", now);
       return;
 
     case EC_RESUME:
       // signed: g_ec_step_ms may be set by the RX callback slightly AFTER `now`
       if ((int32_t)(now - g_ec_step_ms) < (int32_t)EC_RESUME_HOLD_MS) return;
       haldex_link_set_mode(HALDEX_M_STOCK);  // one more STOCK (broadcast has no ACK)
+      if (g_ec_ok) {                         // which ECUs confirmed (answers keep coming during the hold)
+        uint8_t others = 0;
+        for (uint8_t b = 2; b < 8; b++) if (g_ec_ok_mask & (1u << b)) others++;
+        snprintf(g_ec_msg, sizeof(g_ec_msg), "Codes effacés : moteur%s", (g_ec_ok_mask & 0x02) ? " + boîte DSG" : "");
+        if (others) {
+          size_t n = strlen(g_ec_msg);
+          snprintf(g_ec_msg + n, sizeof(g_ec_msg) - n, " + %u autre(s)", (unsigned)others);
+        }
+      }
       can_set_quiet(false);                  // 4. TX resumes (Haldex stays STOCK)
       g_ec_has_result = true;
       g_ec_seq++;

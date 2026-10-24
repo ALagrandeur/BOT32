@@ -7,7 +7,7 @@ OBD-II CAN bus (CAN1). It:
 - shows **turbo boost on the coolant-temperature needle** of the cluster (lever in S/M);
 - reads **live data** (12 values: MAP, ethanol, Haldex, DSG oil, EGT, buttons…);
 - serves a **phone web UI** over its own WiFi access point, and a **PC web UI** over USB;
-- **clears engine fault codes** with a listen-only procedure (engine ECU only);
+- **clears engine fault codes** (generic OBD-II Mode 04) with a listen-only procedure;
 - **commands the Haldex AWD modes** (STOCK / FWD / 50-50) of the in-line
   [BOT32-HALDEX](https://github.com/ALagrandeur/BOT32-HALDEX) module over ESP-NOW,
   from the app or with physical button combos.
@@ -138,7 +138,7 @@ BOT32 keeps running in the car with the last saved settings (NVS).
 
 ### 5. Clear engine codes (v4.6.0, steering-wheel trigger v4.8.0)
 
-Three ways to start it — **engine ECU only** in every case:
+Three ways to start it — same procedure in every case:
 
 - **Steering wheel (v4.8.0): hold OK for 6 seconds.** Read on the MFSW frame `0x5BF`
   (same decode as the *OK button* live cell: `byte[0] != 0` = pressed). Releasing before
@@ -152,9 +152,17 @@ Procedure:
 
 1. BOT32 goes **listen-only on both CAN buses** (no cluster override, no OBD polling,
    no bench frames) and sets the Haldex to **STOCK**.
-2. 300 ms later, OBD-II Mode 04 `[01 04]` is sent to `0x7E0`.
-3. Reply on `0x7E8`: `01 44` = cleared · `7F 04 78` = pending (keeps waiting, 15 s max) ·
-   other `7F` = refused (NRC shown) · 2 s without a reply = *Pas de réponse du moteur*.
+2. 300 ms later, **generic OBD-II Mode 04** `[01 04]` is sent as a functional request on
+   `0x7DF` (what generic OBD tools use; no VW diagnostic session). If the engine does not
+   answer within 2 s (or answers "not supported"), the same request goes out on `0x700`
+   (the VW tool's broadcast, seen in `cef.csv`). v4.8.0: the physical `0x7E0` request used
+   since v4.6.0 did not clear the codes in the car.
+3. The engine decides, on `0x7E8`: `01 44` = cleared · `7F 04 78` = pending (keeps waiting,
+   15 s max) · other `7F` = refused (NRC shown; `0x22` = conditions, try engine off,
+   ignition on) · no reply on either address = *Pas de réponse du moteur*.
+   As with any generic OBD clear, the other OBD ECUs clear their emission codes too: the
+   DSG (`0x7E9`) usually confirms, and the message says so (*Codes effacés : moteur +
+   boîte DSG*).
 4. 200 ms later, one more STOCK is sent and transmissions resume. The Haldex stays in STOCK.
 
 The result is shown on the page (`clear_engine_state/msg/seq/src` in the status).
@@ -351,7 +359,8 @@ On the very first boot (or after a settings-version change) the NVS line reads
   with the default settings, UDS polling starts right away.
 - In the car BOT32 only transmits `Motor_09 (0x647)` on the cluster bus (the gateway
   already sends everything else) plus UDS requests on the OBD bus.
-- Engine-code clearing targets the **engine ECU only**, with BOT32 silent on both buses.
+- Engine-code clearing is a generic OBD-II Mode 04 (engine, plus the emission codes of the
+  other OBD ECUs such as the DSG), with BOT32 silent on both buses.
 - Haldex: the X2 boots in STOCK mode but does not reboot at a vehicle restart (permanent
   +12 V); with the X2 v3.0.0 in the car, BOT32 sends STOCK after a cut of 5 min or more
   (Haldex link enabled) and a shorter cut keeps the mode. FWD / 50-50 need explicit arming

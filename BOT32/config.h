@@ -18,10 +18,12 @@
 // OBD2 bus (CAN1) — UDS / OBD-II diagnostic addressing
 // Standard request->response pair: 0x7E0->0x7E8 (Engine), 0x7E1->0x7E9 (Trans),
 // VW extended addresses: 0x713->0x77D (Gateway), 0x70F->0x779 (Haldex), etc.
-// Functional broadcast: 0x700 (OBD-II), 0x7DF (UDS)
+// Functional requests: 0x7DF = generic OBD-II (ISO 15765-4, what generic scan
+// tools use), 0x700 = VW tester broadcast (the VW tool's Mode 04 in cef.csv).
 #define CAN_ID_OBD2_REQ        0x7E0   // TX: UDS request to engine ECU
 #define CAN_ID_OBD2_RESP       0x7E8   // RX: UDS response from engine ECU
-#define CAN_ID_OBD2_BROADCAST  0x700   // TX: OBD-II functional broadcast (Mode 04 clear DTC)
+#define CAN_ID_OBD2_FUNCTIONAL 0x7DF   // TX: generic OBD-II functional request (v4.8.0 Mode 04)
+#define CAN_ID_OBD2_BROADCAST  0x700   // TX: VW functional broadcast (Mode 04 fallback)
 #define CAN_ID_HALDEX_REQ      0x70F   // TX: UDS request to Haldex ECU (vehicle-confirmed v2.1)
 #define CAN_ID_HALDEX_RESP     0x779   // RX: UDS response from Haldex ECU
 #define CAN_ID_TCM_REQ         0x7E1   // TX: UDS request to Transmission ECU (DSG) — v2.8.0
@@ -61,7 +63,7 @@
 #define UDS_DID_EGT                0x40D5  // Exhaust gas temp (bank 1, sensor 1) — engine ECU
                                            //   formula: temp_C = ((data[4]<<8)|data[5]) - 250
 // v2.10.0: UDS_DID_ENGINE_OIL (0xF43C) removed — engine oil temp dropped from live data.
-#define UDS_OBD2_MODE_CLEAR_DTC    0x04    // OBD-II Mode 04 (clear emissions DTCs, broadcast)
+#define UDS_OBD2_MODE_CLEAR_DTC    0x04    // OBD-II Mode 04 (clear emissions DTCs, functional request)
 
 // Stale timeouts for cached UDS read values
 #define ETHANOL_STALE_TIMEOUT_MS         5000
