@@ -14,6 +14,13 @@
  *            app/USB button, which exits via the app/USB STOCK button.
  *   - STOCK: default; app/USB button; or TC-back-ON after a combo FWD.
  *
+ * v4.8.0 — a cut shorter than 5 min (key off/on, stall + restart, CAN or radio
+ * drop-out, BOT32 reset) keeps the X2 mode; STOCK after a cut of 5 min or more
+ * comes from ignition_watch. So a combo mode is only released by the DRIVER
+ * turning TC back ON: a TC OFF -> ON change in a continuous TC frame stream,
+ * ignition ON, held 500 ms. A lost TC frame, the ignition being cut, or the TC
+ * that comes back ON by itself after a restart no longer release it.
+ *
  * NOTE on "TC OFF": confirmed on the live data that ESP_21 (0x0FD) byte6 == 0x03
  * is the LATCHED "traction control disabled" state — it stays set after the
  * button is released, and clears (0x00) when TC is re-enabled. So we use it as
@@ -31,6 +38,9 @@
 
 #define COMBO_FRESH_MS    2000   // sniffer values older than this are ignored
 #define COMBO_POLL_STEP_MS 100   // v4.8.0: max polled time one can_poll() can add
+#define TC_ON_CONFIRM_MS   500   // v4.8.0: TC back ON must hold this long to release a combo
+#define TC_STREAM_GAP_MS   200   // v4.8.0: no TC frame for this long = stream broken (0x0FD every 20 ms)
+#define KL15_FRESH_MS     1000   // v4.8.0: 0x3C0 is sent every 100 ms
 #define TELLTALE_BLINK_MS 500    // 0.5 s blink phase while non-STOCK
 
 static uint8_t  g_mode          = HALDEX_M_STOCK;
@@ -57,6 +67,13 @@ static uint32_t g_prev_poll_ms   = 0;
 static uint32_t g_hz_missed_ms   = COMBO_FRESH_MS;
 static uint32_t g_tc_missed_ms   = COMBO_FRESH_MS;
 static uint32_t g_hb_missed_ms   = COMBO_FRESH_MS;
+static uint32_t g_kl_missed_ms   = KL15_FRESH_MS;
+// v4.8.0 — combo release by the driver (see header) and resync after a BOT32 reset
+static bool     g_tc_seen_off    = false;  // TC seen OFF in the current stream, ignition ON
+static bool     g_tc_on_timing   = false;  // TC back ON, confirming
+static uint32_t g_tc_on_ms       = 0;
+static bool     g_force_confirmed = false; // last forced STOCK was confirmed by the X2
+static bool     g_resync         = true;   // adopt the X2 mode once (BOT32 reset, X2 kept its mode)
 
 void haldex_modes_init() {
   g_mode           = HALDEX_M_STOCK;
@@ -72,6 +89,11 @@ void haldex_modes_init() {
   g_hz_missed_ms   = COMBO_FRESH_MS;
   g_tc_missed_ms   = COMBO_FRESH_MS;
   g_hb_missed_ms   = COMBO_FRESH_MS;
+  g_kl_missed_ms   = KL15_FRESH_MS;
+  g_tc_seen_off    = false;
+  g_tc_on_timing   = false;
+  g_force_confirmed = false;
+  g_resync         = true;
 }
 
 // Internal: change mode + forward to the MITM if it actually changed.
@@ -97,6 +119,8 @@ static void force_stock_start(const char* reason, bool link_off) {
   g_force_next_ms   = now + FORCE_STOCK_RESEND_MS;
   g_force_last_ms   = now;
   g_force_online_ms = 0;
+  g_force_confirmed = false;
+  g_resync          = false;
   Serial.print("[haldex_modes] forced STOCK: ");
   Serial.println(reason ? reason : "");
 }
@@ -126,6 +150,7 @@ void haldex_modes_force_stock(const char* reason) {
 }
 
 bool haldex_modes_force_stock_pending() { return g_force_pending; }
+bool haldex_modes_force_stock_confirmed() { return g_force_confirmed; }
 
 // v4.8.0 — combo frames go stale on POLLED time, not wall time. After a long
 // stall elsewhere in loop() (e.g. a blocked HTTP request) the 32-frame MCP2515
@@ -155,6 +180,51 @@ static void track_combo_frames() {
   track_frame(g_hz_missed_ms, button_sniffer_hazard_age_ms(),    step);
   track_frame(g_tc_missed_ms, button_sniffer_tc_age_ms(),        step);
   track_frame(g_hb_missed_ms, button_sniffer_handbrake_age_ms(), step);
+  track_frame(g_kl_missed_ms, button_sniffer_ignition_age_ms(),  step);
+}
+
+// Ignition ON for the TC-release rule (polled time, like the combo frames).
+// Klemmen_Status_01 never seen since boot -> assumed ON (no gating possible).
+static bool ignition_on_now() {
+  if (button_sniffer_ignition_age_ms() == UINT32_MAX) return true;
+  return button_sniffer_ignition_on() && g_kl_missed_ms < KL15_FRESH_MS;
+}
+
+// True once when the driver turns TC back ON (see header). Tracks the TC OFF
+// state in a continuous frame stream with the ignition ON.
+static bool tc_turned_back_on(uint32_t now) {
+  if (!ignition_on_now() || g_tc_missed_ms >= TC_STREAM_GAP_MS) {
+    g_tc_seen_off  = false;              // cut / restart / lost frames: start over
+    g_tc_on_timing = false;
+    return false;
+  }
+  if (button_sniffer_tc_pressed()) {     // 0x0FD byte6 == 0x03: TC OFF
+    g_tc_seen_off  = true;
+    g_tc_on_timing = false;
+    return false;
+  }
+  if (!g_tc_seen_off) return false;      // ON with no OFF seen first (e.g. after a restart)
+  if (!g_tc_on_timing) { g_tc_on_timing = true; g_tc_on_ms = now; return false; }
+  if ((int32_t)(now - g_tc_on_ms) < (int32_t)TC_ON_CONFIRM_MS) return false;
+  g_tc_seen_off  = false;
+  g_tc_on_timing = false;
+  return true;
+}
+
+// After a BOT32 reset that is not a full power-up, the X2 kept its mode: adopt
+// it once (first X2 STATE after boot) so the TC / STOCK exits still work. Taken
+// as a combo mode, so turning TC OFF then ON again releases it too.
+static void resync_from_x2() {
+  if (!g_resync) return;
+  if (g_force_pending || g_mode != HALDEX_M_STOCK) { g_resync = false; return; }
+  HaldexState hx = haldex_link_get_state();
+  if (!hx.valid || (uint32_t)(millis() - hx.last_rx_ms) >= HALDEX_LINK_STALE_MS) return;
+  g_resync = false;
+  if (hx.current_mode == HALDEX_M_STOCK || hx.current_mode > HALDEX_M_5050) return;
+  g_mode = hx.current_mode;                // no send: the X2 is already in this mode
+  g_mode_from_combo = true;
+  Serial.print("[haldex_modes] mode repris du X2 -> ");
+  Serial.println(g_mode);
 }
 
 static void force_stock_tick(uint32_t now) {
@@ -171,7 +241,8 @@ static void force_stock_tick(uint32_t now) {
   if (x2_online && hx.current_mode == HALDEX_M_STOCK &&
       (int32_t)(hx.last_rx_ms - g_force_start_ms) > 0 &&
       since >= (int32_t)FORCE_STOCK_RESEND_MS) {
-    g_force_pending = false;                   // X2 confirmed STOCK
+    g_force_pending   = false;                 // X2 confirmed STOCK
+    g_force_confirmed = true;
     Serial.println("[haldex_modes] X2 confirmed STOCK");
     return;
   }
@@ -215,6 +286,9 @@ void haldex_modes_tick(uint32_t now) {
   g_prev_enabled   = true;
   g_force_link_off = false;   // link back ON: a pending STOCK follows the normal rules
 
+  resync_from_x2();
+  bool tc_back_on = tc_turned_back_on(now);
+
   // ---- Physical combo: Hazards ON + TC OFF (both fresh) ----
   // button_sniffer_tc_pressed() == the LATCHED traction-control-disabled state
   // (0x0FD byte6==0x03 stays set while TC is off), so tc_off is a stable signal.
@@ -237,10 +311,10 @@ void haldex_modes_tick(uint32_t now) {
 
   // v3.10.0: TC turned back ON releases a combo-armed mode (FWD or 50/50) back to STOCK (was
   // "hazards OFF"). So the hazards can be switched off while FWD stays armed;
-  // FWD drops only when traction control is re-enabled. Losing the TC frame
-  // (stale -> tc_off=false) also drops to STOCK, a safe default.
-  // v4.8.0: re-sent until the X2 confirms (a lost broadcast would leave it in FWD).
-  if (g_mode_from_combo && !tc_off) {
+  // FWD drops only when traction control is re-enabled.
+  // v4.8.0: only the driver turning TC back ON counts (tc_turned_back_on): a
+  // lost TC frame or a short cut keeps the mode. Re-sent until the X2 confirms.
+  if (g_mode_from_combo && tc_back_on) {
     force_stock_start("TC reactive", false);
   }
 

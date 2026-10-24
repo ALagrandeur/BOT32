@@ -99,7 +99,7 @@ void setup() {
     button_sniffer_init();    // v2.8+: hand brake + OK + Hazard + TC sniffers
     haldex_modes_init();      // v3.1: Haldex mode logic (combo FWD + app modes)
     ok_clear_init();          // v4.7.0: OK x10 / 6 s -> clear engine codes
-    ignition_watch_init();    // v4.8.0: Haldex back to STOCK at every restart
+    ignition_watch_init();    // v4.8.0: Haldex STOCK after a 5-min cut (shorter: mode kept)
   }
   serial_proto_init();
   serial_proto_set_mode(mode_name(currentMode));
@@ -299,7 +299,8 @@ void loop() {
   // 6b. v2.6: WiFi UI tick (serves HTTP requests from phone)
   wifi_ui_tick();
 
-  // 6b2. v4.8.0: vehicle restart / ignition change / BOT32 boot -> Haldex STOCK
+  // 6b2. v4.8.0: cut (ignition OFF / bus silent) of 5 min or more, or BOT32 power-up
+  //      -> Haldex STOCK; a shorter cut keeps the mode
   //      (runs before haldex_modes_tick so a forced STOCK is re-sent right away).
   ignition_watch_tick(now);
 

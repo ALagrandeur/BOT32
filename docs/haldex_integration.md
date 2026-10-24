@@ -91,7 +91,12 @@ by the X2** (STATE), and its STOCK button always re-sends an explicit STOCK.
   brake down = FWD). A combo-armed mode never switches while TC stays OFF
   (re-pressing the hazards does nothing); it exits to STOCK when TC is turned
   back ON. 50/50 is also available from the app/USB button (exits via STOCK).
-- **No timed auto-revert** (a timed mechanical revert was judged unsafe).
+- **v4.8.0 — only the driver's TC ON releases a combo mode:** a TC OFF → ON change in a
+  continuous 0x0FD stream (frames every 20 ms, no gap ≥ 200 ms) with the ignition ON, held
+  500 ms. VW turns TC back ON by itself at every ignition, so after a short cut the combo
+  mode is kept: leave it with TC OFF then ON, or STOCK. A lost TC frame no longer drops it.
+- **No timed auto-revert while driving** (a timed mechanical revert was judged unsafe);
+  the only time-based STOCK is after a cut (ignition OFF / bus silent) of 5 min or more.
 - The combos and app buttons only work while `haldex_enabled` is ON on the main. The
   sniffed button states must be fresher than 2 s.
 - The **AMOLED remote** (Golf mode) can also send STOCK / FWD / 50-50 directly to the X2.
@@ -102,9 +107,10 @@ by the X2** (STATE), and its STOCK button always re-sends an explicit STOCK.
 
 The X2 **persists the passthrough flag in NVS** and restores it at boot (first boot =
 passthrough ON = transparent bridge). The **mode always boots in STOCK** (not persisted),
-and since BOT32 v4.8.0 it is also **put back to STOCK at every vehicle restart** by BOT32
-(STOCK forced on ignition changes, on BOT32's own boot and on CAN-bus wake, re-sent until
-the X2 reports STOCK, also while the X2 sleeps — only while `haldex_enabled` is ON). With
+and since BOT32 v4.8.0 it is also **put back to STOCK after a cut of 5 min or more** by BOT32
+(ignition OFF or CAN bus silent for 5 min, or a full BOT32 power-up; a shorter cut keeps the
+mode; re-sent until the X2 reports STOCK, also while the X2 sleeps — only while
+`haldex_enabled` is ON). With
 X2 v3.0.0 (the firmware in the car) this relies entirely on BOT32: the X2 does not reboot
 with the ignition and keeps its mode on its own. The optional X2 v3.1.0 would add a
 fallback to STOCK after 5 s without CAN.
@@ -194,7 +200,7 @@ live in the private BOT32-HALDEX firmware.)
 
 | Setting | Default | Description |
 |---|---|---|
-| `haldex_enabled` | `false` | Master toggle for the ESP-NOW link. Also required for the v4.8.0 STOCK at every restart — with X2 v3.0.0 it is the only restart safety net, so keep it ON in the car. Switching it OFF sends a last confirmed STOCK |
+| `haldex_enabled` | `false` | Master toggle for the ESP-NOW link. Also required for the v4.8.0 STOCK after a 5-min cut — with X2 v3.0.0 it is the only restart safety net, so keep it ON in the car. Switching it OFF sends a last confirmed STOCK |
 | `haldex_espnow_peer_mac` | empty (broadcast) | MAC of the X2 to lock the pairing |
 
 (The old CAN-transport settings `haldex_bus` / `haldex_state_id` / `haldex_cmd_id`
@@ -209,7 +215,7 @@ live in the private BOT32-HALDEX firmware.)
 | Link banner red, `espnow_rx = 0` | WiFi power-save still on (flash v3.9.0/v1.5.0), wrong channel, or X2 off/asleep |
 | Live state shows "déconnecté" | X2 not powered or asleep (>15 min parked, no USB). The main relays ESP-NOW on its own and the phone UI works without a PC; only the **PC UI** needs the main connected over USB (or, in USB-C dev mode, the X2 connected to the PC) |
 | Modes/passthrough don't take effect | `haldex_enabled` is OFF on the main, or X2 offline. PC UI only: main not connected over USB (ESP-NOW source) or X2 not connected (USB-C source) |
-| Still FWD / 50-50 after a restart | X2 v3.0.0 has no restart fallback of its own: check `haldex_enabled` ON and BOT32 powered. BOT32 keeps re-sending STOCK until the X2 reports it (30 min max without any X2 STATE); if the LED keeps blinking the X2 link is down — press 🅾 STOCK once it is back |
+| Still FWD / 50-50 after a restart | Normal after a cut shorter than 5 min (the mode is kept): TC OFF then ON, or 🅾 STOCK. After a longer cut: check `haldex_enabled` ON and BOT32 on permanent power (X2 v3.0.0 has no fallback of its own). BOT32 keeps re-sending STOCK until the X2 reports it (30 min max without any X2 STATE); if the LED keeps blinking the X2 link is down — press 🅾 STOCK once it is back |
 | FWD / 50-50 selected but nothing happens | X2 not armed (badge 🟢 = passthrough ON) — arm it from the main's app |
 | Mode changed without touching the main | the AMOLED remote (Golf mode) sent a SET_MODE — the main shows the mode reported by the X2 |
 | Armed but no AWD change | passthrough still ON, or this controller variant uses a different demand byte (validate on bench) |

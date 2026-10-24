@@ -35,7 +35,7 @@ The role descriptions are kept in French, as in the project's shared map.
 
 | | |
 |---|---|
-| **Current version** | **v4.8.0** (`master`) — Haldex back to STOCK at every vehicle restart; engine codes cleared by **holding OK for 6 s** on the steering wheel; **to be validated in the car** |
+| **Current version** | **v4.8.0** (`master`) — Haldex back to STOCK after a cut of 5 min or more (shorter cut: mode kept); engine codes cleared by **holding OK for 6 s** on the steering wheel; **to be validated in the car** |
 | **Last stable version** | **v4.6.0 — STABLE** (git tag `v4.6.0`), confirmed in the car on 2026-10-12 — rollback point |
 | **Paired Haldex module** | BOT32-HALDEX **v3.0.0** in the car (stable, all 3 modes confirmed) — **not reflashed**, v4.8.0 works with it. BOT32-HALDEX v3.1.0 (adds STOCK after 5 s without CAN) is optional and not used |
 | **AMOLED remote** | not used in the Golf |
@@ -168,43 +168,57 @@ open at that moment** — a result older than the page is never shown.
 
 Requires *Haldex link enabled* (`haldex_enabled`, OFF by default) — **keep it ON in the car**.
 
-**Back to STOCK at every vehicle restart (v4.8.0, works with the X2 v3.0.0 in the car —
-no X2 reflash).** The X2 is on permanent +12 V and its light sleep keeps RAM, so it does
-not reboot with the ignition: on v3.0.0 it keeps its last mode across a key cycle, and
-**BOT32 is the only thing that brings it back to STOCK**:
-- BOT32 forces STOCK at its own boot, on every ignition change (Kl15 from
-  Klemmen_Status_01 `0x3C0` byte[2] bit 1, vehicle-confirmed: `0x00` → `0x03` at key-on)
-  and when the cluster bus wakes after ≥ 3 s of silence.
+**Back to STOCK after a long cut (v4.8.0, works with the X2 v3.0.0 in the car — no X2
+reflash).** The X2 is on permanent +12 V and its light sleep keeps RAM, so it does not
+reboot with the ignition: on v3.0.0 it keeps its last mode across a key cycle, and
+**BOT32 is the only thing that brings it back to STOCK**. The rule:
+- **A cut shorter than 5 min keeps the current mode**: key off/on, stall + restart, CAN or
+  radio drop-out, BOT32 reset (brownout while cranking, crash — BOT32 then takes the mode
+  back from the X2).
+- **A cut of 5 min or more → STOCK.** A cut = ignition OFF (Kl15 from Klemmen_Status_01
+  `0x3C0` byte[2] bit 1, vehicle-confirmed: `0x00` → `0x03` at key-on) or the cluster bus
+  silent. When the cut reaches 5 min, BOT32 sends STOCK right away — the X2 is still awake
+  (it only sleeps after 15 min without CAN) — and again when the ignition comes back if
+  that STOCK was not confirmed. The threshold is `IGN_LONG_CUT_MS` in `ignition_watch.h`
+  (5 min; set it to 10 min if preferred).
+- A **full power-up of BOT32** (battery reconnected, BOT32 plugged in) also gives STOCK:
+  the length of the cut is unknown. BOT32 must be on **permanent** power (OBD-II pin 16)
+  to time the cut; powered only with the key, it would give STOCK at every start.
 - STOCK is re-sent every 500 ms **until the X2 itself reports STOCK** — normally < 1 s.
-  If the X2 is asleep (ESP-NOW off after 15 min parked), the re-send keeps going and the
-  X2 gets STOCK about 1 s after it wakes. It gives up only after 10 s of X2 link without a
-  STOCK report, or 30 min without hearing the X2 at all (X2 missing / unpowered).
+  If the X2 is asleep (ESP-NOW off), the re-send keeps going and the X2 gets STOCK about
+  1 s after it wakes. It gives up only after 10 s of X2 link without a STOCK report, or
+  30 min without hearing the X2 at all (X2 missing / unpowered).
 - Every other STOCK uses the same confirmed re-send: 🅾 STOCK button, engine-code clear,
   TC back ON after a combo. A mode chosen from the app or a combo cancels the re-send.
 - Switching the Haldex link **OFF** sends a last confirmed STOCK; after that BOT32 no longer
-  talks to the X2, so **nothing brings it back to STOCK at a restart** while the link is OFF.
-- An X2 radio drop-out while driving never sends STOCK (only the events above do).
-- If the X2 stays offline (LED blinking), check the mode on the phone page once it is back.
-  The optional X2 v3.1.0 would add its own fallback (STOCK after 5 s without CAN).
+  talks to the X2, so **nothing brings it back to STOCK** while the link is OFF.
+- The optional X2 v3.1.0 would add its own fallback (STOCK after 5 s without CAN), which
+  does not match this rule — another reason to keep the X2 on v3.0.0.
+
+**Combo exit = the driver turns TC back ON (v4.8.0).** VW turns TC back ON by itself at
+every ignition, so after a short cut the combo mode is kept and that automatic TC ON does
+not release it. Only a TC OFF → ON change made by the driver counts (seen in a continuous
+TC frame stream with the ignition ON, held 500 ms). After a restart, to leave FWD/50-50:
+**TC OFF then ON again**, or the 🅾 STOCK button. A lost TC frame, the ignition being cut
+or an ESP restart no longer drop the mode.
 
 **Combo held through loop stalls (v4.8.0).** A long pause in BOT32's main loop (e.g. a
 slow web request) overflows the 32-frame CAN receive buffer, and the frames read right
-after it may not include the TC frame. Combo frames now go stale on *polled* time: each
-CAN read counts for at most 100 ms, so a pause no longer drops a combo FWD/50-50 to STOCK,
-while a real loss of the bus still does after about 2 s of reading.
+after it may not include the TC frame. Combo frames go stale on *polled* time (each CAN
+read counts for at most 100 ms), so a pause never looks like lost frames.
 
 | Mode | How to select it |
 |---|---|
 | **FWD** (front wheels only) | **Hazard ON + TC OFF**, in any order, **hand brake down** — or the 🔥 FWD button |
 | **50-50** (max lock) | the **same combo with the hand brake pulled** when it completes — or the 🚀 50/50 button |
-| **STOCK** | **turn TC back ON** (exits a combo-selected mode) — or the 🅾 STOCK button (the only exit for a mode chosen in the app) |
+| **STOCK** | **turn TC back ON** (exits a combo-selected mode; after a restart: TC OFF then ON) — or the 🅾 STOCK button (the only exit for a mode chosen in the app) — or a cut of 5 min or more |
 
 - The button states must be fresh (< 2 s). Once a combo mode is held, re-pressing the
   hazards changes nothing while TC stays OFF; hazards and hand brake can then be released.
 - FWD and 50-50 only act when the X2 is **ARMED** (passthrough OFF). **Arming is done only
   from the app** (`/settings` → *Armer / Désarmer le X2*, or the PC Haldex card).
   The X2 always boots in STOCK mode (its arming state is kept in its own NVS), but a vehicle
-  restart does not reboot it — see *Back to STOCK at every vehicle restart* above.
+  restart does not reboot it — see *Back to STOCK after a long cut* above.
 - The **Remote32 AMOLED remote** (Golf mode, not used at the moment) can also set STOCK / FWD /
   50-50; it cannot arm. BOT32 cannot see its commands: choose a remote mode once the X2 shows STOCK.
 - No timed auto-revert, no pedal threshold.
@@ -241,9 +255,10 @@ Car side (details in [docs/wiring_waveshare_hat.md](docs/wiring_waveshare_hat.md
 - HAT 120 Ω jumpers: **ON on the bench**, **OFF in the car** (the buses are already terminated).
 - Power in the car, as documented: LM2596 5 V buck from OBD-II pin 16, 2 A fuse,
   1N5408 diode (BOM ≈ $27 CAD on top of the HAT). Whether pin 16 is cut with the key
-  OFF on this car is **to be confirmed** — the firmware has no sleep mode. Either way the
-  Haldex restart STOCK works: permanent power → STOCK at key-off (X2 still awake), at key-on
-  and on bus wake; switched power → STOCK at BOT32's boot after key-on.
+  OFF on this car is **to be confirmed** — the firmware has no sleep mode. The Haldex
+  "STOCK after a 5-min cut" rule needs **permanent** power (pin 16 is permanent per the
+  OBD-II standard): powered only with the key, BOT32 cannot time the cut and gives STOCK at
+  every start.
 
 ## State machine and LED
 
@@ -338,8 +353,9 @@ On the very first boot (or after a settings-version change) the NVS line reads
   already sends everything else) plus UDS requests on the OBD bus.
 - Engine-code clearing targets the **engine ECU only**, with BOT32 silent on both buses.
 - Haldex: the X2 boots in STOCK mode but does not reboot at a vehicle restart (permanent
-  +12 V); with the X2 v3.0.0 in the car, the STOCK at every restart is sent by BOT32 (Haldex
-  link enabled). FWD / 50-50 need explicit arming from the app.
+  +12 V); with the X2 v3.0.0 in the car, BOT32 sends STOCK after a cut of 5 min or more
+  (Haldex link enabled) and a shorter cut keeps the mode. FWD / 50-50 need explicit arming
+  from the app.
 
 ## In-vehicle vs bench
 

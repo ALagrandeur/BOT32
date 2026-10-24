@@ -39,30 +39,44 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   rapides de v4.7.0). Relâcher avant 6 s annule ; un seul déclenchement par appui (relâcher
   avant le suivant) ; 10 s d'inhibition après un déclenchement. Éviter l'écran des données de
   trajet du combiné : un appui long sur OK les remet à zéro.
-- **Haldex remis en STOCK à chaque redémarrage du véhicule — par le principal seul, sans
-  reflasher le X2.** Le X2 est sur 12 V permanent et sa veille légère garde la mémoire : en
-  v3.0.0 (celui de la voiture) le dernier mode survit à une coupure du contact, et **BOT32 est
-  le seul à le remettre en STOCK**.
-  - **BOT32** force STOCK à son démarrage, à chaque coupure et remise du contact (Kl15 lu dans
-    Klemmen_Status_01 `0x3C0` octet 2 bit 1, confirmé par la capture `1.csv` : `00` → `03` à la
-    mise du contact) et au réveil du bus cluster après ≥ 3 s de silence.
+- **Haldex remis en STOCK après une longue coupure — par le principal seul, sans reflasher le
+  X2.** Le X2 est sur 12 V permanent et sa veille légère garde la mémoire : en v3.0.0 (celui de
+  la voiture) le dernier mode survit à une coupure du contact, et **BOT32 est le seul à le
+  remettre en STOCK**. Règle (demande du 2026-10-24) :
+  - **Coupure de moins de 5 min = mode gardé** : contact coupé puis remis, calage + redémarrage,
+    coupure CAN ou radio, redémarrage de BOT32 (chute de tension au démarreur, plantage — BOT32
+    reprend alors le mode rapporté par le X2).
+  - **Coupure de 5 min ou plus = STOCK.** Coupure = contact OFF (Kl15 lu dans Klemmen_Status_01
+    `0x3C0` octet 2 bit 1, confirmé par la capture `1.csv` : `00` → `03` à la mise du contact) ou
+    bus cluster silencieux. À 5 min, BOT32 envoie STOCK tout de suite — le X2 est encore éveillé
+    (il ne dort qu'après 15 min sans CAN) — et le renvoie à la remise du contact s'il n'a pas été
+    confirmé. Seuil : `IGN_LONG_CUT_MS` dans `ignition_watch.h` (5 min ; 10 min possible).
+  - **Mise sous tension complète de BOT32** (batterie rebranchée, BOT32 branché) = STOCK : durée de
+    coupure inconnue. BOT32 doit être sur alimentation **permanente** (OBD broche 16) pour mesurer la
+    coupure ; alimenté par la clé, il donnerait STOCK à chaque démarrage.
   - STOCK est renvoyé toutes les 500 ms **jusqu'à ce que le X2 lui-même le confirme** (normalement
-    < 1 s). Si le X2 dort (ESP-NOW coupé après 15 min de stationnement), le renvoi continue et le X2
-    reçoit STOCK environ 1 s après son réveil. Abandon seulement après 10 s de liaison sans
-    confirmation, ou 30 min sans aucune nouvelle du X2 (absent / pas alimenté).
+    < 1 s). Si le X2 dort (ESP-NOW coupé), le renvoi continue et le X2 reçoit STOCK environ 1 s
+    après son réveil. Abandon seulement après 10 s de liaison sans confirmation, ou 30 min sans
+    aucune nouvelle du X2 (absent / pas alimenté).
   - Tous les autres retours en STOCK utilisent le même renvoi confirmé : bouton 🅾 STOCK,
     effacement des codes, TC remis après un combo. Un mode choisi dans l'app ou par combo annule
-    le renvoi. Une coupure radio du X2 en roulant n'envoie jamais STOCK.
+    le renvoi.
   - Exige la **liaison Haldex activée** dans les réglages de BOT32 (déjà nécessaire pour les combos).
     La désactiver envoie un dernier STOCK confirmé ; ensuite, **plus rien ne remet le X2 en STOCK**
-    au redémarrage tant qu'elle reste désactivée. Activée en cours de route (après un démarrage où
-    elle était désactivée), la liaison marche tout de suite, sans couper le point d'accès WiFi
-    (avant : seulement après un redémarrage de BOT32).
-  - Le X2 v3.1.0 (optionnel, non flashé) ajouterait son propre filet : STOCK après 5 s sans CAN.
-- **Combo FWD/50-50 maintenu malgré une pause de la boucle** (requête web lente, etc.) : la pause
-  fait déborder le tampon de réception CAN (32 trames) et la trame TC peut manquer à la lecture
-  suivante. La fraîcheur des trames du combo se compte maintenant en temps de lecture CAN (100 ms
-  max par lecture) : une pause ne fait plus retomber en STOCK ; une vraie perte du bus, si (≈ 2 s).
+    tant qu'elle reste désactivée. Activée en cours de route (après un démarrage où elle était
+    désactivée), la liaison marche tout de suite, sans couper le point d'accès WiFi (avant :
+    seulement après un redémarrage de BOT32).
+  - Le X2 v3.1.0 (optionnel, non flashé) ajouterait son propre retour en STOCK après 5 s sans CAN,
+    ce qui ne respecte pas cette règle : raison de plus pour garder le X2 en v3.0.0.
+- **Sortie du combo = le conducteur rallume le TC.** VW rallume le TC tout seul à chaque mise du
+  contact : après une courte coupure, le mode combo est gardé et ce TC revenu seul ne le relâche
+  pas. Seul un passage TC OFF → ON fait par le conducteur compte (trames TC continues, contact mis,
+  tenu 500 ms). Après un redémarrage, pour sortir de FWD/50-50 : **TC OFF puis ON**, ou bouton
+  🅾 STOCK. Une trame TC perdue, la coupure du contact ou un redémarrage de l'ESP ne relâchent plus
+  le mode (avant : STOCK après 2 s sans trame TC).
+- **Combo maintenu malgré une pause de la boucle** (requête web lente, etc.) : la pause fait
+  déborder le tampon de réception CAN (32 trames). La fraîcheur des trames du combo se compte en
+  temps de lecture CAN (100 ms max par lecture) : une pause ne ressemble jamais à des trames perdues.
 
 ### Nouveautés v4.7.0 (déclencheur remplacé en v4.8.0 par « OK maintenu 6 s »)
 - **Effacement des codes moteur au volant** : **bouton OK appuyé 10 fois en moins de 6 s**
@@ -125,7 +139,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Persistance** : le passthrough est **persisté en NVS** ; le **mode boot TOUJOURS STOCK**
   (sécurité — rien ne s'active tout seul au démarrage du X2). ⚠ Le X2 ne redémarre pas avec
   l'auto (12 V permanent, la veille garde la RAM) : en v3.0.0 le mode survit à un cycle de
-  contact ; c'est BOT32 v4.8.0 (liaison Haldex activée) qui le remet en STOCK à chaque redémarrage.
+  contact ; c'est BOT32 v4.8.0 (liaison Haldex activée) qui le remet en STOCK après une coupure de 5 min ou plus.
 
 ---
 
@@ -196,7 +210,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — version stable précédente |
 | **v4.6.0** | 🏁 **STABLE** — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **confirmée en voiture** (2026-10-12) |
 | v4.7.0 | Effacement des codes moteur au volant (OK × 10 en < 6 s) + bandeau de confirmation sur le cellulaire — **à valider en voiture** |
-| v4.8.0 | Haldex remis en STOCK à chaque redémarrage (contact, démarrage BOT32, réveil du bus), renvoyé jusqu'à confirmation du X2 — fonctionne avec le X2 v3.0.0, sans reflash (liaison Haldex activée) ; effacement des codes au volant par **OK maintenu 6 s** — **à valider en voiture** |
+| v4.8.0 | Haldex remis en STOCK après une coupure de 5 min ou plus (coupure plus courte : mode gardé), renvoyé jusqu'à confirmation du X2 — fonctionne avec le X2 v3.0.0, sans reflash (liaison Haldex activée) ; sortie du combo par le conducteur (TC OFF → ON) ; effacement des codes au volant par **OK maintenu 6 s** — **à valider en voiture** |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -222,7 +236,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
   pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
-- ⏳ **Valider en voiture** le retour en STOCK à chaque redémarrage (v4.8.0 seul, X2 resté en v3.0.0, liaison Haldex activée : mettre FWD, couper le contact, redémarrer → STOCK sur le cellulaire ; refaire après plus de 15 min de stationnement, X2 en veille), l'effacement au volant (OK maintenu 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
+- ⏳ **Valider en voiture** la règle des 5 min (v4.8.0 seul, X2 resté en v3.0.0, liaison Haldex activée) : FWD par combo, contact coupé 30 s puis remis → FWD gardé, puis TC OFF → ON → STOCK ; FWD, contact coupé plus de 5 min → STOCK sur le cellulaire à la remise du contact ; l'effacement au volant (OK maintenu 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---
