@@ -490,7 +490,8 @@
       <p class="muted small" style="margin-top: 8px;" id="haldex-cmd-status">
         Cliquer sur un mode pour l'envoyer au module MITM.
         Combo physique : <b>Hazard ON + TC OFF</b> = FWD (frein à main baissé) ou
-        50/50 (frein à main tiré). Rallumer le TC = retour STOCK.
+        50/50 (frein à main tiré). Rallumer le TC = retour STOCK (après un redémarrage : TC OFF puis ON).
+        Auto coupée 5 min ou plus = STOCK ; coupure plus courte = mode gardé.
       </p>
 
       <h4 class="subtitle">🔒 Passthrough (armement MITM)</h4>
@@ -657,7 +658,7 @@
       <span class="summary-hint muted small">Haldex, effacement des codes, boost</span>
     </summary>
     <div class="collapsible-body">
-      <div class="combo-warn">⚠ Haldex : les modes FWD / 50-50 n'agissent que si le X2 est <b>🔴 ARMÉ</b>. Au démarrage, toujours <b>STOCK</b>.</div>
+      <div class="combo-warn">⚠ Haldex : les modes FWD / 50-50 n'agissent que si le X2 est <b>🔴 ARMÉ</b>. Auto coupée <b>5 min ou plus</b> : retour en <b>STOCK</b> (coupure plus courte : le mode est gardé).</div>
       <div class="combo-list">
         <div class="combo">
           <h4>🔥 FWD (traction avant)</h4>
@@ -667,7 +668,7 @@
         <div class="combo">
           <h4>🅾 Retour STOCK</h4>
           <span class="key">🚫 TC ON</span>
-          <p class="muted small">Rallumer le Traction Control (si FWD ou 50/50 a été activé par la combinaison). Si le mode vient de l'app : bouton STOCK.</p>
+          <p class="muted small">Rallumer le Traction Control (si FWD ou 50/50 a été activé par la combinaison). Après un redémarrage, le TC revient seul à ON sans changer le mode : <b>TC OFF puis ON</b>. Si le mode vient de l'app : bouton STOCK.</p>
         </div>
         <div class="combo">
           <h4>🚀 50/50</h4>

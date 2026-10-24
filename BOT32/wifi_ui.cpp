@@ -152,7 +152,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 
 <details class="help">
   <summary>📖 Aide-mémoire — combinaisons</summary>
-  <div class="warn">⚠ Haldex : les modes FWD / 50-50 n'agissent que si le X2 est <b>🔴 ARMÉ</b>. Au démarrage, toujours <b>STOCK</b>.</div>
+  <div class="warn">⚠ Haldex : les modes FWD / 50-50 n'agissent que si le X2 est <b>🔴 ARMÉ</b>. Auto coupée <b>5 min ou plus</b> : retour en <b>STOCK</b> (coupure plus courte : le mode est gardé).</div>
   <div class="combo">
     <h3>🔥 FWD (traction avant)</h3>
     <span class="k">⚠ Hazard ON</span><span class="plus">+</span><span class="k">🚫 TC OFF</span>
@@ -161,7 +161,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div class="combo">
     <h3>🅾 Retour STOCK</h3>
     <span class="k">🚫 TC ON</span>
-    <div class="note">Rallumer le Traction Control (si FWD ou 50/50 a été activé par la combinaison). Si le mode vient de l'app : bouton 🅾 STOCK.</div>
+    <div class="note">Rallumer le Traction Control (si FWD ou 50/50 a été activé par la combinaison). Après un redémarrage, le TC revient seul à ON sans changer le mode : <b>TC OFF puis ON</b>. Si le mode vient de l'app : bouton 🅾 STOCK.</div>
   </div>
   <div class="combo">
     <h3>🚀 50/50</h3>
