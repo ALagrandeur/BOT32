@@ -24,6 +24,14 @@ void haldex_espnow_init();
 // by the peer — ESP-NOW is best-effort).
 bool haldex_espnow_send_mode(uint8_t mode);
 
+// v4.8.0: true once ESP-NOW is initialised and the STA interface it sends on is
+// up. Unlike the send functions, this never starts ESP-NOW.
+bool haldex_espnow_ready();
+
+// v4.8.0: the WiFi driver was de-initialised (AP stopped from AP-only mode):
+// ESP-NOW is gone, the next send / haldex_espnow_init() sets it up again.
+void haldex_espnow_invalidate();
+
 // v3.2.0: send a "set passthrough" command to the peer over ESP-NOW.
 // passthrough=true => MITM transparent (safe); false => MITM armed.
 bool haldex_espnow_send_passthrough(bool passthrough);

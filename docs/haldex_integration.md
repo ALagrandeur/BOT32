@@ -1,6 +1,7 @@
 # BOT32 — Haldex AWD link integration guide
 
-> Applies to BOT32 main **v4.6.0** and BOT32-HALDEX **v3.0.0**.
+> Applies to BOT32 main **v4.8.0** (last stable: v4.6.0) and BOT32-HALDEX **v3.0.0** (the firmware
+> in the car; v3.1.0 is an optional update, not used). The AMOLED remote is not used in the Golf.
 
 BOT32 main is the **client**; it drives an external **MITM module** that does the
 actual man-in-the-middle work on the private Haldex CAN bus. The devices talk
@@ -101,10 +102,13 @@ by the X2** (STATE), and its STOCK button always re-sends an explicit STOCK.
 
 The X2 **persists the passthrough flag in NVS** and restores it at boot (first boot =
 passthrough ON = transparent bridge). The **mode always boots in STOCK** (not persisted),
-and since BOT32 v4.8.0 / X2 v3.1.0 it also **returns to STOCK at every vehicle restart**
-(BOT32 forces STOCK on ignition changes, on its own boot and on CAN-bus wake; the X2
-falls back to STOCK after 5 s without CAN),
-so nothing is modified at power-up even if the X2 was switched off armed (honours "no
+and since BOT32 v4.8.0 it is also **put back to STOCK at every vehicle restart** by BOT32
+(STOCK forced on ignition changes, on BOT32's own boot and on CAN-bus wake, re-sent until
+the X2 reports STOCK, also while the X2 sleeps — only while `haldex_enabled` is ON). With
+X2 v3.0.0 (the firmware in the car) this relies entirely on BOT32: the X2 does not reboot
+with the ignition and keeps its mode on its own. The optional X2 v3.1.0 would add a
+fallback to STOCK after 5 s without CAN.
+So nothing is modified at X2 power-up even if the X2 was switched off armed (honours "no
 guessed frame emitted by default"). BOT32 main must explicitly send
 **SET_PASSTHROUGH OFF** to arm the MITM (UI has a modal confirmation). Only BOT32's own
 UIs can arm (phone, or PC — which in USB-C development mode sends the command straight to
@@ -190,7 +194,7 @@ live in the private BOT32-HALDEX firmware.)
 
 | Setting | Default | Description |
 |---|---|---|
-| `haldex_enabled` | `false` | Master toggle for the ESP-NOW link |
+| `haldex_enabled` | `false` | Master toggle for the ESP-NOW link. Also required for the v4.8.0 STOCK at every restart — with X2 v3.0.0 it is the only restart safety net, so keep it ON in the car. Switching it OFF sends a last confirmed STOCK |
 | `haldex_espnow_peer_mac` | empty (broadcast) | MAC of the X2 to lock the pairing |
 
 (The old CAN-transport settings `haldex_bus` / `haldex_state_id` / `haldex_cmd_id`
@@ -205,6 +209,7 @@ live in the private BOT32-HALDEX firmware.)
 | Link banner red, `espnow_rx = 0` | WiFi power-save still on (flash v3.9.0/v1.5.0), wrong channel, or X2 off/asleep |
 | Live state shows "déconnecté" | X2 not powered or asleep (>15 min parked, no USB). The main relays ESP-NOW on its own and the phone UI works without a PC; only the **PC UI** needs the main connected over USB (or, in USB-C dev mode, the X2 connected to the PC) |
 | Modes/passthrough don't take effect | `haldex_enabled` is OFF on the main, or X2 offline. PC UI only: main not connected over USB (ESP-NOW source) or X2 not connected (USB-C source) |
+| Still FWD / 50-50 after a restart | X2 v3.0.0 has no restart fallback of its own: check `haldex_enabled` ON and BOT32 powered. BOT32 keeps re-sending STOCK until the X2 reports it (30 min max without any X2 STATE); if the LED keeps blinking the X2 link is down — press 🅾 STOCK once it is back |
 | FWD / 50-50 selected but nothing happens | X2 not armed (badge 🟢 = passthrough ON) — arm it from the main's app |
 | Mode changed without touching the main | the AMOLED remote (Golf mode) sent a SET_MODE — the main shows the mode reported by the X2 |
 | Armed but no AWD change | passthrough still ON, or this controller variant uses a different demand byte (validate on bench) |

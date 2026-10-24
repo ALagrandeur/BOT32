@@ -11,7 +11,9 @@
 #include "serial_proto.h"
 #include "button_sniffer.h"
 #include "config.h"
+#include "haldex_espnow.h"
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
 
@@ -706,13 +708,33 @@ void wifi_ui_init() {
   g_active = false;
 }
 
+void wifi_ui_haldex_link_on() {
+  // Add STA in place (AP -> AP+STA, esp_wifi_set_mode only): the phone stays
+  // connected and ESP-NOW is kept. Restarting the AP from AP-only mode would
+  // de-initialise the WiFi driver, and ESP-NOW with it.
+  if (WiFi.getMode() == WIFI_AP) {
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.setSleep(false);
+    esp_wifi_set_ps(WIFI_PS_NONE);
+  }
+  haldex_espnow_init();   // no-op if running; sets ESP-NOW up again after a driver restart
+}
+
+// softAPdisconnect(true) from AP-only mode turns WiFi off (driver de-init),
+// which wipes ESP-NOW: tell haldex_espnow so it is set up again when needed.
+static void stop_ap() {
+  bool driver_off = (WiFi.getMode() == WIFI_AP);
+  WiFi.softAPdisconnect(true);
+  if (driver_off) haldex_espnow_invalidate();
+}
+
 void wifi_ui_apply() {
   const Settings& s = settings_get();
 
   if (!s.wifi_enabled) {
     if (g_active) {
       g_server.stop();
-      WiFi.softAPdisconnect(true);
+      stop_ap();
       Serial.println("[wifi_ui] AP stopped");
     }
     g_active = false;
@@ -724,7 +746,7 @@ void wifi_ui_apply() {
   // down + restart with current SSID/password.
   if (g_active) {
     g_server.stop();
-    WiFi.softAPdisconnect(true);
+    stop_ap();
     delay(100);
     g_active = false;
   }

@@ -40,12 +40,16 @@ void haldex_link_init() {
   haldex_espnow_init();
 }
 
-bool haldex_link_set_mode(uint8_t mode) {
+// v4.8.0: link_off_stock lets the forced STOCK out with the link disabled (the
+// last STOCK when the user switches the link OFF) — only on an ESP-NOW link that
+// is already running: never start it here with the link disabled.
+static bool send_mode(uint8_t mode, bool log, bool link_off_stock) {
   const Settings& s = settings_get();
-  if (!s.haldex_enabled) return false;
+  if (!s.haldex_enabled && !(link_off_stock && mode == 0 && haldex_espnow_ready())) return false;
   if (mode > 2) return false;   // sanity bound (STOCK/FWD/5050)
 
   bool ok = haldex_espnow_send_mode(mode);
+  if (!log) return ok;
   if (ok) {
     Serial.print("[haldex/espnow] sent set_mode=");
     Serial.println(mode);
@@ -54,6 +58,10 @@ bool haldex_link_set_mode(uint8_t mode) {
   }
   return ok;
 }
+
+bool haldex_link_set_mode(uint8_t mode) { return send_mode(mode, true, false); }
+
+bool haldex_link_send_forced_stock(bool log) { return send_mode(0, log, true); }
 
 bool haldex_link_set_passthrough(bool passthrough) {
   const Settings& s = settings_get();

@@ -453,7 +453,7 @@ bool serial_proto_apply_setting(const char* key, JsonVariantConst v) {
   else if (strcmp(key, "bench_speed_kmh")    == 0) ok = settings_set_bench_speed_kmh(v    | 0);
   else if (strcmp(key, "bench_test_bus")     == 0) ok = settings_set_bench_test_bus(v     | 0);
   // v2.9.0: bench_display_value_pct + bench_force_override setters removed.
-  else if (strcmp(key, "haldex_enabled")        == 0) ok = settings_set_haldex_enabled(v     | false);
+  else if (strcmp(key, "haldex_enabled")        == 0) { ok = settings_set_haldex_enabled(v     | false); if (settings_get().haldex_enabled) wifi_ui_haldex_link_on(); }
   // v3.2.0: haldex_bus/state_id/cmd_id/transport setters removed (ESP-NOW only).
   else if (strcmp(key, "haldex_espnow_peer_mac") == 0) ok = settings_set_haldex_espnow_peer_mac(v | "");
   return ok;

@@ -137,8 +137,10 @@ static void on_data_sent_cb(const uint8_t* mac, esp_now_send_status_t status) {
 void haldex_espnow_init() {
   if (g_initialized) return;
 
-  // WiFi must be in STA mode for ESP-NOW (no AP connection needed)
-  WiFi.mode(WIFI_STA);
+  // WiFi must have STA for ESP-NOW (no AP connection needed). v4.8.0: a running
+  // phone AP is kept (AP -> AP+STA) when ESP-NOW is (re)started after boot.
+  wifi_mode_t wm = WiFi.getMode();
+  if (!(wm & WIFI_MODE_STA)) WiFi.mode(wm == WIFI_MODE_AP ? WIFI_AP_STA : WIFI_STA);
   WiFi.disconnect();
 
   // v3.9.0 CRITICAL: disable WiFi modem power-save. With the phone AP OFF the
@@ -208,6 +210,10 @@ void haldex_espnow_init() {
   g_initialized = true;
 }
 
+bool haldex_espnow_ready() { return g_initialized && (WiFi.getMode() & WIFI_MODE_STA); }
+
+void haldex_espnow_invalidate() { g_initialized = false; }
+
 bool haldex_espnow_send_mode(uint8_t mode) {
   if (!g_initialized) {
     haldex_espnow_init();
@@ -217,11 +223,20 @@ bool haldex_espnow_send_mode(uint8_t mode) {
 
   uint8_t pkt[PKT_LEN_SET_MODE] = { MAGIC_0, MAGIC_1, PKT_TYPE_SET_MODE, mode };
   esp_err_t r = esp_now_send(g_peer_mac, pkt, PKT_LEN_SET_MODE);
+  // v4.8.0: forced STOCK re-sends every 500 ms -> log the 1st failure, then 1 in 20.
+  static uint32_t s_fails = 0;
   if (r != ESP_OK) {
-    Serial.print("[espnow] send_mode failed, err=0x");
-    Serial.println(r, HEX);
+    if (r == ESP_ERR_ESPNOW_NOT_INIT) g_initialized = false;   // WiFi driver was restarted
+    if (s_fails++ % 20 == 0) {
+      Serial.print("[espnow] send_mode failed, err=0x");
+      Serial.print(r, HEX);
+      Serial.print(" (x");
+      Serial.print(s_fails);
+      Serial.println(")");
+    }
     return false;
   }
+  s_fails = 0;
   return true;
 }
 

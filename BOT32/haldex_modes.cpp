@@ -39,12 +39,19 @@ static bool     g_prev_combo     = false;   // rising-edge detector
 static bool     g_telltale_phase = false;
 static uint32_t g_last_blink_ms  = 0;
 static bool     g_passthrough_desired = true;  // safe default (X2 boots ON too)
-// v4.8.0 — forced-STOCK re-send window (see haldex_modes_force_stock)
-#define FORCE_STOCK_WINDOW_MS  10000
-#define FORCE_STOCK_RESEND_MS    500
-static bool     g_force_pending  = false;
-static uint32_t g_force_start_ms = 0;
-static uint32_t g_force_next_ms  = 0;
+// v4.8.0 — forced STOCK (see haldex_modes_force_stock). The X2 v3.0.0 in the
+// car never goes back to STOCK on its own, so STOCK is re-sent until the X2
+// itself reports it, including while the X2 sleeps (ESP-NOW down until it wakes).
+#define FORCE_STOCK_RESEND_MS    500       // re-send period
+#define FORCE_STOCK_WINDOW_MS  10000       // give up after 10 s of X2 link without STOCK
+#define FORCE_STOCK_MAX_MS   1800000UL     // ... or 30 min without ever hearing the X2
+static bool     g_force_pending   = false;
+static bool     g_force_link_off  = false;  // started by switching the link OFF
+static uint32_t g_force_start_ms  = 0;
+static uint32_t g_force_next_ms   = 0;
+static uint32_t g_force_last_ms   = 0;      // last force_stock_tick() time
+static uint32_t g_force_online_ms = 0;      // X2 link time since the force started
+static bool     g_prev_enabled    = false;  // haldex_enabled at the previous tick
 // v4.8.0 — polled time since each combo frame was last seen (see track_frame)
 static uint32_t g_prev_poll_ms   = 0;
 static uint32_t g_hz_missed_ms   = COMBO_FRESH_MS;
@@ -58,6 +65,9 @@ void haldex_modes_init() {
   g_telltale_phase = false;
   g_last_blink_ms  = 0;
   g_passthrough_desired = true;
+  g_force_pending  = false;
+  g_force_link_off = false;
+  g_prev_enabled   = settings_get().haldex_enabled;
   g_prev_poll_ms   = 0;
   g_hz_missed_ms   = COMBO_FRESH_MS;
   g_tc_missed_ms   = COMBO_FRESH_MS;
@@ -75,18 +85,36 @@ static void apply_mode(uint8_t mode) {
   Serial.println(g_mode);
 }
 
+// Internal: STOCK now + re-sent by force_stock_tick() until the X2 reports it.
+static void force_stock_start(const char* reason, bool link_off) {
+  uint32_t now = millis();
+  g_mode_from_combo = false;
+  apply_mode(HALDEX_M_STOCK);
+  haldex_link_send_forced_stock(true);        // always (re)send, even if g_mode was STOCK
+  g_force_pending   = true;
+  g_force_link_off  = link_off;
+  g_force_start_ms  = now;
+  g_force_next_ms   = now + FORCE_STOCK_RESEND_MS;
+  g_force_last_ms   = now;
+  g_force_online_ms = 0;
+  Serial.print("[haldex_modes] forced STOCK: ");
+  Serial.println(reason ? reason : "");
+}
+
 bool haldex_modes_set_manual(uint8_t mode) {
   const Settings& s = settings_get();
   if (!s.haldex_enabled) return false;
   if (mode > HALDEX_M_5050) return false;
 
+  // v4.8.0: an explicit STOCK (app, USB, engine-code clear) is always (re)sent
+  // and re-sent until the X2 confirms it — the X2 may still be in FWD/50-50
+  // while g_mode already reads STOCK (lost broadcast, BOT32 rebooted, USB-C dev link).
+  if (mode == HALDEX_M_STOCK) {
+    force_stock_start("commande STOCK", false);
+    return true;
+  }
   // Manual command clears the combo latch so the two sources don't fight.
   g_mode_from_combo = false;
-  // An explicit STOCK is always (re)sent: the X2 may still be in FWD/50-50 while
-  // g_mode already reads STOCK (lost broadcast, BOT32 rebooted, USB-C dev link).
-  if (mode == HALDEX_M_STOCK && g_mode == HALDEX_M_STOCK) {
-    haldex_link_set_mode(HALDEX_M_STOCK);
-  }
   apply_mode(mode);
   return true;
 }
@@ -94,15 +122,7 @@ bool haldex_modes_set_manual(uint8_t mode) {
 void haldex_modes_force_stock(const char* reason) {
   const Settings& s = settings_get();
   if (!s.haldex_enabled) return;
-  uint32_t now = millis();
-  g_mode_from_combo = false;
-  apply_mode(HALDEX_M_STOCK);
-  haldex_link_set_mode(HALDEX_M_STOCK);       // always (re)send, even if g_mode was STOCK
-  g_force_pending  = true;
-  g_force_start_ms = now;
-  g_force_next_ms  = now + FORCE_STOCK_RESEND_MS;
-  Serial.print("[haldex_modes] forced STOCK: ");
-  Serial.println(reason ? reason : "");
+  force_stock_start(reason, false);
 }
 
 bool haldex_modes_force_stock_pending() { return g_force_pending; }
@@ -139,20 +159,35 @@ static void track_combo_frames() {
 
 static void force_stock_tick(uint32_t now) {
   if (!g_force_pending) return;
+  int32_t dt = (int32_t)(now - g_force_last_ms);
+  if (dt > 0) g_force_last_ms = now; else dt = 0;
   HaldexState hx = haldex_link_get_state();
-  if (hx.valid && haldex_link_get_age_ms() < HALDEX_LINK_STALE_MS &&
-      hx.current_mode == HALDEX_M_STOCK &&
-      (int32_t)(now - g_force_start_ms) >= (int32_t)FORCE_STOCK_RESEND_MS) {
+  uint32_t age = millis() - hx.last_rx_ms;   // from the snapshot (STATE comes from the WiFi task)
+  bool x2_online = hx.valid && age < HALDEX_LINK_STALE_MS;
+  if (x2_online) g_force_online_ms += (uint32_t)dt;
+  int32_t since = (int32_t)(now - g_force_start_ms);
+  // Only a STATE received after the force started proves STOCK: an older one
+  // (radio drop-out right after a FWD command) may predate the change.
+  if (x2_online && hx.current_mode == HALDEX_M_STOCK &&
+      (int32_t)(hx.last_rx_ms - g_force_start_ms) > 0 &&
+      since >= (int32_t)FORCE_STOCK_RESEND_MS) {
     g_force_pending = false;                   // X2 confirmed STOCK
     Serial.println("[haldex_modes] X2 confirmed STOCK");
     return;
   }
-  if ((int32_t)(now - g_force_start_ms) >= (int32_t)FORCE_STOCK_WINDOW_MS) {
-    g_force_pending = false;                   // give up re-sending (X2 off/asleep)
+  // Give up: link switched OFF -> 10 s; otherwise 10 s of X2 link without a
+  // STOCK report, or 30 min without ever hearing the X2 (missing / unpowered).
+  // While the X2 sleeps the re-send keeps going, so it gets STOCK on waking.
+  bool give_up = g_force_link_off
+      ? since >= (int32_t)FORCE_STOCK_WINDOW_MS
+      : (g_force_online_ms >= FORCE_STOCK_WINDOW_MS || since >= (int32_t)FORCE_STOCK_MAX_MS);
+  if (give_up) {
+    g_force_pending = false;
+    Serial.println("[haldex_modes] forced STOCK not confirmed by the X2 - giving up");
     return;
   }
   if ((int32_t)(now - g_force_next_ms) >= 0) {
-    haldex_link_set_mode(HALDEX_M_STOCK);
+    haldex_link_send_forced_stock(false);
     g_force_next_ms = now + FORCE_STOCK_RESEND_MS;
   }
 }
@@ -164,7 +199,12 @@ void haldex_modes_tick(uint32_t now) {
   track_combo_frames();
 
   if (!s.haldex_enabled) {
-    g_force_pending = false;
+    // v4.8.0: switching the link OFF sends a last STOCK, re-sent until the X2
+    // confirms it (10 s max) — otherwise an X2 v3.0.0 left in FWD / 50-50 would
+    // keep that mode at every restart, BOT32 no longer talking to it.
+    if (g_prev_enabled) force_stock_start("liaison Haldex desactivee", true);
+    g_prev_enabled = false;
+    if (!g_force_link_off) g_force_pending = false;
     // Link disabled: force STOCK once and do nothing else.
     if (g_mode != HALDEX_M_STOCK) apply_mode(HALDEX_M_STOCK);
     g_mode_from_combo = false;
@@ -172,6 +212,8 @@ void haldex_modes_tick(uint32_t now) {
     g_telltale_phase = false;
     return;
   }
+  g_prev_enabled   = true;
+  g_force_link_off = false;   // link back ON: a pending STOCK follows the normal rules
 
   // ---- Physical combo: Hazards ON + TC OFF (both fresh) ----
   // button_sniffer_tc_pressed() == the LATCHED traction-control-disabled state
@@ -197,9 +239,9 @@ void haldex_modes_tick(uint32_t now) {
   // "hazards OFF"). So the hazards can be switched off while FWD stays armed;
   // FWD drops only when traction control is re-enabled. Losing the TC frame
   // (stale -> tc_off=false) also drops to STOCK, a safe default.
+  // v4.8.0: re-sent until the X2 confirms (a lost broadcast would leave it in FWD).
   if (g_mode_from_combo && !tc_off) {
-    g_mode_from_combo = false;
-    apply_mode(HALDEX_M_STOCK);
+    force_stock_start("TC reactive", false);
   }
 
   // ---- Telltale blink phase (exposed only; no CAN emit here) ----

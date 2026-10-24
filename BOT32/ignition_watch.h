@@ -7,8 +7,10 @@
  *   - the ignition changes (Kl15 from Klemmen_Status_01 0x3C0, ON -> OFF and
  *     OFF -> ON);
  *   - the cluster CAN bus wakes up after >= 3 s of silence (car was asleep).
- * The X2 also returns to STOCK on its own after 5 s without CAN (BOT32-HALDEX
- * v3.1.0) — this is the second safety net.
+ * With the X2 v3.0.0 in the car this is the ONLY restart safety net (the X2
+ * keeps its mode in RAM across a key cycle and during light sleep), and it
+ * needs the Haldex link enabled. The optional X2 v3.1.0 adds a second net
+ * (STOCK after 5 s without CAN).
  */
 #ifndef BOT32_IGNITION_WATCH_H
 #define BOT32_IGNITION_WATCH_H

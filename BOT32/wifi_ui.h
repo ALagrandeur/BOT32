@@ -38,6 +38,11 @@ void wifi_ui_tick();
 // Call after settings_init() and any time settings change.
 void wifi_ui_apply();
 
+// v4.8.0: call after the Haldex link is switched ON at runtime. A boot with the
+// link OFF starts the AP alone (no STA), and ESP-NOW cannot send without STA:
+// add STA to the running AP (no AP restart) and make sure ESP-NOW is up.
+void wifi_ui_haldex_link_on();
+
 // Diagnostic
 bool   wifi_ui_is_active();
 String wifi_ui_get_ip();        // ESP32 AP IP address (typically "192.168.4.1")

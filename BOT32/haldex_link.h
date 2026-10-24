@@ -59,6 +59,12 @@ void haldex_link_init();
 // if mode > 2 or haldex_enabled is false.
 bool haldex_link_set_mode(uint8_t mode);
 
+// v4.8.0: STOCK for haldex_modes' forced STOCK only (log=false for the re-sends
+// every 500 ms, possibly for minutes while the X2 sleeps). Also goes out with
+// the link disabled (last STOCK when the link is switched OFF), but only on an
+// ESP-NOW link that is already running.
+bool haldex_link_send_forced_stock(bool log);
+
 // v3.2.0: send a "set passthrough" command to the MITM (ESP-NOW).
 // passthrough=true  -> X2 is a transparent bridge (safe, nothing modified).
 // passthrough=false -> X2 arms the MITM (FWD/5050 will modify frames).

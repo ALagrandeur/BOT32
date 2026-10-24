@@ -9,12 +9,14 @@
 ## Version actuelle
 
 **v4.8.0** (principal, **à valider en voiture** ; inclut v4.7.0) — dernière version STABLE : **v4.6.0** (confirmée en voiture le 2026-10-12, point de retour) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
+**Le X2 de la voiture reste en v3.0.0** (pas de reflash) et **la manette AMOLED n'est pas utilisée** :
+seul le principal est flashé, v4.8.0 fonctionne avec ce X2.
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
 Le commit v4.6.0 est poussé sur `master`, mais le **tag `v4.6.0` n'est pas encore sur GitHub**
 (au 2026-10-12 le dernier tag distant est `v4.5.0`) et il n'y a **aucune release GitHub depuis v4.1.0**.
 
 **Autres appareils liés** : la **manette AMOLED** (dépôt `Remote32`, dossier `Recepteur_AMOLED`,
-mode Golf) parle aussi au X2 par ESP-NOW — elle envoie **SET_MODE seulement** (jamais
+mode Golf ; **non utilisée actuellement**) parle aussi au X2 par ESP-NOW — elle envoie **SET_MODE seulement** (jamais
 SET_PASSTHROUGH). Le X2 a donc deux sources de mode : le principal et la manette.
 
 **Les 3 modes fonctionnent en voiture, confirmés par le pilote.** **STOCK** (normal),
@@ -37,19 +39,26 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   rapides de v4.7.0). Relâcher avant 6 s annule ; un seul déclenchement par appui (relâcher
   avant le suivant) ; 10 s d'inhibition après un déclenchement. Éviter l'écran des données de
   trajet du combiné : un appui long sur OK les remet à zéro.
-- **Haldex remis en STOCK à chaque redémarrage du véhicule.** Le X2 est sur 12 V permanent
-  et sa veille légère garde la mémoire : avant, le dernier mode survivait à une coupure du contact.
+- **Haldex remis en STOCK à chaque redémarrage du véhicule — par le principal seul, sans
+  reflasher le X2.** Le X2 est sur 12 V permanent et sa veille légère garde la mémoire : en
+  v3.0.0 (celui de la voiture) le dernier mode survit à une coupure du contact, et **BOT32 est
+  le seul à le remettre en STOCK**.
   - **BOT32** force STOCK à son démarrage, à chaque coupure et remise du contact (Kl15 lu dans
     Klemmen_Status_01 `0x3C0` octet 2 bit 1, confirmé par la capture `1.csv` : `00` → `03` à la
-    mise du contact) et au réveil du bus cluster après ≥ 3 s de silence. STOCK est renvoyé toutes
-    les 500 ms jusqu'à ce que le X2 le confirme (10 s max, normalement < 1 s) ; un mode choisi dans l'app ou par combo annule
-    le renvoi.
-  - **X2 (BOT32-HALDEX v3.1.0)** : retour en STOCK tout seul après **5 s sans aucune trame CAN**
-    (auto éteinte), même si BOT32 n'est pas là. **Il faut reflasher le X2** pour ce filet de sécurité.
-  - Le renvoi de STOCK par BOT32 au changement de contact n'a lieu que si la **liaison Haldex est
-    activée** dans les réglages de BOT32 (désactivée par défaut) ; sinon seul le filet des 5 s du X2 joue.
-  - **Manette AMOLED v3.18** : le bouton BOOT part du mode renvoyé par le X2 (STOCK → FWD après un
-    redémarrage) au lieu d'un compteur local.
+    mise du contact) et au réveil du bus cluster après ≥ 3 s de silence.
+  - STOCK est renvoyé toutes les 500 ms **jusqu'à ce que le X2 lui-même le confirme** (normalement
+    < 1 s). Si le X2 dort (ESP-NOW coupé après 15 min de stationnement), le renvoi continue et le X2
+    reçoit STOCK environ 1 s après son réveil. Abandon seulement après 10 s de liaison sans
+    confirmation, ou 30 min sans aucune nouvelle du X2 (absent / pas alimenté).
+  - Tous les autres retours en STOCK utilisent le même renvoi confirmé : bouton 🅾 STOCK,
+    effacement des codes, TC remis après un combo. Un mode choisi dans l'app ou par combo annule
+    le renvoi. Une coupure radio du X2 en roulant n'envoie jamais STOCK.
+  - Exige la **liaison Haldex activée** dans les réglages de BOT32 (déjà nécessaire pour les combos).
+    La désactiver envoie un dernier STOCK confirmé ; ensuite, **plus rien ne remet le X2 en STOCK**
+    au redémarrage tant qu'elle reste désactivée. Activée en cours de route (après un démarrage où
+    elle était désactivée), la liaison marche tout de suite, sans couper le point d'accès WiFi
+    (avant : seulement après un redémarrage de BOT32).
+  - Le X2 v3.1.0 (optionnel, non flashé) ajouterait son propre filet : STOCK après 5 s sans CAN.
 - **Combo FWD/50-50 maintenu malgré une pause de la boucle** (requête web lente, etc.) : la pause
   fait déborder le tampon de réception CAN (32 trames) et la trame TC peut manquer à la lecture
   suivante. La fraîcheur des trames du combo se compte maintenant en temps de lecture CAN (100 ms
@@ -114,7 +123,9 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Robustesse CAN** : récupération bus-off TWAI **et** MCP2515 (re-init sur EFLG TXBO),
   exposition du **TEC**. Terminaison **TERM2 (120 Ω)** activée côté Haldex.
 - **Persistance** : le passthrough est **persisté en NVS** ; le **mode boot TOUJOURS STOCK**
-  (sécurité — rien ne s'active tout seul au démarrage).
+  (sécurité — rien ne s'active tout seul au démarrage du X2). ⚠ Le X2 ne redémarre pas avec
+  l'auto (12 V permanent, la veille garde la RAM) : en v3.0.0 le mode survit à un cycle de
+  contact ; c'est BOT32 v4.8.0 (liaison Haldex activée) qui le remet en STOCK à chaque redémarrage.
 
 ---
 
@@ -123,7 +134,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Lien ESP-NOW uniquement.** AP téléphone + ESP-NOW **coexistent** sur le **canal 1**
   (mode AP+STA quand le lien est activé). Le PC en **USB-C** peut aussi parler
   directement au X2 (dev/diagnostic) — ESP-NOW court-circuité dans ce mode.
-- **2e source de mode : la manette AMOLED** (Remote32, mode Golf) écoute le STATE et envoie
+- **2e source de mode : la manette AMOLED** (Remote32, mode Golf ; non utilisée actuellement) écoute le STATE et envoie
   SET_MODE (STOCK/FWD/50-50) ; elle ne peut pas armer. Le principal affiche le **mode
   rapporté par le X2** et renvoie toujours un STOCK explicite quand on appuie sur STOCK.
 - **3 modes** : STOCK / FWD / 50-50.
@@ -185,7 +196,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — version stable précédente |
 | **v4.6.0** | 🏁 **STABLE** — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **confirmée en voiture** (2026-10-12) |
 | v4.7.0 | Effacement des codes moteur au volant (OK × 10 en < 6 s) + bandeau de confirmation sur le cellulaire — **à valider en voiture** |
-| v4.8.0 | Haldex remis en STOCK à chaque redémarrage (contact, démarrage BOT32, réveil du bus) — avec X2 v3.1.0 ; effacement des codes au volant par **OK maintenu 6 s** — **à valider en voiture** |
+| v4.8.0 | Haldex remis en STOCK à chaque redémarrage (contact, démarrage BOT32, réveil du bus), renvoyé jusqu'à confirmation du X2 — fonctionne avec le X2 v3.0.0, sans reflash (liaison Haldex activée) ; effacement des codes au volant par **OK maintenu 6 s** — **à valider en voiture** |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -198,7 +209,8 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v1.5.0 | **Power-save WiFi OFF** + diagnostics ESP-NOW (canal/tx/rxcmd) |
 | v1.6.0 | **Fix 50-50** : 0x0A8 en passthrough (D8 = RPM, pas la demande de lock) |
 | **v2.0.0** | 🏁 **Jalon stable** — MITM confirmé en voiture (STOCK/FWD/50-50), lien ESP-NOW solide |
-| **v3.0.0** | 🏁 **Jalon stable actuel** — 50-50 tenu ~95 % à toutes les vitesses, confirmé en voiture (détails dans le dépôt privé) |
+| **v3.0.0** | 🏁 **Jalon stable actuel — dans la voiture** — 50-50 tenu ~95 % à toutes les vitesses, confirmé en voiture (détails dans le dépôt privé) |
+| v3.1.0 | **Optionnel, non flashé** — STOCK après 5 s sans CAN et avant la veille + correctif du minuteur de veille. Le X2 de la voiture reste en v3.0.0 |
 
 ---
 
@@ -210,7 +222,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
   pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
-- ⏳ **Valider en voiture** le retour en STOCK à chaque redémarrage (v4.8.0 + X2 v3.1.0), l'effacement au volant (OK maintenu 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
+- ⏳ **Valider en voiture** le retour en STOCK à chaque redémarrage (v4.8.0 seul, X2 resté en v3.0.0, liaison Haldex activée : mettre FWD, couper le contact, redémarrer → STOCK sur le cellulaire ; refaire après plus de 15 min de stationnement, X2 en veille), l'effacement au volant (OK maintenu 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---
