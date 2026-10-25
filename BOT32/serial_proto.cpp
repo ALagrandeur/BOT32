@@ -15,6 +15,7 @@
 #include "wifi_ui.h"
 #include "button_sniffer.h"
 #include "haldex_modes.h"
+#include "ok_clear.h"
 #include "bench_frames.h"
 #include "config.h"
 #include <ArduinoJson.h>
@@ -186,6 +187,8 @@ static void emit_status() {
   // v4.7.0 — OK button press counter (10 presses / 6 s = clear engine codes)
   doc["ok_press_events"]    = button_sniffer_ok_press_events();
   doc["ok_last_code"]       = button_sniffer_ok_last_code();
+  doc["ok_last_hold_ms"]    = ok_clear_last_hold_ms();     // v4.8.0 diagnostics
+  doc["ok_last_hold_end"]   = ok_clear_last_end();
   // v4.8.0 — ignition (Kl15, 0x3C0) + forced-STOCK re-send in progress
   doc["ignition_on"]        = button_sniffer_ignition_on();
   doc["ignition_age_ms"]    = button_sniffer_ignition_age_ms();

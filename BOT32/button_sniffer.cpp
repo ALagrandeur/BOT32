@@ -17,6 +17,16 @@ static uint32_t ok_ms       = 0;
 // press if press + release frames are drained by the same can_poll()).
 static uint32_t ok_press_events = 0;
 static uint8_t  ok_last_code    = 0;
+// v4.8.0 — what the 0x5BF frame does during a press (OK hold diagnostics)
+static uint32_t ok_frames       = 0;    // 0x5BF frames since boot
+static uint32_t ok_gap_ms       = 0;    // interval between the last two 0x5BF frames
+static uint32_t ok_press_start  = 0;    // first pressed frame of the current / last press
+static uint32_t ok_press_len_ms = 0;    // last completed press: first pressed -> first released frame
+static uint32_t ok_press_frames = 0;    // frames during the current / last press
+static uint32_t ok_press_gap_ms = 0;    // longest interval between frames during that press
+static uint8_t  ok_press_codes  = 0;    // OR of the byte[0] codes seen during that press
+static uint32_t ok_press_blips  = 0;    // releases shorter than OK_RELEASE_DEBOUNCE_MS in that press
+static uint32_t ok_release_t    = 0;    // first released frame after a press
 
 // === Ignition Kl15 (Klemmen_Status_01 0x3C0, byte[2] bit 1) — v4.8.0 ===
 static bool     kl15_on     = false;
@@ -54,12 +64,34 @@ static void on_cluster_rx(CanChannel ch, const CanFrame& f) {
     // The previous code tested == 0x00, so it reported "pressed" while idle.
     // Correct logic: pressed = byte[0] != 0x00.
     bool pressed_now = (f.data[0] != 0x00);
+    uint32_t t = millis();
+    uint32_t gap = ok_frames ? t - ok_ms : 0;
+    ok_frames++;
+    ok_gap_ms = gap;
     if (pressed_now && !ok_pressed) {
       ok_press_events++;
       ok_last_code = f.data[0];
+      // a short release (same rule as ok_clear) continues the same press
+      if (ok_press_frames && (t - ok_release_t) < OK_RELEASE_DEBOUNCE_MS) {
+        ok_press_blips++;
+      } else {
+        ok_press_start  = t;
+        ok_press_frames = 0;
+        ok_press_gap_ms = 0;
+        ok_press_codes  = 0;
+        ok_press_blips  = 0;
+      }
+    }
+    if (pressed_now) {
+      if (ok_press_frames && gap > ok_press_gap_ms) ok_press_gap_ms = gap;
+      ok_press_frames++;
+      ok_press_codes |= f.data[0];
+    } else if (ok_pressed) {
+      ok_press_len_ms = t - ok_press_start;
+      ok_release_t    = t;
     }
     ok_pressed = pressed_now;
-    ok_ms      = millis();
+    ok_ms      = t;
     return;
   }
 
@@ -99,6 +131,16 @@ uint32_t button_sniffer_ignition_age_ms() {
   return millis() - kl15_ms;
 }
 uint8_t  button_sniffer_ok_last_code()    { return ok_last_code; }
+
+void button_sniffer_ok_diag(OkDiag& d) {
+  d.frames       = ok_frames;
+  d.gap_ms       = ok_gap_ms;
+  d.press_len_ms = ok_pressed ? millis() - ok_press_start : ok_press_len_ms;
+  d.press_frames = ok_press_frames;
+  d.press_gap_ms = ok_press_gap_ms;
+  d.press_codes  = ok_press_codes;
+  d.press_blips  = ok_press_blips;
+}
 uint32_t button_sniffer_ok_age_ms() {
   if (ok_ms == 0) return UINT32_MAX;
   return millis() - ok_ms;

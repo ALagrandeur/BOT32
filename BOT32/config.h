@@ -76,6 +76,7 @@
 // v2.8.0 — sniffer staleness (cluster bus broadcasts these IDs at ~10-20 Hz)
 #define HANDBRAKE_STALE_TIMEOUT_MS       2000
 #define MFSW_STALE_TIMEOUT_MS            2000
+#define OK_RELEASE_DEBOUNCE_MS            250   // v4.8.0: a shorter OK release (flicker) keeps the press
 
 // =============================================================
 //  Forbidden IDs (NEVER TX)

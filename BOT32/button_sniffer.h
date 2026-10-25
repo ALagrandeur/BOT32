@@ -40,6 +40,18 @@ uint32_t button_sniffer_ok_press_events();
 // byte[0] of the 0x5BF frame at the last press (diagnostic: which button code).
 uint8_t  button_sniffer_ok_last_code();
 
+// v4.8.0 — OK hold diagnostics: what the 0x5BF frame does during a press.
+struct OkDiag {
+  uint32_t frames;        // 0x5BF frames since boot
+  uint32_t gap_ms;        // interval between the last two 0x5BF frames
+  uint32_t press_len_ms;  // current press so far, or the last completed press (short releases included)
+  uint32_t press_frames;  // frames during that press
+  uint32_t press_gap_ms;  // longest interval between frames during that press
+  uint8_t  press_codes;   // OR of the byte[0] codes seen during that press
+  uint32_t press_blips;   // releases shorter than OK_RELEASE_DEBOUNCE_MS during that press
+};
+void button_sniffer_ok_diag(OkDiag& d);
+
 // v4.8.0 — ignition (Kl15) from Klemmen_Status_01 0x3C0 byte[2] bit 1.
 // false until the first frame; check the age for freshness.
 bool     button_sniffer_ignition_on();

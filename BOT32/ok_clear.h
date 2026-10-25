@@ -4,8 +4,9 @@
  * Steering-wheel trigger for the engine-code clear: OK HELD for 6 seconds
  * (MFSW 0x5BF, same decode as the "OK button" live cell: byte[0] != 0 = pressed)
  * starts the existing listen-only procedure obd2_clear_engine_start("bouton OK").
- * Releasing OK before 6 s cancels. One trigger per hold: OK must be released
- * before it can trigger again, and presses are ignored for 10 s after a trigger.
+ * Releasing OK before 6 s cancels (a release shorter than 250 ms — flicker,
+ * code change — does not). One trigger per hold: OK must be released before it
+ * can trigger again, and presses are ignored for 10 s after a trigger.
  */
 #ifndef BOT32_OK_CLEAR_H
 #define BOT32_OK_CLEAR_H
@@ -22,5 +23,10 @@ void ok_clear_tick(uint32_t now);
 
 // ms the OK button has been held so far in the current hold (0 if released).
 uint32_t ok_clear_hold_ms();
+
+// v4.8.0 diagnostics: length of the last hold and how it ended
+// ("relache", "trame perimee", "inhibition 10 s", "declenche", ...).
+uint32_t    ok_clear_last_hold_ms();
+const char* ok_clear_last_end();
 
 #endif // BOT32_OK_CLEAR_H

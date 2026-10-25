@@ -144,7 +144,10 @@ Three ways to start it — same procedure in every case:
   (same decode as the *OK button* live cell: `byte[0] != 0` = pressed). Releasing before
   6 s cancels; one trigger per hold (release before the next); presses are ignored for
   10 s after a trigger. Avoid the cluster's trip-data screen: a long OK press resets it.
-  (v4.7.0 used 10 quick presses instead.)
+  (v4.7.0 used 10 quick presses instead.) A release shorter than 250 ms (frame flicker,
+  code change) does not cancel the hold. Diagnostics of the last press in
+  `/api/status` → `ok_diag` (frames, gap between frames, press length, codes, short
+  releases, how the last hold ended).
 - Button *🔧 Effacer les codes moteur* (phone `/settings` and PC UI).
 - Serial `{"cmd":"clear_engine_fault"}`.
 

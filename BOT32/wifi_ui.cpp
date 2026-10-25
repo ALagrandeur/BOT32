@@ -10,6 +10,7 @@
 #include "haldex_modes.h"
 #include "serial_proto.h"
 #include "button_sniffer.h"
+#include "ok_clear.h"
 #include "config.h"
 #include "haldex_espnow.h"
 #include <WiFi.h>
@@ -552,6 +553,21 @@ static void handle_status() {
   doc["handbrake_age_ms"]  = button_sniffer_handbrake_age_ms();
   doc["ok_button_pressed"] = button_sniffer_ok_pressed();
   doc["ok_button_age_ms"]  = button_sniffer_ok_age_ms();
+  {                                         // v4.8.0 — OK hold diagnostics (JSON only)
+    OkDiag d; button_sniffer_ok_diag(d);
+    JsonObject o = doc["ok_diag"].to<JsonObject>();
+    o["frames"]        = d.frames;
+    o["gap_ms"]        = d.gap_ms;
+    o["press_ms"]      = d.press_len_ms;
+    o["press_frames"]  = d.press_frames;
+    o["press_gap_ms"]  = d.press_gap_ms;
+    o["press_codes"]   = d.press_codes;
+    o["press_blips"]   = d.press_blips;
+    o["press_events"]  = button_sniffer_ok_press_events();
+    o["hold_ms"]       = ok_clear_hold_ms();
+    o["last_hold_ms"]  = ok_clear_last_hold_ms();
+    o["last_hold_end"] = ok_clear_last_end();
+  }
   // v2.9.0 — Hazard + TC button sniffers
   doc["hazard_active"]     = button_sniffer_hazard_active();
   doc["hazard_age_ms"]     = button_sniffer_hazard_age_ms();

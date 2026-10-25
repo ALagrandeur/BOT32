@@ -35,6 +35,11 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   (un accouplement 100 % verrouillé bloque la transmission en virage).
 
 ### Nouveautés v4.8.0
+- **OK maintenu 6 s : plus tolérant + diagnostic.** Premier essai en voiture : rien ne s'est
+  déclenché. Un relâchement de moins de 250 ms (trame qui clignote, code qui change) n'annule
+  plus l'appui. `/api/status` → `ok_diag` montre ce que BOT32 reçoit pendant l'appui (nombre de
+  trames 0x5BF, écart entre trames, durée de l'appui, codes, micro-relâchements, fin du dernier
+  maintien : relâché / trame périmée / déclenché).
 - **Effacement des codes : OBD générique.** L'envoi direct au moteur (Mode 04 vers 0x7E0, depuis
   v4.6.0) n'effaçait pas les codes dans l'auto. BOT32 envoie maintenant le Mode 04 `[01 04]`
   **OBD générique en adressage fonctionnel sur 0x7DF** (comme un outil OBD générique, sans le mode
