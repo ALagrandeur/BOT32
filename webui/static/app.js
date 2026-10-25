@@ -753,7 +753,8 @@ if (btnClearEng) {
     if (!confirm(
       "🔧 Effacer les codes défaut du MOTEUR ?\n\n" +
       "BOT32 passe en écoute seule (aucune émission CAN), le Haldex est remis\n" +
-      "en STOCK, puis la commande Mode 04 est envoyée au moteur seulement.\n\n" +
+      "en STOCK, puis la commande Mode 04 OBD générique est envoyée\n" +
+      "(moteur + codes antipollution de la boîte DSG).\n\n" +
       "Continuer ?"
     )) return;
     const status = $("diag-action-status");

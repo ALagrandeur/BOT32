@@ -1,6 +1,6 @@
 # BOT32 — Haldex AWD link integration guide
 
-> Applies to BOT32 main **v4.8.0** (last stable: v4.6.0) and BOT32-HALDEX **v3.0.0** (the firmware
+> Applies to BOT32 main **v4.8.0** (stable, validated in the car on 2026-10-25; v4.8.1 = help texts only) and BOT32-HALDEX **v3.0.0** (the firmware
 > in the car; v3.1.0 is an optional update, not used). The AMOLED remote is not used in the Golf.
 
 BOT32 main is the **client**; it drives an external **MITM module** that does the

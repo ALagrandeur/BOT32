@@ -625,20 +625,21 @@
     </div>
   </details>
 
-  <!-- v4.6.0: effacement des codes MOTEUR seulement, procédure écoute seule.
+  <!-- v4.6.0: effacement des codes moteur, procédure écoute seule. v4.8.0 : Mode 04 OBD générique (0x7DF, puis 0x700).
        (Ancien auto-trigger Hazard ×3 retiré : jamais codé, refusé.) -->
   <details class="card collapsible">
     <summary>
       <h3 class="card-title">🔧 Effacer les codes moteur</h3>
-      <span class="summary-hint muted small">Moteur seulement — BOT32 en écoute seule pendant l'effacement</span>
+      <span class="summary-hint muted small">OBD générique (moteur + boîte DSG) — BOT32 en écoute seule pendant l'effacement</span>
     </summary>
     <div class="collapsible-body">
       <p class="muted small">
         1. BOT32 passe en <b>écoute seule</b> : plus aucune émission sur les deux bus CAN
         (override du cluster, polling OBD, bench).<br>
         2. Le Haldex est remis en <b>STOCK</b> (il reste en STOCK après).<br>
-        3. La commande OBD-II Mode 04 est envoyée <b>au moteur seulement</b> (0x7E0) et
-        BOT32 attend sa réponse (0x7E8).<br>
+        3. La commande OBD-II Mode 04 <b>générique</b> est envoyée à tous les calculateurs OBD
+        (0x7DF, puis 0x700 si besoin) et BOT32 attend la réponse du moteur (0x7E8). La boîte
+        DSG efface aussi ses codes antipollution. Refus ? Essayer moteur arrêté, contact mis.<br>
         4. Tout reprend normalement. Le résultat s'affiche ci-dessous.
       </p>
       <div class="actions">
@@ -678,7 +679,7 @@
         <div class="combo">
           <h4>🔧 Effacer les codes moteur</h4>
           <span class="key">🅾 OK maintenu</span><span class="key-sep">pendant</span><span class="key">6 s</span>
-          <p class="muted small">Bouton OK du volant, maintenu enfoncé. Moteur seulement : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Évite l'écran des données de trajet (un appui long les remet à zéro). Aussi : bouton dans la carte « Effacer les codes moteur ».</p>
+          <p class="muted small">Bouton OK du volant, maintenu enfoncé. Effacement OBD générique (moteur, et codes antipollution de la boîte DSG) : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Évite l'écran des données de trajet (un appui long les remet à zéro). Aussi : bouton dans la carte « Effacer les codes moteur ».</p>
         </div>
         <div class="combo">
           <h4>📈 Boost sur la jauge de température</h4>

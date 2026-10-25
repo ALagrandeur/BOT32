@@ -8,12 +8,12 @@
 
 ## Version actuelle
 
-**v4.8.0** (principal, **à valider en voiture** ; inclut v4.7.0) — dernière version STABLE : **v4.6.0** (confirmée en voiture le 2026-10-12, point de retour) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
+**v4.8.1** (principal : v4.8.0 + textes d'aide mis à jour) — dernière version STABLE : **v4.8.0** (validée en voiture le 2026-10-25, release GitHub tag `4.8.0`, point de retour) ; stable précédente : v4.6.0 (tag `v.4.6.0_2_modes`) + **BOT32-HALDEX v3.0.0** (module MITM privé, ESP32-CAN-X2).
 **Le X2 de la voiture reste en v3.0.0** (pas de reflash) et **la manette AMOLED n'est pas utilisée** :
 seul le principal est flashé, v4.8.0 fonctionne avec ce X2.
 Repo public `ALagrandeur/BOT32` (`master`) ; module MITM = dépôt **privé** `BOT32-HALDEX`.
-Le commit v4.6.0 est poussé sur `master`, mais le **tag `v4.6.0` n'est pas encore sur GitHub**
-(au 2026-10-12 le dernier tag distant est `v4.5.0`) et il n'y a **aucune release GitHub depuis v4.1.0**.
+Releases GitHub récentes : **`4.8.0`** (commit `8e49c7f`, 2026-10-25, stable) et `v.4.6.0_2_modes`
+(commit `222bdd4`, 2026-10-12).
 
 **Autres appareils liés** : la **manette AMOLED** (dépôt `Remote32`, dossier `Recepteur_AMOLED`,
 mode Golf ; **non utilisée actuellement**) parle aussi au X2 par ESP-NOW — elle envoie **SET_MODE seulement** (jamais
@@ -34,7 +34,12 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 - **Angle volant** : seul facteur qui baisse encore le 50-50 — **gardé volontairement**
   (un accouplement 100 % verrouillé bloque la transmission en virage).
 
-### Nouveautés v4.8.0
+### Nouveautés v4.8.1
+- Textes d'aide (cellulaire + PC) : l'effacement des codes est un **effacement OBD générique**
+  (moteur, et codes antipollution de la boîte DSG) ; « Refus ? Essayer moteur arrêté, contact mis ».
+  Aucun autre changement par rapport à la v4.8.0 stable.
+
+### Nouveautés v4.8.0 — 🏁 STABLE (validée en voiture le 2026-10-25)
 - **OK maintenu 6 s : plus tolérant + diagnostic.** Premier essai en voiture : rien ne s'est
   déclenché. Un relâchement de moins de 250 ms (trame qui clignote, code qui change) n'annule
   plus l'appui. `/api/status` → `ok_diag` montre ce que BOT32 reçoit pendant l'appui (nombre de
@@ -220,9 +225,10 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
 | v4.3.0 | Limite de temp embrayage + coupure auto vers STOCK (retirée en v4.5.0) |
 | v4.4.0 | Ménage de la page Réglages mobile + valeur brute 0x2BF1 pour la calibration |
 | **v4.5.0** | 🏁 Temp embrayage **affichage seulement** (formule calibrée vs VCDS), coupure retirée — version stable précédente |
-| **v4.6.0** | 🏁 **STABLE** — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — **confirmée en voiture** (2026-10-12) |
-| v4.7.0 | Effacement des codes moteur au volant (OK × 10 en < 6 s) + bandeau de confirmation sur le cellulaire — **à valider en voiture** |
-| v4.8.0 | Haldex remis en STOCK après une coupure de 5 min ou plus (coupure plus courte : mode gardé), renvoyé jusqu'à confirmation du X2 — fonctionne avec le X2 v3.0.0, sans reflash (liaison Haldex activée) ; sortie du combo par le conducteur (TC OFF → ON) ; effacement des codes au volant par **OK maintenu 6 s** — **à valider en voiture** |
+| **v4.6.0** | 🏁 Stable précédente — Effacement codes moteur en écoute seule, 50-50 par combo (frein à main), aide-mémoire — confirmée en voiture (2026-10-12) |
+| v4.7.0 | Effacement des codes moteur au volant (OK × 10 en < 6 s) + bandeau de confirmation sur le cellulaire — jamais validée, remplacée par v4.8.0 |
+| v4.8.0 | Haldex remis en STOCK après une coupure de 5 min ou plus (coupure plus courte : mode gardé), renvoyé jusqu'à confirmation du X2 — fonctionne avec le X2 v3.0.0, sans reflash (liaison Haldex activée) ; sortie du combo par le conducteur (TC OFF → ON) ; effacement des codes au volant par **OK maintenu 6 s** ; effacement en Mode 04 OBD générique (0x7DF, puis 0x700) — 🏁 **STABLE, validée en voiture (2026-10-25)**, release `4.8.0` |
+| v4.8.1 | Textes d'aide : effacement OBD générique (moteur + boîte DSG) |
 
 ### Module MITM (BOT32-HALDEX)
 | Version | Apport principal |
@@ -248,7 +254,7 @@ solide, contrôle depuis l'UI (modes + passthrough + ack).
   à un run STOCK. → décide s'il faut affiner le 50-50.
 - 📌 **Log cluster voyant** : capturer les **2 payloads** (allumé + éteint) d'un témoin pour
   pouvoir le faire clignoter (indicateur FWD au combiné — la trame « éteinte » manquait).
-- ⏳ **Valider en voiture** la règle des 5 min (v4.8.0 seul, X2 resté en v3.0.0, liaison Haldex activée) : FWD par combo, contact coupé 30 s puis remis → FWD gardé, puis TC OFF → ON → STOCK ; FWD, contact coupé plus de 5 min → STOCK sur le cellulaire à la remise du contact ; l'effacement au volant (OK maintenu 6 s) et le bandeau de confirmation. (L'effacement moteur et le combo 50-50 de v4.6.0 sont confirmés.)
+- ✅ **v4.8.0 validée en voiture le 2026-10-25** (« tout semble fonctionnel ») : règle des 5 min, effacement OBD générique, OK maintenu 6 s. Release GitHub `4.8.0`.
 - 💡 Web UI pour les boutons du volant (objectif initial du projet).
 
 ---

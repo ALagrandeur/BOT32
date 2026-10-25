@@ -172,7 +172,7 @@ static const char MOBILE_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
   <div class="combo">
     <h3>🔧 Effacer les codes moteur</h3>
     <span class="k">🅾 OK maintenu</span><span class="plus">pendant</span><span class="k">6 s</span>
-    <div class="note">Bouton OK du volant, maintenu enfoncé. Moteur seulement : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Message ici si la page est ouverte. Évite l'écran des données de trajet (un appui long les remet à zéro). Aussi : bouton dans ⚙ Tous les réglages.</div>
+    <div class="note">Bouton OK du volant, maintenu enfoncé. Effacement OBD générique (moteur, et codes antipollution de la boîte DSG) : BOT32 passe en écoute seule, le Haldex est remis en STOCK. Message ici si la page est ouverte. Évite l'écran des données de trajet (un appui long les remet à zéro). Aussi : bouton dans ⚙ Tous les réglages.</div>
   </div>
   <div class="combo">
     <h3>📈 Boost sur la jauge de température</h3>
@@ -379,7 +379,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"HTML(<!DOCTYPE html>
 
 <h2>🔧 Effacer les codes moteur</h2>
 <button type="button" id="clr-btn" onclick="clearEngine()" style="width:100%;margin:6px 0 4px;padding:13px;background:#0a4;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600">🔧 Effacer les codes moteur</button>
-<div class="hint">Moteur seulement. BOT32 passe en écoute seule (aucune émission sur les bus CAN), le Haldex est remis en STOCK, puis la commande d'effacement est envoyée au moteur. Le Haldex reste en STOCK après.</div>
+<div class="hint">Effacement OBD générique : moteur, et codes antipollution de la boîte DSG. BOT32 passe en écoute seule (aucune émission sur les bus CAN), le Haldex est remis en STOCK, puis la commande d'effacement OBD est envoyée. Le Haldex reste en STOCK après. Refus ? Essayer moteur arrêté, contact mis.</div>
 <div id="clr-st" style="margin:6px 0 12px;font-size:14px;font-weight:600;min-height:18px"></div>
 <h2>📶 WiFi AP</h2>
 <label class="cb"><input type="checkbox" data-k="wifi_enabled"> 📶 WiFi AP enabled</label>
@@ -408,7 +408,7 @@ async function postCmd(o){const r=await fetch('/api/cmd',{method:'POST',headers:
 
 // v4.6.0 — clear ENGINE codes (listen-only procedure), result polled from /api/status
 async function clearEngine(){
-  if(!confirm('🔧 Effacer les codes défaut du MOTEUR ?\n\nBOT32 passe en écoute seule, le Haldex est remis en STOCK, puis la commande est envoyée au moteur.')) return;
+  if(!confirm('🔧 Effacer les codes défaut du MOTEUR ?\n\nBOT32 passe en écoute seule, le Haldex est remis en STOCK, puis la commande OBD générique est envoyée (moteur + codes antipollution de la boîte DSG).')) return;
   const st=document.getElementById('clr-st'), btn=document.getElementById('clr-btn');
   const show=(t,c)=>{st.textContent=t;st.style.color=c||'#7af'};
   let seq0;
@@ -529,7 +529,7 @@ static void handle_status() {
   // Build the same status payload as serial_proto::emit_status, just trimmed
   // to the fields the mobile UI actually displays.
   JsonDocument doc;
-  doc["version"]     = "4.8.0";   // keep in sync with BUILD_VERSION
+  doc["version"]     = "4.8.1";   // keep in sync with BUILD_VERSION
   doc["uptime_ms"]   = millis();
   doc["lever"]       = String(lever_get());
   doc["gear"]        = lever_get_gear();

@@ -35,8 +35,9 @@ The role descriptions are kept in French, as in the project's shared map.
 
 | | |
 |---|---|
-| **Current version** | **v4.8.0** (`master`) — Haldex back to STOCK after a cut of 5 min or more (shorter cut: mode kept); engine codes cleared by **holding OK for 6 s** on the steering wheel; **to be validated in the car** |
-| **Last stable version** | **v4.6.0 — STABLE** (git tag `v4.6.0`), confirmed in the car on 2026-10-12 — rollback point |
+| **Current version** | **v4.8.1** (`master`) — v4.8.0 + updated help texts (engine-code clear = generic OBD, engine + DSG) |
+| **Last stable version** | **v4.8.0 — STABLE** (GitHub release, tag `4.8.0`), validated in the car on 2026-10-25 — rollback point: Haldex back to STOCK after a cut of 5 min or more (shorter cut: mode kept), engine codes cleared by generic OBD Mode 04 and by **holding OK for 6 s** |
+| **Previous stable** | v4.6.0 (tag `v.4.6.0_2_modes`), confirmed in the car on 2026-10-12 |
 | **Paired Haldex module** | BOT32-HALDEX **v3.0.0** in the car (stable, all 3 modes confirmed) — **not reflashed**, v4.8.0 works with it. BOT32-HALDEX v3.1.0 (adds STOCK after 5 s without CAN) is optional and not used |
 | **AMOLED remote** | not used in the Golf |
 
